@@ -1,4 +1,4 @@
-package io.constantine2nd.model;
+package io.tesobe.model;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;

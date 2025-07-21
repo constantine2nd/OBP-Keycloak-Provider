@@ -1,4 +1,4 @@
-package io.constantine2nd.model;
+package io.tesobe.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

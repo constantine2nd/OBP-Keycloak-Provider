@@ -9,7 +9,7 @@
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- Replace this with your actual JPA entity classes -->
-        <class>io.constantine2nd.model.KcUserEntity</class>
+        <class>io.tesobe.model.KcUserEntity</class>
 
         <properties>
             <property name="javax.persistence.jdbc.driver" value="org.postgresql.Driver"/>

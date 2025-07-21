@@ -1,4 +1,4 @@
-package io.constantine2nd.providers;
+package io.tesobe.providers;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;

@@ -1,7 +1,7 @@
-package io.constantine2nd.providers;
+package io.tesobe.providers;
 
-import io.constantine2nd.model.KcUserEntity;
-import io.constantine2nd.model.UserAdapter;
+import io.tesobe.model.KcUserEntity;
+import io.tesobe.model.UserAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import org.jboss.logging.Logger;
