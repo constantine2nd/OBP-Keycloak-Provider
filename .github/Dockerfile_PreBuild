@@ -1,0 +1,26 @@
+# === Build Stage ===
+FROM quay.io/keycloak/keycloak:26.0.5 as builder
+
+# Enable optional features
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+
+WORKDIR /opt/keycloak
+
+# Switch to root for privileged actions
+USER root
+
+COPY target/obp-keycloak-provider.jar /opt/keycloak/providers/
+COPY --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
+
+
+# Prebuild the server (compile extensions, lock config)
+RUN /opt/keycloak/bin/kc.sh build
+
+
+# === Runtime Stage ===
+FROM quay.io/keycloak/keycloak:26.0.5
+
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+USER keycloak
