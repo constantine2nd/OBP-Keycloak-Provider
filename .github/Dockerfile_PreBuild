@@ -11,7 +11,7 @@ WORKDIR /opt/keycloak
 USER root
 
 COPY target/obp-keycloak-provider.jar /opt/keycloak/providers/
-COPY --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
+RUN curl -L https://jdbc.postgresql.org/download/postgresql-42.7.2.jar -o /opt/keycloak/providers/postgresql-42.7.2.jar
 
 
 # Prebuild the server (compile extensions, lock config)
