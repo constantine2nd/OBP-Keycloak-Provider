@@ -1,4 +1,11 @@
 # === Build Stage ===
+FROM alpine:3.19 as curler
+
+RUN apk add --no-cache curl
+
+RUN curl -L https://jdbc.postgresql.org/download/postgresql-42.7.2.jar -o /tmp/postgresql-42.7.2.jar
+
+
 FROM quay.io/keycloak/keycloak:26.0.5 as builder
 
 # Enable optional features
@@ -11,8 +18,7 @@ WORKDIR /opt/keycloak
 USER root
 
 COPY target/obp-keycloak-provider.jar /opt/keycloak/providers/
-RUN curl -L https://jdbc.postgresql.org/download/postgresql-42.7.2.jar -o /opt/keycloak/providers/postgresql-42.7.2.jar
-
+COPY --from=curler /tmp/postgresql-42.7.2.jar /opt/keycloak/providers/
 
 # Prebuild the server (compile extensions, lock config)
 RUN /opt/keycloak/bin/kc.sh build
