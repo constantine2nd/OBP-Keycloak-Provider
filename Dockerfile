@@ -29,4 +29,4 @@ FROM quay.io/keycloak/keycloak:26.0.5
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 USER keycloak
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
+#ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
