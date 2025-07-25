@@ -1,7 +1,7 @@
 FROM maven:3-eclipse-temurin-17 as maven
 COPY . /app
 WORKDIR /app
-RUN mvn clean install -DskipTests=true
+RUN mvn install -DskipTests=true
 
 FROM quay.io/keycloak/keycloak:26.0.5 as builder
 
