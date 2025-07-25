@@ -25,6 +25,7 @@ FROM quay.io/keycloak/keycloak:26.0.5
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
+USER root
 RUN chown keycloak:keycloak /opt/keycloak/providers/obp-keycloak-provider.jar
 
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
