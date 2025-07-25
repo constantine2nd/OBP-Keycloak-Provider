@@ -22,7 +22,7 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 RUN /opt/keycloak/bin/kc.sh build
 
 FROM quay.io/keycloak/keycloak:26.0.5
-ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
+ADD --chown=keycloak:keycloak target/obp-keycloak-provider-1.0.jar /opt/keycloak/providers/
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
