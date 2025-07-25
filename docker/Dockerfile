@@ -4,7 +4,7 @@ RUN mvn -T 8C clean install -DskipTests=true
 FROM quay.io/keycloak/keycloak:26.0.5 as builder
 
 # Enable Keycloak health and metrics endpoints
-ENV KC_HEALTH_ENABLED=true
+#ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 
 WORKDIR /opt/keycloak
