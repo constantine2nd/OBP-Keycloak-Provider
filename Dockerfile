@@ -21,8 +21,10 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 # Prebuild the Keycloak server (e.g., compile extensions, optimize image)
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:26.0.5
+FROM maven
 ADD --chown=keycloak:keycloak /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
+
+FROM quay.io/keycloak/keycloak:26.0.5
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
