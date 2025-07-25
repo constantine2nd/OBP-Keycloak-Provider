@@ -62,4 +62,4 @@ Temporary Items
 # Maven Shade Plugin output
 dependency-reduced-pom.xml
 
-src/main/resources/META-INF/persistence.xml
+persistence.xml
