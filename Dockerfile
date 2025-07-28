@@ -25,6 +25,7 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 RUN mkdir -p /opt/keycloak/themes/obp/login/resources/css/
 COPY themes/styles.css /opt/keycloak/themes/obp/login/resources/css/
 COPY themes/theme.properties /opt/keycloak/themes/obp/login/
+COPY themes/messages_en.properties /opt/keycloak/themes/obp/login/
 USER keycloak
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
 #ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
