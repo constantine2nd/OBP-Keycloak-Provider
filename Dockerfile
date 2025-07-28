@@ -13,13 +13,6 @@ ENV KC_DB=postgres
 
 WORKDIR /opt/keycloak
 
-# Generate a self-signed SSL certificate for development/testing purposes
-#USER root
-#RUN keytool -genkeypair -storepass password -storetype PKCS12 \
-#    -keyalg RSA -keysize 2048 -dname "CN=server" -alias server \
-#    -ext "SAN:c=DNS:localhost,IP:127.0.0.1" \
-#    -keystore conf/server.keystore
-
 # Prebuild the Keycloak server (e.g., compile extensions, optimize image)
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
@@ -29,6 +22,9 @@ RUN /opt/keycloak/bin/kc.sh build
 
 FROM quay.io/keycloak/keycloak:latest
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
+RUN mkdir -p /opt/keycloak/themes/obp/login/resources/css/
+COPY themes/styles.css /opt/keycloak/themes/obp/login/resources/css/
+COPY themes/theme.properties /opt/keycloak/themes/obp/login/
 USER keycloak
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
 #ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
