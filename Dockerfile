@@ -3,7 +3,7 @@ COPY . /app
 WORKDIR /app
 RUN mvn clean install -DskipTests=true
 
-FROM quay.io/keycloak/keycloak:26.0.5 as builder
+FROM quay.io/keycloak/keycloak:latest as builder
 
 # Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
@@ -27,7 +27,7 @@ COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:26.0.5
+FROM quay.io/keycloak/keycloak:latest
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 USER keycloak
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
