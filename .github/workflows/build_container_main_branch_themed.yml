@@ -1,4 +1,4 @@
-name: Build and publish container develop
+name: Build and publish container main - themed
 
 # read-write repo token
 # access to secrets
@@ -20,7 +20,7 @@ jobs:
       - name: Build the Docker image
         run: |
           echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin docker.io
-          docker build . --file Dockerfile --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:main-themed
+          docker build . --file .github/Dockerfile_themed --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:main-themed
           docker push docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }} --all-tags
           echo docker done
 
