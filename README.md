@@ -25,6 +25,21 @@ See the links above for installation instructions on your platform. You can veri
 
 [Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/docker/Dockerfile).
 
+### CI/CD and Automation
+
+The project includes GitHub Actions workflows for automated builds and deployments:
+- **Automated container builds** on pushes to main branch
+- **Multi-architecture support** with alternative Dockerfiles
+- **Dependency updates** via Dependabot
+- **Container signing** with Cosign for security
+
+### Theming Support
+
+Custom Keycloak themes are included in the `themes/` directory:
+- Custom styling and branding
+- Internationalization support
+- Theme properties configuration
+
 ### Environment Configuration
 
 The database connection and Keycloak settings are now configured using environment variables instead of hardcoded values in `persistence.xml`. 
@@ -122,6 +137,25 @@ When using Docker, you can:
 - **Compare with example**: `./sh/compare-env.sh`  
 - **Run with environment**: `./sh/run-with-env.sh`
 - **Manage container**: `./sh/manage-container.sh`
+
+#### Build Options
+
+The project supports multiple build approaches:
+
+1. **Local development build** (our environment variable approach):
+   ```shell
+   $ ./sh/run-with-env.sh
+   ```
+
+2. **CI/CD builds** using GitHub Actions workflows:
+   - Automatic builds on main branch pushes
+   - Container signing and publishing to Docker Hub
+   - Multi-architecture support
+
+3. **Alternative Dockerfiles**:
+   - `.github/Dockerfile_PreBuild`: Pre-built approach for CI
+   - `.github/Dockerfile_themed`: With custom theming support
+   - `docker/Dockerfile`: Standard development build
 
 #### Container Management
 
