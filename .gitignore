@@ -64,3 +64,6 @@ dependency-reduced-pom.xml
 
 # Environment variables file
 .env
+
+# Persistence configuration file (generated from template)
+src/main/resources/META-INF/persistence.xml
