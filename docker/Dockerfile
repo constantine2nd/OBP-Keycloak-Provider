@@ -35,5 +35,15 @@ ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
+# Set default environment variables for database configuration
+ENV DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
+ENV DB_USER=obp
+ENV DB_PASSWORD=changeme
+ENV DB_DRIVER=org.postgresql.Driver
+ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+ENV HIBERNATE_DDL_AUTO=validate
+ENV HIBERNATE_SHOW_SQL=true
+ENV HIBERNATE_FORMAT_SQL=true
+
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]

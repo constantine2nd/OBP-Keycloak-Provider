@@ -25,12 +25,116 @@ See the links above for installation instructions on your platform. You can veri
 
 [Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/docker/Dockerfile).
 
-### Build SPI provider
+### Environment Configuration
 
-Before you build the SPI provider you must add the information about the database. 
-This information is specified in the file [persistence.xml](/src/main/resources/META-INF/persistence.xml#L15)
+The database connection and Keycloak settings are now configured using environment variables instead of hardcoded values in `persistence.xml`. 
 
-> :warning: **Replace the URI** `jdbc:postgresql://localhost:5432/keycloak` **with your database address.**
+> **Complete Documentation**: See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for comprehensive environment configuration guide, including troubleshooting, security best practices, and deployment examples.
+
+#### Quick Start Guide
+
+1. **Copy and configure environment variables:**
+   ```shell
+   $ cp .env.example .env
+   $ nano .env  # Edit with your actual configuration
+   ```
+
+2. **Validate your configuration:**
+   ```shell
+   $ ./sh/validate-env.sh
+   ```
+
+3. **Run the application:**
+   ```shell
+   $ ./sh/run-with-env.sh
+   ```
+
+#### Setup Environment Variables
+
+1. Copy the example environment file:
+   ```shell
+   $ cp .env.example .env
+   ```
+
+2. Edit the `.env` file with your actual configuration values:
+   ```properties
+   # Database configuration
+   DB_URL=jdbc:postgresql://your-db-host:5432/your-database
+   DB_USER=your-username
+   DB_PASSWORD=your-secure-password
+   
+   # Keycloak admin credentials
+   KC_BOOTSTRAP_ADMIN_USERNAME=your-admin
+   KC_BOOTSTRAP_ADMIN_PASSWORD=your-admin-password
+   ```
+
+3. **Validate your configuration (recommended):**
+   ```shell
+   $ ./sh/validate-env.sh
+   ```
+   This script will:
+   - Check all required variables are set
+   - Validate configuration format and values
+   - Warn about potential security issues
+   - Provide helpful troubleshooting information
+
+> **Documentation Resources**:
+> - **[.env.example](.env.example)**: Complete environment variable reference with examples and security notes
+> - **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**: Comprehensive configuration guide with troubleshooting and deployment examples
+> - **[docs/WORKFLOW.md](docs/WORKFLOW.md)**: Development workflow and container management guide
+> - **Validation tools**: `./sh/validate-env.sh` and `./sh/compare-env.sh`
+
+#### Key Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/obp_mapped` | PostgreSQL database URL |
+| `DB_USER` | `obp` | Database username |
+| `DB_PASSWORD` | `changeme` | Database password |
+| `KC_BOOTSTRAP_ADMIN_USERNAME` | `admin` | Initial admin username |
+| `KC_BOOTSTRAP_ADMIN_PASSWORD` | `admin` | Initial admin password |
+| `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
+| `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode |
+
+#### Docker Deployment
+
+When using Docker, you can:
+
+1. Use a `.env` file with docker-compose:
+   ```shell
+   $ cp docker-compose.example.yml docker-compose.yml
+   $ docker-compose up
+   ```
+
+2. Pass environment variables directly:
+   ```shell
+   $ docker run -e DB_URL=jdbc:postgresql://host:5432/db \
+                 -e DB_USER=user \
+                 -e DB_PASSWORD=pass \
+                 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+                 -e KC_BOOTSTRAP_ADMIN_PASSWORD=secure_password \
+                 your-keycloak-image
+   ```
+
+#### Configuration Tools
+
+- **Validate configuration**: `./sh/validate-env.sh`
+- **Compare with example**: `./sh/compare-env.sh`  
+- **Run with environment**: `./sh/run-with-env.sh`
+- **Manage container**: `./sh/manage-container.sh`
+
+#### Container Management
+
+When you run `./sh/run-with-env.sh`, it starts the Keycloak container and follows the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
+
+**After pressing Ctrl+C:**
+- The container remains accessible at http://localhost:8080 and https://localhost:8443
+- Use `./sh/manage-container.sh` for an interactive container management menu
+- Or use these direct commands:
+  - View logs: `docker logs -f obp-keycloak`
+  - Stop container: `docker stop obp-keycloak`
+  - Remove container: `docker rm obp-keycloak`
+  - Stop and remove: `docker stop obp-keycloak && docker rm obp-keycloak`
 
 ### Using Postgres
 > :warning: **I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.

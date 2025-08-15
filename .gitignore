@@ -62,4 +62,5 @@ Temporary Items
 # Maven Shade Plugin output
 dependency-reduced-pom.xml
 
-
+# Environment variables file
+.env
