@@ -35,11 +35,15 @@ The project includes GitHub Actions workflows for automated builds and deploymen
 
 ### Theming Support
 
-Custom Keycloak themes are included in the `themes/` directory and provide:
-- **Custom styling and branding**: Dark theme with modern UI components
-- **Internationalization support**: Customizable text labels and messages
-- **Theme properties configuration**: Easy customization through configuration files
-- **Responsive design**: Optimized for mobile, tablet, and desktop devices
+The project includes a comprehensive **OBP Theme** that transforms Keycloak's login experience to match the Open Bank Project Portal design system:
+
+- **Modern Dark Theme**: Elegant glassmorphism UI with backdrop blur effects
+- **OBP Branding**: Official logos, colors, and typography (Plus Jakarta Sans)
+- **Portal Design Consistency**: Matches OBP Portal's visual identity and user experience
+- **OKLCH Color System**: Modern color palette with primary (dark blue/gray) and secondary (teal/green) colors
+- **Responsive Design**: Mobile-first approach optimized for all devices
+- **Accessibility Features**: WCAG 2.1 compliance with high contrast support
+- **Internationalization**: Multi-language support with customizable messages
 
 #### Theme Deployment Options
 
@@ -57,11 +61,33 @@ The project supports two deployment modes:
    $ ./sh/run-with-env.sh --themed
    ```
 
-#### Theme Structure
+#### OBP Theme Structure
 
-- `themes/theme.properties`: Theme configuration (parent theme, CSS references)
-- `themes/styles.css`: Custom CSS styling (dark theme with modern components)
-- `themes/messages_en.properties`: Internationalization messages for English
+```
+themes/obp/
+├── theme.properties                    # Theme configuration
+├── login/                             # Login theme files
+│   ├── login.ftl                      # Custom login template
+│   ├── messages/                      # Internationalization
+│   │   └── messages_en.properties     # English messages
+│   └── resources/                     # Static resources
+│       ├── css/
+│       │   └── styles.css             # Main stylesheet
+│       └── img/                       # OBP logos and assets
+│           ├── obp_logo.png
+│           ├── logo2x-1.png
+│           └── favicon.png
+```
+
+#### Theme Activation
+
+After deploying with `--themed`, activate the OBP theme:
+1. Access Admin Console: https://localhost:8443/admin
+2. Go to Realm Settings > Themes
+3. Set Login Theme to "obp"
+4. Save changes
+
+> **Complete Documentation**: See [docs/OBP_THEME.md](docs/OBP_THEME.md) for comprehensive theming guide, customization options, and development workflow.
 
 #### Testing Theme Deployment
 

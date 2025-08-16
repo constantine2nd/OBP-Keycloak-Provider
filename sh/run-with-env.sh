@@ -162,7 +162,7 @@ echo ""
 # For themed deployment, we need to ensure theme files exist
 if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo "Validating theme files..."
-    theme_files=("themes/theme.properties" "themes/styles.css" "themes/messages_en.properties")
+    theme_files=("themes/obp/theme.properties" "themes/obp/login/resources/css/styles.css" "themes/obp/login/messages/messages_en.properties")
     missing_theme_files=()
 
     for file in "${theme_files[@]}"; do

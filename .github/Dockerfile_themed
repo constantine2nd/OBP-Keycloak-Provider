@@ -67,14 +67,8 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 # Switch to root user to create theme directories and copy theme files
 USER root
 
-# Create theme directory structure
-RUN mkdir -p /opt/keycloak/themes/obp/login/resources/css && \
-    mkdir -p /opt/keycloak/themes/obp/login/messages
-
-# Copy theme files to the appropriate locations
-COPY themes/styles.css /opt/keycloak/themes/obp/login/resources/css/
-COPY themes/theme.properties /opt/keycloak/themes/obp/login/
-COPY themes/messages_en.properties /opt/keycloak/themes/obp/login/messages/
+# Copy the entire theme directory structure
+COPY themes/obp/ /opt/keycloak/themes/obp/
 
 # Set proper ownership for theme files
 RUN chown -R keycloak:keycloak /opt/keycloak/themes/obp
