@@ -35,10 +35,42 @@ The project includes GitHub Actions workflows for automated builds and deploymen
 
 ### Theming Support
 
-Custom Keycloak themes are included in the `themes/` directory:
-- Custom styling and branding
-- Internationalization support
-- Theme properties configuration
+Custom Keycloak themes are included in the `themes/` directory and provide:
+- **Custom styling and branding**: Dark theme with modern UI components
+- **Internationalization support**: Customizable text labels and messages
+- **Theme properties configuration**: Easy customization through configuration files
+- **Responsive design**: Optimized for mobile, tablet, and desktop devices
+
+#### Theme Deployment Options
+
+The project supports two deployment modes:
+
+1. **Standard Deployment** (default):
+   ```shell
+   $ ./sh/run-with-env.sh
+   # or explicitly
+   $ ./sh/run-with-env.sh --standard
+   ```
+
+2. **Themed Deployment** (with custom UI):
+   ```shell
+   $ ./sh/run-with-env.sh --themed
+   ```
+
+#### Theme Structure
+
+- `themes/theme.properties`: Theme configuration (parent theme, CSS references)
+- `themes/styles.css`: Custom CSS styling (dark theme with modern components)
+- `themes/messages_en.properties`: Internationalization messages for English
+
+#### Testing Theme Deployment
+
+Validate your themed deployment setup:
+```shell
+$ ./sh/test-themed-deployment.sh
+```
+
+This script checks all prerequisites, validates theme files, and ensures proper configuration.
 
 ### Environment Configuration
 
@@ -61,7 +93,16 @@ The database connection and Keycloak settings are now configured using environme
 
 3. **Run the application:**
    ```shell
+   # Standard deployment
    $ ./sh/run-with-env.sh
+   
+   # OR with custom themes
+   $ ./sh/run-with-env.sh --themed
+   ```
+
+4. **Test themed deployment (optional):**
+   ```shell
+   $ ./sh/test-themed-deployment.sh
    ```
 
 #### Setup Environment Variables
@@ -171,7 +212,7 @@ When you run `./sh/run-with-env.sh`, it starts the Keycloak container and follow
   - Stop and remove: `docker stop obp-keycloak && docker rm obp-keycloak`
 
 ### Using Postgres
-> :warning: **I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
+> **Warning: I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
 
 To deploy the container use the script :
 ```shell
