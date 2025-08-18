@@ -2,6 +2,17 @@
 
 This guide helps you migrate from the previous single-database setup to the new separated database architecture where Keycloak's internal database is separate from the user storage database.
 
+## 🔧 Recent Fixes (Latest Update)
+
+**Critical issues resolved in the latest version:**
+
+1. **✅ Fixed JDBC URL Configuration**: Corrected malformed `KC_DB_URL` default value in `docker-compose.runtime.yml`
+2. **✅ Resolved Port Conflicts**: Changed user-storage-postgres to port 5434 to avoid conflicts with system PostgreSQL
+3. **✅ Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
+4. **✅ Updated Documentation**: All guides now reflect the correct port configuration
+
+**If you're experiencing connection issues, these fixes should resolve them!**
+
 ## Overview
 
 ### Previous Architecture (Single Database)
@@ -10,9 +21,10 @@ This guide helps you migrate from the previous single-database setup to the new 
 - Potential conflicts and security concerns
 
 ### New Architecture (Separated Databases)
-- **Keycloak Internal Database**: Stores realms, clients, tokens, sessions
-- **User Storage Database**: Contains external user data for federation
+- **Keycloak Internal Database**: Stores realms, clients, tokens, sessions (Port 5433)
+- **User Storage Database**: Contains external user data for federation (Port 5434)
 - Clear separation of concerns and improved security
+- **Fixed Configuration**: Recent updates resolve common connection issues
 
 ## Migration Steps
 
@@ -56,7 +68,7 @@ KC_DB_PORT=5433
 # User Storage Database (your existing data)
 USER_STORAGE_DB_USER=obp
 USER_STORAGE_DB_PASSWORD=your_existing_password
-USER_STORAGE_DB_PORT=5432
+USER_STORAGE_DB_PORT=5434  # Changed from 5432 to avoid conflicts
 
 # These are auto-mapped from the above
 DB_USER=${USER_STORAGE_DB_USER}
@@ -67,21 +79,26 @@ DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
 
 ### Step 3: Update Docker Compose Configuration
 
-#### Option A: Using Updated docker-compose.runtime.yml
+#### Option A: Using Updated docker-compose.runtime.yml (Recommended)
 
 If you're using the provided Docker Compose files:
 
 ```bash
-# Pull latest changes
+# Pull latest changes (includes recent fixes)
 git pull origin main
 
 # Copy your environment variables
-cp .env.example .env
+cp env.sample .env
 # Edit .env with your actual values
+
+# Validate your configuration (recommended)
+./sh/validate-separated-db-config.sh
 
 # Start with new separated databases
 docker-compose -f docker-compose.runtime.yml up
 ```
+
+**Recent Fix**: The `KC_DB_URL` configuration has been corrected and port conflicts resolved.
 
 #### Option B: Manually Update Your Existing docker-compose.yml
 
@@ -114,6 +131,8 @@ services:
       POSTGRES_DB: obp_mapped
       POSTGRES_USER: ${USER_STORAGE_DB_USER}
       POSTGRES_PASSWORD: ${USER_STORAGE_DB_PASSWORD}
+    ports:
+      - "${USER_STORAGE_DB_PORT:-5434}:5432"  # Updated port to avoid conflicts
     # Keep your existing configuration...
 
   keycloak:
@@ -193,21 +212,25 @@ If you have external applications connecting to the databases:
 
 #### User Storage Database
 - **Host**: localhost  
-- **Port**: 5432 (unchanged)
+- **Port**: 5434 (changed from 5432 to avoid conflicts)
 - **Database**: obp_mapped (unchanged)
 - **Username**: obp (unchanged)
-- **Note**: Your existing applications can continue using this
+- **Note**: Update your existing applications to use the new port 5434
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### 1. Port Conflicts
+#### 1. Port Conflicts (RESOLVED)
 ```bash
-# Error: Port 5432 already in use
-# Solution: Update ports in docker-compose.yml or stop conflicting services
-sudo netstat -tulpn | grep :5432
-sudo systemctl stop postgresql  # If system PostgreSQL is running
+# This issue has been fixed in the latest version
+# User storage database now uses port 5434 by default
+# If you still have conflicts, check what's using the ports:
+sudo netstat -tulpn | grep :5434
+sudo netstat -tulpn | grep :5433
+
+# If system PostgreSQL is running on 5432, it won't conflict anymore
+sudo systemctl status postgresql  # Check system PostgreSQL status
 ```
 
 #### 2. Connection Refused
@@ -241,7 +264,27 @@ docker logs obp-keycloak | grep -i error
 docker exec -it keycloak-postgres psql -U keycloak -d keycloak -c "\dt" | head -20
 ```
 
-### Rollback Procedure
+## Troubleshooting Recent Issues
+
+### Issue: UnknownHostException: keycloak-postgres
+**Status**: ✅ RESOLVED in latest version
+
+**Cause**: Malformed `KC_DB_URL` environment variable in docker-compose.runtime.yml
+**Fix**: Updated default value from `"keycloak"` to `"jdbc:postgresql://keycloak-postgres:5432/keycloak"`
+
+### Issue: Port 5432 already in use
+**Status**: ✅ RESOLVED in latest version
+
+**Cause**: Conflict with system PostgreSQL installation
+**Fix**: Changed user-storage-postgres to use port 5434 externally
+
+### Issue: SQL syntax error in initialization
+**Status**: ✅ RESOLVED in latest version
+
+**Cause**: Incomplete SQL statement in script.sql
+**Fix**: Removed malformed `insert into users` line
+
+## Rollback Procedure
 
 If you need to rollback to the single database setup:
 
@@ -253,7 +296,7 @@ If you need to rollback to the single database setup:
 2. **Restore your backup**:
    ```bash
    # Restore from backup created in Step 1
-   psql -h localhost -U obp -d obp_mapped < backup_YYYYMMDD_HHMMSS.sql
+   psql -h localhost -p 5434 -U obp -d obp_mapped < backup_YYYYMMDD_HHMMSS.sql
    ```
 
 3. **Use old configuration**:
@@ -295,11 +338,11 @@ If you need to rollback to the single database setup:
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
 
-# Backup Keycloak database
-pg_dump -h keycloak-db-host -U keycloak keycloak > "keycloak_backup_$DATE.sql"
+# Backup Keycloak database (port 5433)
+pg_dump -h localhost -p 5433 -U keycloak keycloak > "keycloak_backup_$DATE.sql"
 
-# Backup User Storage database
-pg_dump -h user-storage-db-host -U obp obp_mapped > "user_storage_backup_$DATE.sql"
+# Backup User Storage database (port 5434)
+pg_dump -h localhost -p 5434 -U obp obp_mapped > "user_storage_backup_$DATE.sql"
 
 # Upload to cloud storage
 aws s3 cp keycloak_backup_$DATE.sql s3://your-backup-bucket/keycloak/
@@ -310,10 +353,25 @@ aws s3 cp user_storage_backup_$DATE.sql s3://your-backup-bucket/user-storage/
 
 If you encounter issues during migration:
 
-1. **Check the logs**: `docker logs obp-keycloak`
-2. **Verify environment variables**: Use the provided validation scripts
-3. **Review documentation**: [CLOUD_NATIVE.md](CLOUD_NATIVE.md), [README.md](../README.md)
-4. **Create an issue**: Include logs, configuration, and steps to reproduce
+1. **Run the validation script**: `./sh/validate-separated-db-config.sh`
+2. **Check the logs**: `docker logs obp-keycloak`
+3. **Verify port availability**: `ss -tulpn | grep :5434` and `ss -tulpn | grep :5433`
+4. **Check for recent fixes**: Ensure you have the latest version with the resolved issues
+5. **Review documentation**: [CLOUD_NATIVE.md](CLOUD_NATIVE.md), [README.md](../README.md)
+6. **Create an issue**: Include logs, configuration, and steps to reproduce
+
+### Quick Validation Commands
+```bash
+# Validate complete configuration
+./sh/validate-separated-db-config.sh
+
+# Check database connections
+docker exec -it keycloak-postgres psql -U keycloak -d keycloak -c "SELECT version();"
+docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "SELECT version();"
+
+# Verify container status
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
 
 ## Next Steps
 

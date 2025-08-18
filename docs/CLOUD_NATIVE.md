@@ -79,12 +79,14 @@ EntityManagerFactory emf = Persistence.createEntityManagerFactory("user-store", 
 | `KC_DB_URL` | Yes | `jdbc:postgresql://keycloak-postgres:5432/keycloak` | Keycloak's internal database URL |
 | `KC_DB_USERNAME` | Yes | `keycloak` | Keycloak's internal database username |
 | `KC_DB_PASSWORD` | Yes | `keycloak_changeme` | Keycloak's internal database password |
+| `KC_DB_PORT` | No | `5433` | External port for Keycloak database |
 | **User Storage Database** | | | |
 | `DB_URL` | Yes | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database connection URL |
 | `DB_USER` | Yes | `obp` | User storage database username |
 | `DB_PASSWORD` | Yes | `changeme` | User storage database password |
 | `DB_DRIVER` | No | `org.postgresql.Driver` | JDBC driver class |
 | `DB_DIALECT` | No | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate dialect |
+| `USER_STORAGE_DB_PORT` | No | `5434` | External port for user storage database (changed from 5432) |
 | **Configuration** | | | |
 | `HIBERNATE_DDL_AUTO` | No | `validate` | Schema management mode for user storage |
 | `HIBERNATE_SHOW_SQL` | No | `true` | Enable SQL logging |
@@ -114,7 +116,11 @@ services:
       DB_URL: jdbc:postgresql://user-storage-postgres:5432/obp_mapped
       DB_USER: obp
       DB_PASSWORD: changeme
-      HIBERNATE_DDL_AUTO: update
+      HIBERNATE_DDL_AUTO: validate
+      
+      # Port configuration (external access)
+      KC_DB_PORT: 5433
+      USER_STORAGE_DB_PORT: 5434
       
       # Keycloak admin
       KEYCLOAK_ADMIN: admin
@@ -152,10 +158,14 @@ stringData:
   KC_DB_USERNAME: "keycloak_prod_user"
   KC_DB_PASSWORD: "secure_keycloak_password"
   
-  # User storage database
+  # User storage database  
   DB_URL: "jdbc:postgresql://user-storage-prod:5432/obp_mapped"
   DB_USER: "obp_prod_user"
   DB_PASSWORD: "secure_user_storage_password"
+  
+  # Port configuration
+  KC_DB_PORT: "5433"
+  USER_STORAGE_DB_PORT: "5434"
   
   # Keycloak admin
   KEYCLOAK_ADMIN: "admin"

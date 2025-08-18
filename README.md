@@ -7,7 +7,7 @@ This project demonstrates the ability to use Postgres as user storage provider o
 **Important**: This project now uses **separated databases** for better security and maintainability:
 
 - **Keycloak Internal Database**: Stores realms, clients, tokens, sessions (Port 5433)
-- **User Storage Database**: Contains your external user data for federation (Port 5432)
+- **User Storage Database**: Contains your external user data for federation (Port 5434)
 
 📖 **Migration Guide**: If you're upgrading from a previous version, see [docs/DATABASE_SEPARATION_MIGRATION.md](docs/DATABASE_SEPARATION_MIGRATION.md)
 
@@ -78,6 +78,15 @@ The project supports two deployment modes:
    $ ./sh/run-with-env.sh --themed
    ```
 
+3. **Local PostgreSQL Deployment** (uses existing local PostgreSQL):
+   ```shell
+   # Standard deployment with local PostgreSQL
+   $ ./sh/run-local-postgres.sh
+   
+   # Themed deployment with local PostgreSQL
+   $ ./sh/run-local-postgres.sh --themed --validate
+   ```
+
 #### OBP Theme Structure
 
 ```
@@ -110,7 +119,7 @@ After deploying with `--themed`, activate the OBP theme:
 
 Validate your themed deployment setup:
 ```shell
-$ ./sh/test-themed-deployment.sh
+$ ./sh/validate-themed-setup.sh
 ```
 
 This script checks all prerequisites, validates theme files, and ensures proper configuration.
@@ -144,12 +153,17 @@ The database connection and Keycloak settings are now configured using **runtime
    
    # OR with custom themes
    $ ./sh/run-with-env.sh --themed
+   
+   # OR with local PostgreSQL (themed)
+   $ ./sh/run-local-postgres.sh --themed --validate
    ```
 
 4. **Test themed deployment (optional):**
    ```shell
-   $ ./sh/test-themed-deployment.sh
+   $ ./sh/validate-themed-setup.sh
    ```
+
+> **Note**: For local PostgreSQL deployments, the `--validate` flag automatically runs validation checks during startup.
 
 #### Setup Environment Variables
 
@@ -204,6 +218,9 @@ The database connection and Keycloak settings are now configured using **runtime
 | `KC_DB_URL` | `jdbc:postgresql://keycloak-postgres:5432/keycloak` | Keycloak's internal database URL |
 | **User Storage Database** | | |
 | `DB_URL` | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database URL |
+| **Port Configuration** | | |
+| `KC_DB_PORT` | `5433` | Keycloak database external port |
+| `USER_STORAGE_DB_PORT` | `5434` | User storage database external port |
 | `DB_USER` | `obp` | User storage database username |
 | `DB_PASSWORD` | `changeme` | User storage database password |
 | **Configuration** | | |
@@ -300,12 +317,14 @@ $ sh/pg.sh
 
 The script deploys the container locally. 
 
-It uses port : 5432. 
+It uses port : 5434 (changed from 5432 to avoid conflicts with system PostgreSQL). 
 
 The system now uses two separate databases:
 
-1. **Keycloak's Internal Database**: Stores realms, clients, tokens, and Keycloak's own data
-2. **User Storage Database**: Contains your external user data that Keycloak federates
+1. **Keycloak's Internal Database**: Stores realms, clients, tokens, and Keycloak's own data (accessible on localhost:5433)
+2. **User Storage Database**: Contains your external user data that Keycloak federates (accessible on localhost:5434)
+
+> **Important**: Due to recent fixes, the user storage database now runs on port 5434 instead of 5432 to avoid conflicts with system PostgreSQL installations.
 
 In the **User Storage Database**, create a table `users` :
 ```sql
@@ -436,8 +455,31 @@ $ ./sh/test-runtime-config.sh
 $ ./sh/compare-env.sh
 ```
 
+## Recent Changes
+
+### Database Separation Migration Fixes (Latest)
+
+The following critical issues have been resolved:
+
+1. **Fixed JDBC URL Configuration**: Corrected malformed `KC_DB_URL` default value in `docker-compose.runtime.yml`
+2. **Resolved Port Conflicts**: Changed user-storage-postgres to port 5434 to avoid conflicts with system PostgreSQL
+3. **Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
+4. **Updated Environment Variables**: All configuration now properly supports the separated database architecture
+
+### Port Changes
+- **Keycloak Internal Database**: `localhost:5433` (unchanged)
+- **User Storage Database**: `localhost:5434` (changed from 5432)
+- **Keycloak Application**: `localhost:8080` (HTTP) and `localhost:8443` (HTTPS)
+
+### Troubleshooting
+If you encounter connection issues:
+1. Run the validation script: `./sh/validate-separated-db-config.sh`
+2. Check for port conflicts: `ss -tulpn | grep :5432` or `netstat -tulpn | grep :5432`
+3. Review the migration guide: [docs/DATABASE_SEPARATION_MIGRATION.md](docs/DATABASE_SEPARATION_MIGRATION.md)
+
 ## Documentation
 
+- **[Database Separation Migration](docs/DATABASE_SEPARATION_MIGRATION.md)** - Migration guide and troubleshooting
 - **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
 - **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
 - **[Kubernetes Examples](k8s/)** - Production-ready Kubernetes manifests

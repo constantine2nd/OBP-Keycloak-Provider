@@ -38,18 +38,30 @@ ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
+# Switch to root user to create theme directories and copy theme files
+USER root
+
+# Copy the entire theme directory structure
+COPY themes/obp/ /opt/keycloak/themes/obp/
+
+# Set proper ownership for theme files
+RUN chown -R keycloak:keycloak /opt/keycloak/themes/obp
+
+# Switch back to keycloak user for security
+USER keycloak
+
 # Set default Keycloak database configuration
-# These will be overridden at runtime with proper values
+# These will be overridden at runtime with proper values for local PostgreSQL
 ENV KC_DB=postgres
-ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
+ENV KC_DB_URL=jdbc:postgresql://host.docker.internal:5432/keycloakdb
 ENV KC_DB_USERNAME=keycloak
-ENV KC_DB_PASSWORD=keycloak_changeme
+ENV KC_DB_PASSWORD=f
 
 # Set default User Storage database configuration
-# These are used by the OBP User Storage Provider
-ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
+# These are used by the OBP User Storage Provider for local PostgreSQL
+ENV DB_URL=jdbc:postgresql://host.docker.internal:5432/obp_mapped
 ENV DB_USER=obp
-ENV DB_PASSWORD=changeme
+ENV DB_PASSWORD=f
 ENV DB_DRIVER=org.postgresql.Driver
 ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
 
@@ -65,6 +77,10 @@ ENV KC_HTTP_ENABLED=true
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
+
+# Theme Configuration
+# The 'obp' theme will be automatically available in Keycloak admin console
+# Users can select it in: Realm Settings > Themes > Login Theme > obp
 
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
 # Note: For production, use "start" instead of "start-dev"
