@@ -183,17 +183,9 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo -e "${GREEN}Theme files validated${NC}"
 fi
 
-# Build the project with environment variables
-echo "Building the project with environment variables..."
-mvn clean package -DskipTests \
-    -DDB_URL="$DB_URL" \
-    -DDB_USER="$DB_USER" \
-    -DDB_PASSWORD="$DB_PASSWORD" \
-    -DDB_DRIVER="${DB_DRIVER:-org.postgresql.Driver}" \
-    -DDB_DIALECT="${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}" \
-    -DHIBERNATE_DDL_AUTO="${HIBERNATE_DDL_AUTO:-validate}" \
-    -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL:-true}" \
-    -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL:-true}"
+# Build the project (no longer passing environment variables to Maven)
+echo "Building the project with runtime configuration support..."
+mvn clean package -DskipTests
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Maven build failed!${NC}"
@@ -209,28 +201,15 @@ else
     echo "Building Docker image (standard)..."
 fi
 
-# Build Docker image with appropriate arguments
-if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
-    docker build -t "$IMAGE_TAG" -f "$DOCKERFILE_PATH" \
-        --build-arg DB_URL="$DB_URL" \
-        --build-arg DB_USER="$DB_USER" \
-        --build-arg DB_PASSWORD="$DB_PASSWORD" \
-        --build-arg DB_DRIVER="${DB_DRIVER:-org.postgresql.Driver}" \
-        --build-arg DB_DIALECT="${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}" \
-        --build-arg HIBERNATE_DDL_AUTO="${HIBERNATE_DDL_AUTO:-validate}" \
-        --build-arg HIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL:-true}" \
-        --build-arg HIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL:-true}" \
-        .
-else
-    docker build -t "$IMAGE_TAG" -f "$DOCKERFILE_PATH" .
-fi
+# Build Docker image (no build args needed - runtime configuration)
+docker build -t "$IMAGE_TAG" -f "$DOCKERFILE_PATH" .
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Docker build failed!${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}Docker image built successfully${NC}"
+echo -e "${GREEN}Docker image built successfully (runtime-configurable)${NC}"
 
 # Stop existing container if running
 echo "Stopping existing containers..."
@@ -279,6 +258,7 @@ echo "Container Information:"
 echo "  Container Name: obp-keycloak"
 echo "  Image: $IMAGE_TAG"
 echo "  Deployment Type: $DEPLOYMENT_TYPE"
+echo "  Configuration: Runtime (cloud-native)"
 echo "  HTTP Port: 8080"
 echo "  HTTPS Port: 8443"
 echo "  Admin Username: admin"
@@ -317,10 +297,12 @@ fi
 
 # Follow container logs continuously
 echo ""
-echo -e "${GREEN}Setup complete! Keycloak is starting up...${NC}"
+echo -e "${GREEN}Setup complete! Keycloak is starting up with runtime configuration...${NC}"
 if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo -e "${BLUE}Custom themes are being loaded...${NC}"
 fi
+echo -e "${BLUE}✓ Database configuration loaded from environment variables at runtime${NC}"
+echo -e "${BLUE}✓ Cloud-native deployment ready (K8s compatible)${NC}"
 echo -e "${YELLOW}Following container logs (Press Ctrl+C to exit and return to shell)...${NC}"
 echo -e "${RED}Note: The container will continue running in the background after Ctrl+C${NC}"
 echo ""

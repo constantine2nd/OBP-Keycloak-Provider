@@ -1,69 +1,29 @@
 package io.tesobe.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@NamedQueries({
-        @NamedQuery(name = "getUserByUsername", query = "SELECT u FROM KcUserEntity u WHERE u.username = :username"),
-        @NamedQuery(name = "getUserByEmail", query = "SELECT u FROM KcUserEntity u WHERE u.email = :email"),
-        @NamedQuery(name = "getUserCount", query = "SELECT COUNT(u) FROM KcUserEntity u"),
-        @NamedQuery(name = "getAllUsers", query = "SELECT u FROM KcUserEntity u"),
-        @NamedQuery(name = "searchForUser", query = "SELECT u FROM KcUserEntity u WHERE u.username LIKE :search")
-})
-@Entity
-@Table(name = "authuser", schema = "public")
+/**
+ * User entity for OBP Keycloak Provider
+ * Uses JDBC for database operations instead of JPA to avoid conflicts with Keycloak's internal configuration
+ */
 public class KcUserEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "firstname")
     private String firstName;
-
-    @Column(name = "lastname")
     private String lastName;
-
-    @Column(name = "email")
     private String email;
-
-    @Column(name = "username")
     private String username;
-
-    @Column(name = "password_pw")
     private String password;
-
-    @Column(name = "password_slt")
     private String salt;
-
-    @Column(name = "provider")
     private String provider;
-
-    @Column(name = "locale")
     private String locale;
-
-    @Column(name = "validated")
     private Boolean validated;
-
-    @Column(name = "user_c")
     private Long userC;
-
-    @Column(name = "uniqueid")
     private String uniqueId;
-
-    @Column(name = "createdat")
     private LocalDateTime createdAt;
-
-    @Column(name = "updatedat")
     private LocalDateTime updatedAt;
-
-    @Column(name = "timezone")
     private String timezone;
-
-    @Column(name = "superuser")
     private Boolean superuser;
-
-    @Column(name = "passwordshouldbechanged")
     private Boolean passwordShouldBeChanged;
 
     // Getters and setters

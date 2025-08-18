@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obp-keycloak-config
+  namespace: default
+  labels:
+    app: obp-keycloak
+    component: user-storage-provider
+data:
+  # Database Configuration
+  DB_DRIVER: "org.postgresql.Driver"
+  DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+
+  # Hibernate Configuration
+  HIBERNATE_DDL_AUTO: "validate"
+  HIBERNATE_SHOW_SQL: "true"
+  HIBERNATE_FORMAT_SQL: "true"
+
+  # Keycloak Configuration
+  KC_HOSTNAME_STRICT: "false"
+  KC_HOSTNAME_STRICT_HTTPS: "false"
+  KC_HTTP_ENABLED: "true"
+  KC_HEALTH_ENABLED: "true"
+  KC_METRICS_ENABLED: "true"
+  KC_LOG_LEVEL: "INFO"
+
+  # Connection Pool Settings
+  HIBERNATE_CONNECTION_POOL_SIZE: "10"
+  HIBERNATE_CONNECTION_AUTOCOMMIT: "false"
+  HIBERNATE_CONNECTION_ISOLATION: "2"
+
+  # Performance Settings
+  HIBERNATE_CACHE_USE_SECOND_LEVEL_CACHE: "false"
+  HIBERNATE_CACHE_USE_QUERY_CACHE: "false"
+
+  # Development vs Production Settings
+  ENVIRONMENT: "production"
+  DEBUG_MODE: "false"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obp-keycloak-config-dev
+  namespace: default
+  labels:
+    app: obp-keycloak
+    component: user-storage-provider
+    environment: development
+data:
+  # Database Configuration
+  DB_DRIVER: "org.postgresql.Driver"
+  DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+
+  # Hibernate Configuration (Development)
+  HIBERNATE_DDL_AUTO: "update"
+  HIBERNATE_SHOW_SQL: "true"
+  HIBERNATE_FORMAT_SQL: "true"
+
+  # Keycloak Configuration (Development)
+  KC_HOSTNAME_STRICT: "false"
+  KC_HOSTNAME_STRICT_HTTPS: "false"
+  KC_HTTP_ENABLED: "true"
+  KC_HEALTH_ENABLED: "true"
+  KC_METRICS_ENABLED: "true"
+  KC_LOG_LEVEL: "DEBUG"
+
+  # Connection Pool Settings (Development)
+  HIBERNATE_CONNECTION_POOL_SIZE: "5"
+  HIBERNATE_CONNECTION_AUTOCOMMIT: "false"
+  HIBERNATE_CONNECTION_ISOLATION: "2"
+
+  # Performance Settings (Development)
+  HIBERNATE_CACHE_USE_SECOND_LEVEL_CACHE: "false"
+  HIBERNATE_CACHE_USE_QUERY_CACHE: "false"
+
+  # Development Settings
+  ENVIRONMENT: "development"
+  DEBUG_MODE: "true"

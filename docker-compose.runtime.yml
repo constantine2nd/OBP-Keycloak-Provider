@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for user federation
+  postgres:
+    image: postgres:16-alpine
+    container_name: obp-postgres
+    environment:
+      POSTGRES_DB: obp_mapped
+      POSTGRES_USER: obp
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - obp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obp -d obp_mapped"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak with OBP User Storage Provider (Runtime Configuration)
+  keycloak:
+    image: obp-keycloak-provider:latest
+    container_name: obp-keycloak
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Keycloak Admin Configuration
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      # Runtime Database Configuration (Cloud-Native)
+      DB_URL: jdbc:postgresql://postgres:5432/obp_mapped
+      DB_USER: obp
+      DB_PASSWORD: changeme
+      DB_DRIVER: org.postgresql.Driver
+      DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+
+      # Hibernate Configuration
+      HIBERNATE_DDL_AUTO: validate
+      HIBERNATE_SHOW_SQL: "true"
+      HIBERNATE_FORMAT_SQL: "true"
+
+      # Keycloak Configuration
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    networks:
+      - obp-network
+    volumes:
+      # Optional: Custom themes (if using themed build)
+      - ./themes:/opt/keycloak/themes
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # Optional: Admin tool for PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: obp-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@obp.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - obp-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  obp-network:
+    driver: bridge
+
+# Example usage:
+#
+# 1. Development with default values:
+#    docker-compose -f docker-compose.runtime.yml up
+#
+# 2. Production with environment file:
+#    docker-compose -f docker-compose.runtime.yml --env-file .env.prod up
+#
+# 3. Kubernetes-style with individual env vars:
+#    DB_URL=jdbc:postgresql://prod-db:5432/obp \
+#    DB_USER=prod_user \
+#    DB_PASSWORD=secure_password \
+#    docker-compose -f docker-compose.runtime.yml up
+#
+# 4. With custom configuration:
+#    docker-compose -f docker-compose.runtime.yml up \
+#      -e DB_URL=jdbc:postgresql://external-db:5432/keycloak \
+#      -e HIBERNATE_DDL_AUTO=update

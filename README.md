@@ -1,6 +1,14 @@
 # Keycloak provider for user federation in Postgres
 
-This project demonstrates the ability to use Postgres as user storage provider of Keycloak.
+This project demonstrates the ability to use Postgres as user storage provider of Keycloak with **cloud-native runtime configuration** support.
+
+## 🚀 Cloud-Native Features
+
+- ✅ **Runtime Configuration**: Environment variables read at runtime (no build-time injection)
+- ✅ **Kubernetes Ready**: Native support for ConfigMaps and Secrets
+- ✅ **Docker Hub Compatible**: Generic images that work across all environments
+- ✅ **12-Factor App Compliant**: Follows modern cloud-native principles
+- ✅ **CI/CD Friendly**: "Build once, deploy everywhere" approach
 
 ## Requirements
 
@@ -100,9 +108,12 @@ This script checks all prerequisites, validates theme files, and ensures proper 
 
 ### Environment Configuration
 
-The database connection and Keycloak settings are now configured using environment variables instead of hardcoded values in `persistence.xml`. 
+The database connection and Keycloak settings are now configured using **runtime environment variables** instead of build-time configuration. This enables cloud-native deployments with Kubernetes, Docker Hub hosted images, and modern CI/CD pipelines.
 
-> **Complete Documentation**: See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for comprehensive environment configuration guide, including troubleshooting, security best practices, and deployment examples.
+> **Complete Documentation**: 
+> - [docs/CLOUD_NATIVE.md](docs/CLOUD_NATIVE.md) - Cloud-native deployment guide
+> - [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) - Environment configuration reference
+> - [k8s/](k8s/) - Kubernetes deployment examples
 
 #### Quick Start Guide
 
@@ -207,22 +218,37 @@ When using Docker, you can:
 
 #### Build Options
 
-The project supports multiple build approaches:
+The project supports **cloud-native deployment patterns**:
 
-1. **Local development build** (our environment variable approach):
+1. **Runtime Configuration** (Recommended - Cloud-Native):
    ```shell
-   $ ./sh/run-with-env.sh
+   # Build once (no environment variables needed)
+   $ mvn clean package
+   $ docker build -t obp-keycloak-provider .
+   
+   # Deploy anywhere with runtime config
+   $ docker run -e DB_URL="jdbc:postgresql://host:5432/db" \
+                 -e DB_USER="user" \
+                 -e DB_PASSWORD="password" \
+                 obp-keycloak-provider
    ```
 
-2. **CI/CD builds** using GitHub Actions workflows:
-   - Automatic builds on main branch pushes
-   - Container signing and publishing to Docker Hub
-   - Multi-architecture support
+2. **Kubernetes Deployment**:
+   ```shell
+   $ kubectl apply -f k8s/configmap.yaml
+   $ kubectl apply -f k8s/secret.yaml
+   $ kubectl apply -f k8s/deployment.yaml
+   ```
 
-3. **Alternative Dockerfiles**:
-   - `.github/Dockerfile_PreBuild`: Pre-built approach for CI
-   - `.github/Dockerfile_themed`: With custom theming support
-   - `docker/Dockerfile`: Standard development build
+3. **Docker Compose** (Runtime Config):
+   ```shell
+   $ docker-compose -f docker-compose.runtime.yml up
+   ```
+
+4. **CI/CD builds** using GitHub Actions workflows:
+   - Single generic build for all environments
+   - Container signing and publishing to Docker Hub
+   - Multi-architecture support with runtime configuration
 
 #### Container Management
 
@@ -285,13 +311,29 @@ To deploy the KC container, I created a [Dockerfile](/docker/Dockerfile) file in
 
 ## Build the project
 
-Run the script :
+### Cloud-Native Approach (Recommended)
+
+Build once, deploy everywhere with runtime configuration:
+
+```shell
+# Build the provider (no environment variables needed)
+$ mvn clean package
+
+# Test runtime configuration
+$ ./sh/test-runtime-config.sh
+
+# Run with runtime environment variables
+$ ./sh/run-with-env.sh
+```
+
+### Legacy Approach
+
+For compatibility, you can still use the legacy build script:
 ```shell
 $ sh/run.sh
 ```
-This script will build the SPI provider. 
 
-Deploys the KC container, adds the SPI provider and restarts the container to apply the changes. 
+> **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Kubernetes and Docker Hub deployments.
 
 ## Login to KC
 
@@ -307,4 +349,57 @@ Click the [User federation](https://localhost:8443/admin/master/console/#/master
 The provider ``obp-keycloak-provider`` is in list of providers.
 
 ![KC providers](/docs/images/providers.png?raw=true "KC providers")
+
+## Cloud-Native Deployment Examples
+
+### Kubernetes
+```yaml
+# ConfigMap for non-sensitive config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obp-keycloak-config
+data:
+  DB_DRIVER: "org.postgresql.Driver"
+  HIBERNATE_DDL_AUTO: "validate"
+
+---
+# Secret for sensitive data
+apiVersion: v1
+kind: Secret
+metadata:
+  name: obp-keycloak-secrets
+stringData:
+  DB_URL: "jdbc:postgresql://postgres:5432/obp_mapped"
+  DB_USER: "obp"
+  DB_PASSWORD: "secure_password"
+```
+
+### Docker Hub Deployment
+```shell
+# Pull generic image
+docker pull your-org/obp-keycloak-provider:latest
+
+# Run with environment-specific configuration
+docker run -e DB_URL="jdbc:postgresql://prod-db:5432/obp" \
+           -e DB_USER="prod_user" \
+           -e DB_PASSWORD="secure_password" \
+           your-org/obp-keycloak-provider:latest
+```
+
+### Testing Runtime Configuration
+```shell
+# Validate the cloud-native setup
+$ ./sh/test-runtime-config.sh
+
+# Compare with example configuration
+$ ./sh/compare-env.sh
+```
+
+## Documentation
+
+- **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
+- **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
+- **[Kubernetes Examples](k8s/)** - Production-ready Kubernetes manifests
+- **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example
 

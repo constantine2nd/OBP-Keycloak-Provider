@@ -1,15 +1,15 @@
 package io.tesobe.model;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
@@ -17,11 +17,16 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     private final KcUserEntity entity;
     private final String keycloakId;
 
-    public UserAdapter(KeycloakSession session, RealmModel realm, ComponentModel model, KcUserEntity entity) {
+    public UserAdapter(
+        KeycloakSession session,
+        RealmModel realm,
+        ComponentModel model,
+        KcUserEntity entity
+    ) {
         super(session, realm, model);
         this.entity = entity;
         log.info("UserAdapter created for: " + this.entity);
-        this.keycloakId = StorageId.keycloakId(model, entity.getId().toString());
+        this.keycloakId = StorageId.keycloakId(model, entity.getUniqueId());
     }
 
     // Username
@@ -32,8 +37,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public void setUsername(String username) {
-        log.info("$ setUsername() called with: " + username);
-        entity.setUsername(username);
+        log.info(
+            "DIRECT setUsername() called with: " +
+            username +
+            " for user: " +
+            getUsername()
+        );
+        if (!java.util.Objects.equals(entity.getUsername(), username)) {
+            entity.setUsername(username);
+            markAsModified();
+            log.info(
+                "Username update marked as modified, attempting to persist..."
+            );
+            persistProfileChangesDirectly();
+            log.info("Username update persistence completed");
+            // Also update the federated storage to ensure Keycloak sees the change
+            super.setSingleAttribute("username", username);
+        }
+        // Note: Username updates should be handled carefully in production
     }
 
     // Email
@@ -44,8 +65,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public void setEmail(String email) {
-        log.info("$ setEmail() called with: " + email);
-        entity.setEmail(email);
+        log.info(
+            "🔵 DIRECT setEmail() called with: " +
+            email +
+            " for user: " +
+            getUsername()
+        );
+        log.info("Previous email was: " + entity.getEmail());
+        if (!java.util.Objects.equals(entity.getEmail(), email)) {
+            entity.setEmail(email);
+            markAsModified();
+            log.info(
+                "Email update marked as modified, attempting to persist..."
+            );
+            persistProfileChangesDirectly();
+            log.info("Email update persistence completed");
+            // Also update the federated storage to ensure Keycloak sees the change
+            super.setSingleAttribute("email", email);
+        }
     }
 
     // First name
@@ -56,8 +93,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public void setFirstName(String firstName) {
-        log.info("$ setFirstName() called with: " + firstName);
-        entity.setFirstName(firstName);
+        log.info(
+            "DIRECT setFirstName() called with: " +
+            firstName +
+            " for user: " +
+            getUsername()
+        );
+        log.info("Previous first name was: " + entity.getFirstName());
+        if (!java.util.Objects.equals(entity.getFirstName(), firstName)) {
+            entity.setFirstName(firstName);
+            markAsModified();
+            log.info(
+                "First name update marked as modified, attempting to persist..."
+            );
+            persistProfileChangesDirectly();
+            log.info("First name update persistence completed");
+            // Also update the federated storage to ensure Keycloak sees the change
+            super.setSingleAttribute("firstName", firstName);
+        }
     }
 
     // Last name
@@ -68,8 +121,24 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public void setLastName(String lastName) {
-        log.info("$ setLastName() called with: " + lastName);
-        entity.setLastName(lastName);
+        log.info(
+            "DIRECT setLastName() called with: " +
+            lastName +
+            " for user: " +
+            getUsername()
+        );
+        log.info("Previous last name was: " + entity.getLastName());
+        if (!java.util.Objects.equals(entity.getLastName(), lastName)) {
+            entity.setLastName(lastName);
+            markAsModified();
+            log.info(
+                "Last name update marked as modified, attempting to persist..."
+            );
+            persistProfileChangesDirectly();
+            log.info("Last name update persistence completed");
+            // Also update the federated storage to ensure Keycloak sees the change
+            super.setSingleAttribute("lastName", lastName);
+        }
     }
 
     // Password and salt (custom fields)
@@ -87,8 +156,115 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     }
 
     public void setSalt(String salt) {
-        log.info("$ setSalt() called with: salt = [" + salt + "]");
+        log.info("$ setSalt() called with: " + salt);
         entity.setSalt(salt);
+    }
+
+    // Entity access for persistence operations
+    public KcUserEntity getEntity() {
+        return entity;
+    }
+
+    // Track modifications for persistence
+    private boolean modified = false;
+
+    private void markAsModified() {
+        this.modified = true;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void clearModified() {
+        this.modified = false;
+        log.infof("Modified flag cleared for user: %s", getUsername());
+    }
+
+    // Method to persist user profile changes directly to database
+    public void persistProfileChangesDirectly() {
+        log.infof(
+            "persistProfileChangesDirectly() called for user: %s, modified: %s",
+            getUsername(),
+            modified
+        );
+
+        if (modified) {
+            try {
+                io.tesobe.config.DatabaseConfig dbConfig =
+                    io.tesobe.config.DatabaseConfig.getInstance();
+                String sql =
+                    "UPDATE authuser SET firstname = ?, lastname = ?, email = ?, updatedat = ? WHERE id = ?";
+
+                log.infof(
+                    "Executing SQL update for user %s (ID: %d): %s",
+                    getUsername(),
+                    entity.getId(),
+                    sql
+                );
+                log.infof(
+                    "Values: firstName='%s', lastName='%s', email='%s'",
+                    entity.getFirstName(),
+                    entity.getLastName(),
+                    entity.getEmail()
+                );
+
+                try (
+                    java.sql.Connection conn = dbConfig.getConnection();
+                    java.sql.PreparedStatement stmt = conn.prepareStatement(sql)
+                ) {
+                    stmt.setString(1, entity.getFirstName());
+                    stmt.setString(2, entity.getLastName());
+                    stmt.setString(3, entity.getEmail());
+                    stmt.setTimestamp(
+                        4,
+                        new java.sql.Timestamp(System.currentTimeMillis())
+                    );
+                    stmt.setLong(5, entity.getId());
+
+                    log.infof(
+                        "About to execute update for user %s",
+                        getUsername()
+                    );
+                    int affectedRows = stmt.executeUpdate();
+                    log.infof(
+                        "SQL update executed, affected rows: %d",
+                        affectedRows
+                    );
+
+                    if (affectedRows > 0) {
+                        conn.commit();
+                        clearModified();
+                        log.infof(
+                            "Successfully persisted profile changes for user: %s",
+                            getUsername()
+                        );
+                    } else {
+                        log.warnf(
+                            "No rows updated for user profile: %s (user ID: %d)",
+                            getUsername(),
+                            entity.getId()
+                        );
+                    }
+                } catch (java.sql.SQLException e) {
+                    log.errorf(
+                        "Database error persisting profile changes for user %s: %s",
+                        getUsername(),
+                        e.getMessage()
+                    );
+                    e.printStackTrace();
+                }
+            } catch (Exception e) {
+                log.errorf(
+                    "Error persisting profile changes for user %s: %s",
+                    getUsername(),
+                    e.getMessage()
+                );
+                e.printStackTrace();
+            }
+        } else {
+            log.infof("No changes to persist for user: %s", getUsername());
+        }
     }
 
     // Keycloak ID (used internally)
@@ -104,49 +280,209 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public void setEmailVerified(boolean verified) {
+        log.infof(
+            "setEmailVerified() called with: %s for user: %s",
+            verified,
+            getUsername()
+        );
         entity.setValidated(verified);
     }
 
     // Optional: Required actions
     @Override
     public Stream<String> getRequiredActionsStream() {
+        log.infof(
+            "getRequiredActionsStream() called for user: %s",
+            getUsername()
+        );
         return super.getRequiredActionsStream(); // uses federated storage
+    }
+
+    // Additional profile update methods to catch all update mechanisms
+    @Override
+    public void removeAttribute(String name) {
+        log.infof(
+            "ATTRIBUTE removeAttribute() called: %s for user: %s",
+            name,
+            getUsername()
+        );
+        super.removeAttribute(name);
+    }
+
+    // Override core UserModel methods that might be called during updates
+    @Override
+    public boolean isEnabled() {
+        return true; // Always enabled for federated users
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        log.infof(
+            "setEnabled() called with: %s for user: %s",
+            enabled,
+            getUsername()
+        );
+        // Store in entity if needed, or delegate to federated storage
+        super.setEnabled(enabled);
+    }
+
+    // Override attribute management to handle profile updates
+    @Override
+    public void setSingleAttribute(String name, String value) {
+        log.infof(
+            "ATTRIBUTE setSingleAttribute() called: %s = %s for user: %s",
+            name,
+            value,
+            getUsername()
+        );
+
+        // First update the federated storage
+        super.setSingleAttribute(name, value);
+
+        // Then update our entity and mark for persistence
+        switch (name) {
+            case "firstName":
+                if (!java.util.Objects.equals(entity.getFirstName(), value)) {
+                    log.info("Setting firstName via attribute: " + value);
+                    entity.setFirstName(value);
+                    markAsModified();
+                    persistProfileChangesDirectly();
+                }
+                break;
+            case "lastName":
+                if (!java.util.Objects.equals(entity.getLastName(), value)) {
+                    log.info("Setting lastName via attribute: " + value);
+                    entity.setLastName(value);
+                    markAsModified();
+                    persistProfileChangesDirectly();
+                }
+                break;
+            case "email":
+                if (!java.util.Objects.equals(entity.getEmail(), value)) {
+                    log.info("Setting email via attribute: " + value);
+                    entity.setEmail(value);
+                    markAsModified();
+                    persistProfileChangesDirectly();
+                }
+                break;
+            case "username":
+                if (!java.util.Objects.equals(entity.getUsername(), value)) {
+                    log.info("Setting username via attribute: " + value);
+                    entity.setUsername(value);
+                    markAsModified();
+                    persistProfileChangesDirectly();
+                }
+                break;
+            default:
+                // For other attributes, just use federated storage
+                break;
+        }
+    }
+
+    @Override
+    public void setAttribute(String name, List<String> values) {
+        log.infof(
+            "ATTRIBUTE setAttribute() called: %s = %s for user: %s",
+            name,
+            values,
+            getUsername()
+        );
+
+        if (values == null || values.isEmpty()) {
+            // Remove attribute case
+            super.setAttribute(name, values);
+            return;
+        }
+
+        // Use setSingleAttribute for core profile fields to ensure consistency
+        String value = values.get(0);
+        switch (name) {
+            case "firstName":
+            case "lastName":
+            case "email":
+            case "username":
+                setSingleAttribute(name, value);
+                break;
+            default:
+                super.setAttribute(name, values);
+                break;
+        }
+    }
+
+    @Override
+    public String getFirstAttribute(String name) {
+        switch (name) {
+            case "firstName":
+                return getFirstName();
+            case "lastName":
+                return getLastName();
+            case "email":
+                return getEmail();
+            default:
+                return super.getFirstAttribute(name);
+        }
     }
 
     @Override
     public void addRequiredAction(String action) {
+        log.infof(
+            "addRequiredAction() called with: %s for user: %s",
+            action,
+            getUsername()
+        );
         super.addRequiredAction(action);
     }
 
     @Override
     public void removeRequiredAction(String action) {
+        log.infof(
+            "removeRequiredAction() called with: %s for user: %s",
+            action,
+            getUsername()
+        );
         super.removeRequiredAction(action);
     }
 
-    // Optional: Attributes — can override if storing externally
-    @Override
-    public void setSingleAttribute(String name, String value) {
-        super.setSingleAttribute(name, value);
-    }
-
-    @Override
-    public void setAttribute(String name, List<String> values) {
-        super.setAttribute(name, values);
-    }
-
-    @Override
-    public void removeAttribute(String name) {
-        super.removeAttribute(name);
-    }
-
-    @Override
-    public String getFirstAttribute(String name) {
-        return super.getFirstAttribute(name);
-    }
+    // User attributes (handled by the methods above)
 
     @Override
     public Map<String, List<String>> getAttributes() {
-        return super.getAttributes();
+        Map<String, List<String>> attributes = new HashMap<>(
+            super.getAttributes()
+        );
+
+        // Ensure core profile attributes are available
+        if (entity.getFirstName() != null) {
+            attributes.put(
+                "firstName",
+                Collections.singletonList(entity.getFirstName())
+            );
+        }
+        if (entity.getLastName() != null) {
+            attributes.put(
+                "lastName",
+                Collections.singletonList(entity.getLastName())
+            );
+        }
+        if (entity.getEmail() != null) {
+            attributes.put(
+                "email",
+                Collections.singletonList(entity.getEmail())
+            );
+        }
+        if (entity.getUsername() != null) {
+            attributes.put(
+                "username",
+                Collections.singletonList(entity.getUsername())
+            );
+        }
+
+        log.debugf(
+            "getAttributes() called for user: %s, returning: %s",
+            getUsername(),
+            attributes.keySet()
+        );
+        return attributes;
     }
 
     // Optional: Groups

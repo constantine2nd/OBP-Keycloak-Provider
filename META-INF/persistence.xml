@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+                                 http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
+             version="2.2">
+
+    <persistence-unit name="user-store" transaction-type="JTA">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- JPA entity classes -->
+        <class>io.tesobe.model.KcUserEntity</class>
+
+        <!--
+        Note: Database configuration is now handled programmatically via
+        io.tesobe.config.DatabaseConfig class which reads environment variables at runtime.
+        This makes the application cloud-native and Kubernetes-ready.
+        -->
+
+    </persistence-unit>
+</persistence>
