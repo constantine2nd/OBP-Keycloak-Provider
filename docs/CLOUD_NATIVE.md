@@ -71,14 +71,28 @@ EntityManagerFactory emf = Persistence.createEntityManagerFactory("user-store", 
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DB_URL` | Yes | `jdbc:postgresql://localhost:5432/obp_mapped` | Database connection URL |
-| `DB_USER` | Yes | `obp` | Database username |
-| `DB_PASSWORD` | Yes | `changeme` | Database password |
+| **Keycloak Admin** | | | |
+| `KEYCLOAK_ADMIN` | Yes | `admin` | Keycloak admin username |
+| `KEYCLOAK_ADMIN_PASSWORD` | Yes | `admin` | Keycloak admin password |
+| **Keycloak Internal Database** | | | |
+| `KC_DB` | No | `postgres` | Keycloak database type |
+| `KC_DB_URL` | Yes | `jdbc:postgresql://keycloak-postgres:5432/keycloak` | Keycloak's internal database URL |
+| `KC_DB_USERNAME` | Yes | `keycloak` | Keycloak's internal database username |
+| `KC_DB_PASSWORD` | Yes | `keycloak_changeme` | Keycloak's internal database password |
+| **User Storage Database** | | | |
+| `DB_URL` | Yes | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database connection URL |
+| `DB_USER` | Yes | `obp` | User storage database username |
+| `DB_PASSWORD` | Yes | `changeme` | User storage database password |
 | `DB_DRIVER` | No | `org.postgresql.Driver` | JDBC driver class |
 | `DB_DIALECT` | No | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate dialect |
-| `HIBERNATE_DDL_AUTO` | No | `validate` | Schema management mode |
+| **Configuration** | | | |
+| `HIBERNATE_DDL_AUTO` | No | `validate` | Schema management mode for user storage |
 | `HIBERNATE_SHOW_SQL` | No | `true` | Enable SQL logging |
 | `HIBERNATE_FORMAT_SQL` | No | `true` | Format SQL output |
+| `KC_HOSTNAME_STRICT` | No | `false` | Keycloak hostname strict mode |
+| `KC_HTTP_ENABLED` | No | `true` | Enable HTTP (dev mode) |
+| `KC_HEALTH_ENABLED` | No | `true` | Enable health endpoints |
+| `KC_METRICS_ENABLED` | No | `true` | Enable metrics endpoints |
 
 ## Deployment Options
 
@@ -90,10 +104,21 @@ services:
   keycloak:
     image: obp-keycloak-provider:latest
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/obp_mapped
+      # Keycloak's internal database
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_changeme
+      
+      # User storage database
+      DB_URL: jdbc:postgresql://user-storage-postgres:5432/obp_mapped
       DB_USER: obp
       DB_PASSWORD: changeme
       HIBERNATE_DDL_AUTO: update
+      
+      # Keycloak admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
       - "8080:8080"
       - "8443:8443"
@@ -122,9 +147,19 @@ metadata:
   name: obp-keycloak-secrets
 type: Opaque
 stringData:
-  DB_URL: "jdbc:postgresql://postgres-prod:5432/obp_mapped"
+  # Keycloak's internal database
+  KC_DB_URL: "jdbc:postgresql://keycloak-prod:5432/keycloak"
+  KC_DB_USERNAME: "keycloak_prod_user"
+  KC_DB_PASSWORD: "secure_keycloak_password"
+  
+  # User storage database
+  DB_URL: "jdbc:postgresql://user-storage-prod:5432/obp_mapped"
   DB_USER: "obp_prod_user"
-  DB_PASSWORD: "secure_prod_password"
+  DB_PASSWORD: "secure_user_storage_password"
+  
+  # Keycloak admin
+  KEYCLOAK_ADMIN: "admin"
+  KEYCLOAK_ADMIN_PASSWORD: "secure_admin_password"
 ```
 
 #### Deployment

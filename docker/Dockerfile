@@ -6,6 +6,9 @@ FROM quay.io/keycloak/keycloak:26.0.5 as builder
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 
+# Configure Keycloak to use PostgreSQL as its database
+ENV KC_DB=postgres
+
 # Set working directory inside the container
 WORKDIR /opt/keycloak
 
@@ -35,9 +38,34 @@ ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
-# Environment variables are now configured at runtime
-# Default values are handled in Java code (DatabaseConfig.java)
-# This makes the image cloud-native and Kubernetes-ready
+# Set default Keycloak database configuration
+# These will be overridden at runtime with proper values
+ENV KC_DB=postgres
+ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
+ENV KC_DB_USERNAME=keycloak
+ENV KC_DB_PASSWORD=keycloak_changeme
+
+# Set default User Storage database configuration
+# These are used by the OBP User Storage Provider
+ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
+ENV DB_USER=obp
+ENV DB_PASSWORD=changeme
+ENV DB_DRIVER=org.postgresql.Driver
+ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
+# Default Hibernate configuration for User Storage
+ENV HIBERNATE_DDL_AUTO=validate
+ENV HIBERNATE_SHOW_SQL=true
+ENV HIBERNATE_FORMAT_SQL=true
+
+# Default Keycloak runtime configuration
+ENV KC_HOSTNAME_STRICT=false
+ENV KC_HOSTNAME_STRICT_HTTPS=false
+ENV KC_HTTP_ENABLED=true
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+ENV KC_FEATURES=token-exchange
 
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
+# Note: For production, use "start" instead of "start-dev"
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]

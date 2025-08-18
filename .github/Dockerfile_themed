@@ -2,12 +2,17 @@
 # Use Maven to build the project
 FROM maven:3-eclipse-temurin-17 as maven
 
-# Define build arguments for environment variables
+# Define build arguments for User Storage database environment variables
 ARG DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
 ARG DB_USER=obp
 ARG DB_PASSWORD=changeme
 ARG DB_DRIVER=org.postgresql.Driver
 ARG DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
+# Define build arguments for Keycloak database environment variables
+ARG KC_DB_URL=jdbc:postgresql://localhost:5433/keycloak
+ARG KC_DB_USERNAME=keycloak
+ARG KC_DB_PASSWORD=keycloak_changeme
 ARG HIBERNATE_DDL_AUTO=validate
 ARG HIBERNATE_SHOW_SQL=true
 ARG HIBERNATE_FORMAT_SQL=true
@@ -22,6 +27,9 @@ RUN mvn clean install -DskipTests=true \
     -DDB_PASSWORD="${DB_PASSWORD}" \
     -DDB_DRIVER="${DB_DRIVER}" \
     -DDB_DIALECT="${DB_DIALECT}" \
+    -DKC_DB_URL="${KC_DB_URL}" \
+    -DKC_DB_USERNAME="${KC_DB_USERNAME}" \
+    -DKC_DB_PASSWORD="${KC_DB_PASSWORD}" \
     -DHIBERNATE_DDL_AUTO="${HIBERNATE_DDL_AUTO}" \
     -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
     -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
@@ -76,12 +84,31 @@ RUN chown -R keycloak:keycloak /opt/keycloak/themes/obp
 # Switch back to keycloak user for security
 USER keycloak
 
-# Set default environment variables for database configuration
-ENV DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
+# Set default environment variables for Keycloak's internal database
+ENV KC_DB=postgres
+ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
+ENV KC_DB_USERNAME=keycloak
+ENV KC_DB_PASSWORD=keycloak_changeme
+
+# Set default environment variables for User Storage database configuration
+ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
 ENV DB_USER=obp
 ENV DB_PASSWORD=changeme
 ENV DB_DRIVER=org.postgresql.Driver
 ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
+# Default Hibernate configuration for User Storage
+ENV HIBERNATE_DDL_AUTO=validate
+ENV HIBERNATE_SHOW_SQL=true
+ENV HIBERNATE_FORMAT_SQL=true
+
+# Default Keycloak runtime configuration
+ENV KC_HOSTNAME_STRICT=false
+ENV KC_HOSTNAME_STRICT_HTTPS=false
+ENV KC_HTTP_ENABLED=true
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+ENV KC_FEATURES=token-exchange
 ENV HIBERNATE_DDL_AUTO=validate
 ENV HIBERNATE_SHOW_SQL=true
 ENV HIBERNATE_FORMAT_SQL=true

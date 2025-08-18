@@ -1,6 +1,15 @@
 # Keycloak provider for user federation in Postgres
 
-This project demonstrates the ability to use Postgres as user storage provider of Keycloak with **cloud-native runtime configuration** support.
+This project demonstrates the ability to use Postgres as user storage provider of Keycloak with **cloud-native runtime configuration** support and **separated database architecture**.
+
+## 🔄 Database Architecture
+
+**Important**: This project now uses **separated databases** for better security and maintainability:
+
+- **Keycloak Internal Database**: Stores realms, clients, tokens, sessions (Port 5433)
+- **User Storage Database**: Contains your external user data for federation (Port 5432)
+
+📖 **Migration Guide**: If you're upgrading from a previous version, see [docs/DATABASE_SEPARATION_MIGRATION.md](docs/DATABASE_SEPARATION_MIGRATION.md)
 
 ## 🚀 Cloud-Native Features
 
@@ -151,14 +160,19 @@ The database connection and Keycloak settings are now configured using **runtime
 
 2. Edit the `.env` file with your actual configuration values:
    ```properties
-   # Database configuration
-   DB_URL=jdbc:postgresql://your-db-host:5432/your-database
-   DB_USER=your-username
-   DB_PASSWORD=your-secure-password
+   # Keycloak Admin Configuration
+   KEYCLOAK_ADMIN=your-admin
+   KEYCLOAK_ADMIN_PASSWORD=your-admin-password
    
-   # Keycloak admin credentials
-   KC_BOOTSTRAP_ADMIN_USERNAME=your-admin
-   KC_BOOTSTRAP_ADMIN_PASSWORD=your-admin-password
+   # Keycloak's Internal Database Configuration
+   KC_DB_USERNAME=keycloak
+   KC_DB_PASSWORD=secure-keycloak-password
+   
+   # User Storage Database Configuration
+   USER_STORAGE_DB_USER=obp
+   USER_STORAGE_DB_PASSWORD=secure-user-storage-password
+   DB_USER=obp
+   DB_PASSWORD=secure-user-storage-password
    ```
 
 3. **Validate your configuration (recommended):**
@@ -181,13 +195,20 @@ The database connection and Keycloak settings are now configured using **runtime
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/obp_mapped` | PostgreSQL database URL |
-| `DB_USER` | `obp` | Database username |
-| `DB_PASSWORD` | `changeme` | Database password |
-| `KC_BOOTSTRAP_ADMIN_USERNAME` | `admin` | Initial admin username |
-| `KC_BOOTSTRAP_ADMIN_PASSWORD` | `admin` | Initial admin password |
+| **Keycloak Admin** | | |
+| `KEYCLOAK_ADMIN` | `admin` | Keycloak admin username |
+| `KEYCLOAK_ADMIN_PASSWORD` | `admin` | Keycloak admin password |
+| **Keycloak Database** | | |
+| `KC_DB_USERNAME` | `keycloak` | Keycloak's internal database username |
+| `KC_DB_PASSWORD` | `keycloak_changeme` | Keycloak's internal database password |
+| `KC_DB_URL` | `jdbc:postgresql://keycloak-postgres:5432/keycloak` | Keycloak's internal database URL |
+| **User Storage Database** | | |
+| `DB_URL` | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database URL |
+| `DB_USER` | `obp` | User storage database username |
+| `DB_PASSWORD` | `changeme` | User storage database password |
+| **Configuration** | | |
 | `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
-| `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode |
+| `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode for user storage |
 
 #### Docker Deployment
 
@@ -201,11 +222,14 @@ When using Docker, you can:
 
 2. Pass environment variables directly:
    ```shell
-   $ docker run -e DB_URL=jdbc:postgresql://host:5432/db \
-                 -e DB_USER=user \
-                 -e DB_PASSWORD=pass \
-                 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
-                 -e KC_BOOTSTRAP_ADMIN_PASSWORD=secure_password \
+   $ docker run -e KC_DB_URL=jdbc:postgresql://keycloak-host:5432/keycloak \
+                 -e KC_DB_USERNAME=keycloak_user \
+                 -e KC_DB_PASSWORD=keycloak_pass \
+                 -e DB_URL=jdbc:postgresql://user-storage-host:5432/obp_mapped \
+                 -e DB_USER=obp_user \
+                 -e DB_PASSWORD=obp_pass \
+                 -e KEYCLOAK_ADMIN=admin \
+                 -e KEYCLOAK_ADMIN_PASSWORD=secure_password \
                  your-keycloak-image
    ```
 
@@ -227,9 +251,12 @@ The project supports **cloud-native deployment patterns**:
    $ docker build -t obp-keycloak-provider .
    
    # Deploy anywhere with runtime config
-   $ docker run -e DB_URL="jdbc:postgresql://host:5432/db" \
-                 -e DB_USER="user" \
-                 -e DB_PASSWORD="password" \
+   $ docker run -e KC_DB_URL="jdbc:postgresql://keycloak-host:5432/keycloak" \
+                 -e KC_DB_USERNAME="keycloak_user" \
+                 -e KC_DB_PASSWORD="keycloak_password" \
+                 -e DB_URL="jdbc:postgresql://user-storage-host:5432/obp_mapped" \
+                 -e DB_USER="obp_user" \
+                 -e DB_PASSWORD="obp_password" \
                  obp-keycloak-provider
    ```
 
@@ -275,8 +302,12 @@ The script deploys the container locally.
 
 It uses port : 5432. 
 
-The scripts in the container create a `keycloak` database. 
-In the database create a table `users` :
+The system now uses two separate databases:
+
+1. **Keycloak's Internal Database**: Stores realms, clients, tokens, and Keycloak's own data
+2. **User Storage Database**: Contains your external user data that Keycloak federates
+
+In the **User Storage Database**, create a table `users` :
 ```sql
 CREATE TABLE public.authuser (
 	id bigserial NOT NULL,
@@ -370,9 +401,15 @@ kind: Secret
 metadata:
   name: obp-keycloak-secrets
 stringData:
-  DB_URL: "jdbc:postgresql://postgres:5432/obp_mapped"
+  # Keycloak's internal database
+  KC_DB_URL: "jdbc:postgresql://keycloak-postgres:5432/keycloak"
+  KC_DB_USERNAME: "keycloak"
+  KC_DB_PASSWORD: "secure_keycloak_password"
+  
+  # User storage database
+  DB_URL: "jdbc:postgresql://user-storage-postgres:5432/obp_mapped"
   DB_USER: "obp"
-  DB_PASSWORD: "secure_password"
+  DB_PASSWORD: "secure_user_storage_password"
 ```
 
 ### Docker Hub Deployment
@@ -381,9 +418,12 @@ stringData:
 docker pull your-org/obp-keycloak-provider:latest
 
 # Run with environment-specific configuration
-docker run -e DB_URL="jdbc:postgresql://prod-db:5432/obp" \
-           -e DB_USER="prod_user" \
-           -e DB_PASSWORD="secure_password" \
+docker run -e KC_DB_URL="jdbc:postgresql://keycloak-prod-db:5432/keycloak" \
+           -e KC_DB_USERNAME="keycloak_prod_user" \
+           -e KC_DB_PASSWORD="secure_keycloak_password" \
+           -e DB_URL="jdbc:postgresql://user-storage-prod-db:5432/obp" \
+           -e DB_USER="obp_prod_user" \
+           -e DB_PASSWORD="secure_user_storage_password" \
            your-org/obp-keycloak-provider:latest
 ```
 
