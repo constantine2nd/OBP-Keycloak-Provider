@@ -17,6 +17,37 @@ CONTAINER_NAME="obp-keycloak"
 echo -e "${BLUE}OBP Keycloak Provider - Container Management${NC}"
 echo "============================================"
 
+# Ask user to pick a container if the default is not found
+select_alternate_container() {
+    echo -e "${YELLOW}The container '$CONTAINER_NAME' was not found.${NC}"
+    echo "Here are the available running containers:"
+    echo ""
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+    echo ""
+    read -p "Enter a container name from the list above (or press Enter to cancel): " chosen
+    if [ -n "$chosen" ]; then
+        CONTAINER_NAME="$chosen"
+        echo -e "${GREEN}Using container '$CONTAINER_NAME'${NC}"
+        # Immediately check status for the new container
+        if docker ps --filter "name=$CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
+            echo -e "${GREEN}Container '$CONTAINER_NAME' is running${NC}"
+            docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            return 0
+        elif docker ps -a --filter "name=$CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
+            echo -e "${YELLOW}Container '$CONTAINER_NAME' exists but is not running${NC}"
+            docker ps -a --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            return 1
+        else
+            echo -e "${RED}Container '$CONTAINER_NAME' still not found. Exiting.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}No container selected. Exiting.${NC}"
+        exit 1
+    fi
+}
+
 # Check container status
 check_container_status() {
     if docker ps --filter "name=$CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
@@ -28,8 +59,7 @@ check_container_status() {
         docker ps -a --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         return 1
     else
-        echo -e "${RED}Container '$CONTAINER_NAME' not found${NC}"
-        return 2
+        select_alternate_container
     fi
 }
 
@@ -191,42 +221,21 @@ main() {
         read -p "Select an action (0-9): " choice
 
         case $choice in
-            1)
-                echo ""
-                check_container_status
-                ;;
-            2)
-                view_logs "follow"
-                ;;
-            3)
-                view_logs "tail"
-                ;;
-            4)
-                stop_container
-                ;;
-            5)
-                start_container
-                ;;
-            6)
-                restart_container
-                ;;
-            7)
-                remove_container
-                ;;
-            8)
-                stop_and_remove
-                ;;
-            9)
-                show_urls
-                ;;
+            1) check_container_status ;;
+            2) view_logs "follow" ;;
+            3) view_logs "tail" ;;
+            4) stop_container ;;
+            5) start_container ;;
+            6) restart_container ;;
+            7) remove_container ;;
+            8) stop_and_remove ;;
+            9) show_urls ;;
             0)
                 echo ""
                 echo -e "${GREEN}Goodbye!${NC}"
                 exit 0
                 ;;
-            *)
-                echo -e "${RED}Invalid choice. Please select 0-9.${NC}"
-                ;;
+            *) echo -e "${RED}Invalid choice. Please select 0-9.${NC}" ;;
         esac
 
         echo ""
