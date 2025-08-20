@@ -77,7 +77,7 @@ The project includes a comprehensive **OBP Theme** that transforms Keycloak's lo
 
 #### Theme Deployment Options
 
-The project supports two deployment modes:
+The project supports three deployment modes:
 
 1. **Standard Deployment** (default):
    ```shell
@@ -98,6 +98,15 @@ The project supports two deployment modes:
 
    # Themed deployment with local PostgreSQL
    $ ./sh/run-local-postgres.sh --themed --validate
+   ```
+
+4. **CI/CD Deployment** (always build & replace - automated environments):
+   ```shell
+   # Standard CI/CD deployment
+   $ ./sh/run-local-postgres-cicd.sh
+
+   # Themed CI/CD deployment
+   $ ./sh/run-local-postgres-cicd.sh --themed
    ```
 
 #### OBP Theme Structure
@@ -169,6 +178,9 @@ The database connection and Keycloak settings are now configured using **runtime
 
    # OR with local PostgreSQL (themed)
    $ ./sh/run-local-postgres.sh --themed --validate
+
+   # OR CI/CD deployment (always build & replace)
+   $ ./sh/run-local-postgres-cicd.sh --themed
    ```
 
 4. **Test themed deployment (optional):**
@@ -216,7 +228,9 @@ The database connection and Keycloak settings are now configured using **runtime
 > - **[.env.example](.env.example)**: Complete environment variable reference with examples and security notes
 > - **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**: Comprehensive configuration guide with troubleshooting and deployment examples
 > - **[docs/WORKFLOW.md](docs/WORKFLOW.md)**: Development workflow and container management guide
+> - **[docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md)**: CI/CD-style deployment guide for automated environments
 > - **Validation tools**: `./sh/validate-env.sh` and `./sh/compare-env.sh`
+> - **Comparison tools**: `./sh/compare-deployment-scripts.sh` and `./sh/test-cache-invalidation.sh`
 
 #### Key Environment Variables
 
@@ -269,6 +283,45 @@ When using Docker, you can:
 - **Compare with example**: `./sh/compare-env.sh`
 - **Run with environment**: `./sh/run-with-env.sh`
 - **Manage container**: `./sh/manage-container.sh`
+
+## Deployment Strategies
+
+### Choosing the Right Deployment Method
+
+| Method | Use Case | Build Strategy | Best For |
+|--------|----------|---------------|-----------|
+| **Standard** (`run-with-env.sh`) | Development, testing | Conditional rebuild | Daily development |
+| **Local PostgreSQL** (`run-local-postgres.sh`) | Local dev with existing DB | Conditional rebuild | Existing PostgreSQL setups |
+| **CI/CD** (`run-local-postgres-cicd.sh`) | Automated pipelines | Always rebuild | Automated environments |
+
+### Development Deployment
+```bash
+# Interactive development with caching
+./sh/run-local-postgres.sh --themed --validate
+
+# Quick iteration without rebuilds
+./sh/run-local-postgres.sh --themed
+```
+
+### CI/CD Deployment
+```bash
+# Automated, reproducible deployments
+./sh/run-local-postgres-cicd.sh --themed
+
+# Always builds fresh, invalidates cache on JAR changes
+# Perfect for automated testing and deployment pipelines
+```
+
+### Comparison Tools
+```bash
+# Compare deployment approaches
+./sh/compare-deployment-scripts.sh
+
+# Test cache invalidation mechanism
+./sh/test-cache-invalidation.sh
+```
+
+📖 **Detailed Guide**: See [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) for complete CI/CD documentation.
 
 #### Build Options
 
@@ -512,5 +565,7 @@ If you encounter connection issues:
 - **[UniqueID Migration Guide](docs/MIGRATION_README.md)** - Complete guide for migrating from uniqueid to primary key identification
 - **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
 - **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
+- **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines
+- **[Migration Guide](MIGRATION_README.md)** - UniqueID to ID migration for performance optimization
 - **[Kubernetes Examples](k8s/)** - Production-ready Kubernetes manifests
 - **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example

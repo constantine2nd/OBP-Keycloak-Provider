@@ -2,6 +2,10 @@
 # Use official Keycloak image (26.0.5) as a base for building
 FROM quay.io/keycloak/keycloak:26.0.5 as builder
 
+# Build arguments for cache invalidation
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
+
 # Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
@@ -21,6 +25,17 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
     -ext "SAN:c=DNS:localhost,IP:127.0.0.1" \
     -keystore conf/server.keystore
 
+# Add the PostgreSQL JDBC driver to the providers directory for database connectivity
+ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
+
+# Cache invalidation layer - forces rebuild when JAR changes
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
+    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
+
+# Add your custom User Storage Provider (or other extensions) JAR
+# This layer will be invalidated when the JAR changes due to the cache invalidation above
+ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
+
 # Prebuild the Keycloak server (e.g., compile extensions, optimize image)
 RUN /opt/keycloak/bin/kc.sh build
 
@@ -29,14 +44,11 @@ RUN /opt/keycloak/bin/kc.sh build
 # Use the same Keycloak base image for the final runtime image
 FROM quay.io/keycloak/keycloak:26.0.5
 
-# Add your custom User Storage Provider (or other extensions) JAR
-ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
-
-# Add the PostgreSQL JDBC driver to the providers directory for database connectivity
-ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
-
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+# Copy build info for debugging
+COPY --from=builder /tmp/build-info.txt /opt/keycloak/
 
 # Set default Keycloak database configuration
 # These will be overridden at runtime with proper values

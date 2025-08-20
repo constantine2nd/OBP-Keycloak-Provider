@@ -2,6 +2,10 @@
 # Use Maven to build the project
 FROM maven:3-eclipse-temurin-17 as maven
 
+# Build arguments for cache invalidation
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
+
 # Define build arguments for User Storage database environment variables
 ARG DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
 ARG DB_USER=obp
@@ -20,6 +24,10 @@ ARG HIBERNATE_FORMAT_SQL=true
 COPY . /app
 WORKDIR /app
 
+# Cache invalidation layer - forces rebuild when JAR changes
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
+    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
+
 # Build with Maven resource filtering using build arguments
 RUN mvn clean install -DskipTests=true \
     -DDB_URL="${DB_URL}" \
@@ -36,6 +44,10 @@ RUN mvn clean install -DskipTests=true \
 
 # Use official Keycloak image (26.0.5) as a base for building
 FROM quay.io/keycloak/keycloak:26.0.5 as builder
+
+# Build arguments for cache invalidation
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
 
 # Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
@@ -58,7 +70,11 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 # Add the PostgreSQL JDBC driver to the providers directory for database connectivity
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 
+# Copy build info and cache invalidation layer
+COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
+
 # Add your custom User Storage Provider (or other extensions) JAR
+# This layer will be invalidated when the JAR changes due to the cache invalidation above
 COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
 # Prebuild the Keycloak server (e.g., compile extensions, optimize image)
@@ -71,6 +87,9 @@ FROM quay.io/keycloak/keycloak:26.0.5
 
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+# Copy build info for debugging
+COPY --from=builder /tmp/build-info.txt /opt/keycloak/
 
 # Switch to root user to create theme directories and copy theme files
 USER root
