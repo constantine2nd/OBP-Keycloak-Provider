@@ -91,9 +91,7 @@ loginForgotPassword=Forgot Password?
 Runs Keycloak without custom themes:
 
 ```bash
-./sh/run-with-env.sh
-# or explicitly
-./sh/run-with-env.sh --standard
+./sh/run-local-postgres.sh
 ```
 
 ### 2. Themed Deployment
@@ -101,7 +99,7 @@ Runs Keycloak without custom themes:
 Runs Keycloak with custom themes enabled:
 
 ```bash
-./sh/run-with-env.sh --themed
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 This deployment:
@@ -150,7 +148,7 @@ To modify the appearance:
 
 2. **Rebuild and test**:
    ```bash
-   ./sh/run-with-env.sh --themed
+   ./sh/run-local-postgres.sh --themed --validate
    ```
 
 3. **Access the login page**:
@@ -306,7 +304,7 @@ If you see errors like `Unable to resolve name [${DB_DIALECT}]`:
 3. **Rebuild with correct configuration**:
    ```bash
    # Fix .env file first, then rebuild
-   ./sh/run-with-env.sh --themed
+   ./sh/run-local-postgres.sh --themed --validate
    ```
 
 4. **Check filtered persistence.xml** (locally):

@@ -22,8 +22,8 @@ nano .env  # Edit with your database credentials
 ### 2. Running the Application
 
 ```bash
-# Build and run with environment variables
-./sh/run-with-env.sh
+# Build and run with local PostgreSQL
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 This script will:
@@ -39,7 +39,7 @@ This script will:
 
 **Important**: When you press `Ctrl+C` during log following:
 
-- **Script terminates**: The `run-with-env.sh` script stops
+- **Script terminates**: The deployment script stops
 - **Container continues**: The Docker container keeps running in the background
 - **Services remain accessible**: Keycloak stays available at http://localhost:8000 and https://localhost:8443
 
@@ -86,7 +86,7 @@ docker stop obp-keycloak && docker rm obp-keycloak
 nano src/main/java/io/tesobe/providers/KcUserStorageProvider.java
 
 # Rebuild and restart
-./sh/run-with-env.sh  # This automatically stops old container
+./sh/run-local-postgres.sh --themed --validate  # This automatically stops old container
 
 # Press Ctrl+C when done viewing logs
 # Container continues running for testing
@@ -96,20 +96,20 @@ nano src/main/java/io/tesobe/providers/KcUserStorageProvider.java
 
 ```bash
 # Update environment variables
-nano .env
+nano .env.local
 
 # Validate changes
 ./sh/validate-env.sh
 
 # Rebuild with new configuration
-./sh/run-with-env.sh
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 ### Scenario 3: Debugging
 
 ```bash
 # Start with logs
-./sh/run-with-env.sh
+./sh/run-local-postgres.sh --themed --validate
 
 # Press Ctrl+C to stop log following
 # Use management script for specific log viewing
@@ -131,9 +131,10 @@ docker stop obp-keycloak && docker rm obp-keycloak
 ## Container Lifecycle
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ ./run-with-env.sh │───→│ Container Running │───→│ Press Ctrl+C   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌────────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ ./run-local-       │───→│ Container Running │───→│ Press Ctrl+C   │
+│ postgres.sh        │    │                  │    │                 │
+└────────────────────┘    └──────────────────┘    └─────────────────┘
                                 │                         │
                                 │                         ▼
                                 │                ┌─────────────────┐
@@ -169,7 +170,8 @@ The container exposes these ports:
 
 | Script | Purpose | Container Impact |
 |--------|---------|------------------|
-| `./sh/run-with-env.sh` | Build and run container with logs | Stops old, starts new |
+| `./sh/run-local-postgres.sh` | Build and run container with local PostgreSQL | Stops old, starts new |
+| `./sh/run-local-postgres-cicd.sh` | CI/CD deployment (always build & replace) | Always stops old, starts new |
 | `./sh/manage-container.sh` | Interactive container management | Manages existing |
 | `./sh/validate-env.sh` | Validate environment configuration | No impact |
 | `./sh/compare-env.sh` | Compare .env with .env.example | No impact |

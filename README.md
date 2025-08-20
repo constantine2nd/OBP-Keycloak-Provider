@@ -77,21 +77,9 @@ The project includes a comprehensive **OBP Theme** that transforms Keycloak's lo
 
 #### Theme Deployment Options
 
-The project supports three deployment modes:
+The project supports two deployment modes:
 
-1. **Standard Deployment** (default):
-   ```shell
-   $ ./sh/run-with-env.sh
-   # or explicitly
-   $ ./sh/run-with-env.sh --standard
-   ```
-
-2. **Themed Deployment** (with custom UI):
-   ```shell
-   $ ./sh/run-with-env.sh --themed
-   ```
-
-3. **Local PostgreSQL Deployment** (uses existing local PostgreSQL):
+1. **Local PostgreSQL Deployment** (uses existing local PostgreSQL):
    ```shell
    # Standard deployment with local PostgreSQL
    $ ./sh/run-local-postgres.sh
@@ -100,7 +88,7 @@ The project supports three deployment modes:
    $ ./sh/run-local-postgres.sh --themed --validate
    ```
 
-4. **CI/CD Deployment** (always build & replace - automated environments):
+2. **CI/CD Deployment** (always build & replace - automated environments):
    ```shell
    # Standard CI/CD deployment
    $ ./sh/run-local-postgres-cicd.sh
@@ -170,13 +158,7 @@ The database connection and Keycloak settings are now configured using **runtime
 
 3. **Run the application:**
    ```shell
-   # Standard deployment
-   $ ./sh/run-with-env.sh
-
-   # OR with custom themes
-   $ ./sh/run-with-env.sh --themed
-
-   # OR with local PostgreSQL (themed)
+   # Local PostgreSQL deployment (themed)
    $ ./sh/run-local-postgres.sh --themed --validate
 
    # OR CI/CD deployment (always build & replace)
@@ -281,47 +263,68 @@ When using Docker, you can:
 
 - **Validate configuration**: `./sh/validate-env.sh`
 - **Compare with example**: `./sh/compare-env.sh`
-- **Run with environment**: `./sh/run-with-env.sh`
 - **Manage container**: `./sh/manage-container.sh`
 
 ## Deployment Strategies
 
 ### Choosing the Right Deployment Method
 
+The project provides two focused deployment approaches:
+
 | Method | Use Case | Build Strategy | Best For |
 |--------|----------|---------------|-----------|
-| **Standard** (`run-with-env.sh`) | Development, testing | Conditional rebuild | Daily development |
-| **Local PostgreSQL** (`run-local-postgres.sh`) | Local dev with existing DB | Conditional rebuild | Existing PostgreSQL setups |
-| **CI/CD** (`run-local-postgres-cicd.sh`) | Automated pipelines | Always rebuild | Automated environments |
+| **Local PostgreSQL** (`run-local-postgres.sh`) | Development with existing PostgreSQL | Conditional rebuild | Daily development, testing |
+| **CI/CD** (`run-local-postgres-cicd.sh`) | Automated pipelines | Always rebuild | CI/CD, production deployments |
 
 ### Development Deployment
 ```bash
-# Interactive development with caching
+# Interactive development with validation and caching
 ./sh/run-local-postgres.sh --themed --validate
 
-# Quick iteration without rebuilds
+# Quick iteration (skips some validation)
 ./sh/run-local-postgres.sh --themed
+
+# Standard deployment without themes
+./sh/run-local-postgres.sh
 ```
+
+**Features:**
+- Conditional rebuilds for faster iteration
+- Comprehensive validation and testing
+- Interactive feedback and guidance
+- Container management helpers
 
 ### CI/CD Deployment
 ```bash
-# Automated, reproducible deployments
+# Automated, reproducible deployments (always fresh build)
 ./sh/run-local-postgres-cicd.sh --themed
 
-# Always builds fresh, invalidates cache on JAR changes
-# Perfect for automated testing and deployment pipelines
+# Standard CI/CD deployment
+./sh/run-local-postgres-cicd.sh
 ```
 
-### Comparison Tools
+**Features:**
+- Always builds from scratch (no caching issues)
+- JAR checksum-based cache invalidation
+- Fail-fast error handling
+- Structured pipeline output
+- Health checks with timeout
+
+### Analysis and Testing Tools
 ```bash
 # Compare deployment approaches
 ./sh/compare-deployment-scripts.sh
 
-# Test cache invalidation mechanism
+# Test Docker cache invalidation
 ./sh/test-cache-invalidation.sh
+
+# Validate theme structure (for themed deployments)
+./sh/test-theme-validation.sh
 ```
 
-📖 **Detailed Guide**: See [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) for complete CI/CD documentation.
+📖 **Detailed Guides**: 
+- [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - Complete CI/CD documentation
+- [SCRIPT_REMOVAL_SUMMARY.md](SCRIPT_REMOVAL_SUMMARY.md) - Migration from legacy scripts
 
 #### Build Options
 
@@ -362,7 +365,7 @@ The project supports **cloud-native deployment patterns**:
 
 #### Container Management
 
-When you run `./sh/run-with-env.sh`, it starts the Keycloak container and follows the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
+When you run the deployment scripts, they start the Keycloak container and follow the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
 
 **After pressing Ctrl+C:**
 - The container remains accessible at http://localhost:8000 and https://localhost:8443
@@ -438,15 +441,15 @@ $ mvn clean package
 # Test runtime configuration
 $ ./sh/test-runtime-config.sh
 
-# Run with runtime environment variables
-$ ./sh/run-with-env.sh
+# Run with local PostgreSQL
+$ ./sh/run-local-postgres.sh --themed --validate
 ```
 
 ### Legacy Approach
 
 For compatibility, you can still use the legacy build script:
 ```shell
-$ sh/run.sh
+$ ./sh/run-local-postgres.sh
 ```
 
 > **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Kubernetes and Docker Hub deployments.

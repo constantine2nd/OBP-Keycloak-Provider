@@ -13,6 +13,11 @@ The project has been enhanced with a complete CI/CD-style deployment solution th
 - `sh/compare-deployment-scripts.sh` - Comparison utility between deployment approaches
 - `sh/test-cache-invalidation.sh` - Test suite for Docker cache invalidation mechanism
 
+### Removed Scripts
+- `sh/build_and_run.sh` - Legacy build script (replaced by local PostgreSQL deployment)
+- `sh/run-with-env.sh` - Cloud-native deployment script (consolidated into local PostgreSQL approach)
+- `sh/run.sh` - Original legacy deployment script (replaced by modern deployment options)
+
 ### Modified Dockerfiles
 - `docker/Dockerfile` - Enhanced with cache invalidation for JAR changes
 - `.github/Dockerfile_themed` - Enhanced with cache invalidation for themed deployments
@@ -89,8 +94,8 @@ ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/pro
 
 ## Deployment Strategy Comparison
 
-| Aspect | Original Script | CI/CD Script |
-|--------|----------------|--------------|
+| Aspect | Local PostgreSQL Script | CI/CD Script |
+|--------|------------------------|--------------|
 | **Build Strategy** | Conditional (`--build` flag) | Always build |
 | **Container Handling** | Optional replacement | Always stop & remove |
 | **Cache Strategy** | Docker cache reuse | Force rebuild with invalidation |
@@ -105,7 +110,7 @@ ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/pro
 # Interactive development with caching
 ./sh/run-local-postgres.sh --themed --validate
 
-# Quick iteration without rebuilds (original approach)
+# Quick iteration without full validation
 ./sh/run-local-postgres.sh --themed
 ```
 
@@ -279,4 +284,4 @@ Key achievements:
 - ✅ **Performance Optimized**: Intelligent caching saves ~50% build time
 - ✅ **Well Documented**: Comprehensive guides and comparison tools
 
-This implementation supports the project's migration to more efficient ID-based user lookups while providing modern CI/CD deployment capabilities for development and production environments.
+This implementation supports the project's migration to more efficient ID-based user lookups while providing streamlined, modern deployment capabilities. The script consolidation eliminates confusion and maintenance overhead while preserving all essential functionality in two well-defined deployment approaches.

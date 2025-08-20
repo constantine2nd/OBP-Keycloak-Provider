@@ -77,7 +77,7 @@ echo ""
 echo -e "${YELLOW}Test 2: Checking required files...${NC}"
 failed_files=0
 
-check_file "sh/run-with-env.sh" "Main script" || ((failed_files++))
+check_file "sh/run-local-postgres.sh" "Main script" || ((failed_files++))
 check_file ".github/Dockerfile_themed" "Themed Dockerfile" || ((failed_files++))
 check_file "themes/theme.properties" "Theme properties" || ((failed_files++))
 check_file "themes/styles.css" "Theme styles" || ((failed_files++))
@@ -106,18 +106,18 @@ echo ""
 
 # Test 4: Check script permissions
 echo -e "${YELLOW}Test 4: Checking script permissions...${NC}"
-if [ -x "sh/run-with-env.sh" ]; then
+if [ -x "sh/run-local-postgres.sh" ]; then
     echo -e "${GREEN}✓ Script is executable${NC}"
 else
     echo -e "${YELLOW}! Script is not executable, fixing...${NC}"
-    chmod +x sh/run-with-env.sh
+    chmod +x sh/run-local-postgres.sh
     echo -e "${GREEN}✓ Script permissions fixed${NC}"
 fi
 echo ""
 
 # Test 5: Test script help option
 echo -e "${YELLOW}Test 5: Testing script help functionality...${NC}"
-if ./sh/run-with-env.sh --help >/dev/null 2>&1; then
+if ./sh/run-local-postgres.sh --help >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Script help option works${NC}"
 else
     echo -e "${RED}✗ Script help option failed${NC}"
@@ -215,9 +215,10 @@ echo -e "${GREEN}✓ All critical tests passed!${NC}"
 echo ""
 
 echo "Usage Examples:"
-echo "  Standard deployment:  ./sh/run-with-env.sh"
-echo "  Themed deployment:    ./sh/run-with-env.sh --themed"
-echo "  Get help:             ./sh/run-with-env.sh --help"
+echo "  Standard deployment:  ./sh/run-local-postgres.sh"
+echo "  Themed deployment:    ./sh/run-local-postgres.sh --themed --validate"
+echo "  CI/CD deployment:     ./sh/run-local-postgres-cicd.sh --themed"
+echo "  Get help:             ./sh/run-local-postgres.sh --help"
 echo ""
 
 echo "Theme Features:"
@@ -229,8 +230,8 @@ echo "  • Easy customization through CSS and properties files"
 echo ""
 
 echo -e "${YELLOW}Next Steps:${NC}"
-echo "1. Configure your .env file with database settings"
-echo "2. Run: ./sh/run-with-env.sh --themed"
+echo "1. Configure your .env.local file with database settings"
+echo "2. Run: ./sh/run-local-postgres.sh --themed --validate"
 echo "3. Access Keycloak at https://localhost:8443"
 echo "4. The custom theme will be automatically applied"
 echo ""

@@ -204,7 +204,7 @@ echo -e "${BLUE}Next steps:${NC}"
 echo "  1. Review differences above"
 echo "  2. Update .env file if needed"
 echo "  3. Run: ./sh/validate-env.sh"
-echo "  4. Run: ./sh/run-with-env.sh"
+echo "  4. Run: ./sh/run-local-postgres.sh --themed --validate"
 
 # Cleanup
 rm -f "$temp_example" "$temp_current"

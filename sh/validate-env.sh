@@ -214,7 +214,7 @@ if [ "$validation_passed" = true ]; then
     echo ""
     echo -e "${GREEN}Next steps:${NC}"
     echo "  1. Review any warnings above"
-    echo "  2. Run: ./sh/run-with-env.sh"
+    echo "  2. Run: ./sh/run-local-postgres.sh --themed --validate"
     echo "  3. Access Keycloak at: http://localhost:8000 or https://localhost:8443"
 
 else
@@ -223,7 +223,7 @@ else
     echo -e "${YELLOW}To fix:${NC}"
     echo "  1. Edit the .env file and set the missing variables"
     echo "  2. Run this script again to validate"
-    echo "  3. Once validation passes, run: ./sh/run-with-env.sh"
+    echo "  3. Once validation passes, run: ./sh/run-local-postgres.sh --themed --validate"
 
     exit 1
 fi

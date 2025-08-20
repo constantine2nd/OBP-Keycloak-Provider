@@ -15,7 +15,7 @@ This directory contains shell scripts for **building, running, and managing** th
 
 ### Main Scripts
 
-- **`run-with-env.sh`** - Cloud-native deployment with runtime configuration
+- **`run-local-postgres.sh`** - Local PostgreSQL deployment with runtime configuration
 - **`validate-separated-db-config.sh`** - Comprehensive configuration validation  
 - **`manage-container.sh`** - Interactive container management
 - **`test-runtime-config.sh`** - Test cloud-native configuration
@@ -23,7 +23,7 @@ This directory contains shell scripts for **building, running, and managing** th
 
 ### Legacy Scripts
 
-- **`run.sh`** - Legacy build script (not recommended for production)
+- **`run-local-postgres-cicd.sh`** - CI/CD deployment script (always build & replace)
 - **`pg.sh`** - PostgreSQL container deployment
 
 ### Database Scripts
@@ -39,14 +39,14 @@ This directory contains shell scripts for **building, running, and managing** th
 
 ```bash
 # 1. Setup environment
-cp env.sample .env
-# Edit .env with your configuration
+cp env.sample .env.local
+# Edit .env.local with your configuration
 
 # 2. Validate configuration
 ./sh/validate-separated-db-config.sh
 
-# 3. Run with separated databases
-./sh/run-with-env.sh
+# 3. Run with local PostgreSQL
+./sh/run-local-postgres.sh --themed --validate
 
 # 4. Manage containers (when needed)
 ./sh/manage-container.sh
@@ -108,16 +108,16 @@ USER_STORAGE_DB_PASSWORD=secure_user_password
 - Security analysis
 - Docker configuration
 
-### 2. Cloud-Native Runner (`run-with-env.sh`)
+### 2. Local PostgreSQL Runner (`run-local-postgres.sh`)
 
 **Purpose**: Deploy with runtime configuration (recommended)
 
 ```bash
 # Standard deployment
-./sh/run-with-env.sh
+./sh/run-local-postgres.sh
 
-# With custom themes
-./sh/run-with-env.sh --themed
+# With custom themes and validation
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 **What it does:**

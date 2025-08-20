@@ -136,8 +136,8 @@ nano .env
 # Validate configuration
 ./sh/validate-separated-db-config.sh
 
-# Run with environment
-./sh/run-with-env.sh
+# Run with local PostgreSQL
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 ## 🔍 Diagnostic Commands

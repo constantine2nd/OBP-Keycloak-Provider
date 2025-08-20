@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Container Management Script for OBP Keycloak Provider
-# This script helps manage the Keycloak container after interrupting run-with-env.sh
+# This script helps manage the Keycloak container after interrupting deployment scripts
 
 set -e
 
@@ -125,7 +125,7 @@ start_container() {
         docker start "$CONTAINER_NAME"
         echo -e "${GREEN}Container started successfully${NC}"
     else
-        echo -e "${RED}Container does not exist. Run ./run-with-env.sh to create it.${NC}"
+        echo -e "${RED}Container does not exist. Run ./sh/run-local-postgres.sh to create it.${NC}"
     fi
 }
 
@@ -136,7 +136,7 @@ restart_container() {
     status=$?
 
     if [ $status -eq 2 ]; then
-        echo -e "${RED}Container does not exist. Run ./run-with-env.sh to create it.${NC}"
+        echo -e "${RED}Container does not exist. Run ./sh/run-local-postgres.sh to create it.${NC}"
         return
     fi
 

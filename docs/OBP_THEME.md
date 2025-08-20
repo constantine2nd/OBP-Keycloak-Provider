@@ -95,12 +95,12 @@ themes/obp/
 
 ### Standard Deployment
 ```bash
-./sh/run-with-env.sh --standard
+./sh/run-local-postgres.sh
 ```
 
 ### Themed Deployment
 ```bash
-./sh/run-with-env.sh --themed
+./sh/run-local-postgres.sh --themed --validate
 ```
 
 ## Theme Activation
@@ -204,7 +204,7 @@ Edit the CSS variables in `styles.css`:
 
 ### Local Development
 1. **Edit Theme Files**: Modify CSS, templates, or messages
-2. **Rebuild Container**: `./sh/run-with-env.sh --themed`
+2. **Rebuild Container**: `./sh/run-local-postgres.sh --themed --validate`
 3. **Test Changes**: Access login page in browser
 4. **Iterate**: Repeat until satisfied
 
