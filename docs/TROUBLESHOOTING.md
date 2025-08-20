@@ -158,10 +158,10 @@ docker logs obp-keycloak --tail 50
 ### Port Availability Check
 ```bash
 # Check if required ports are available
-ss -tulpn | grep -E ":(5433|5434|8080|8443)"
+ss -tulpn | grep -E ":(5433|5434|8000|8443)"
 
 # Or using netstat
-netstat -tulpn | grep -E ":(5433|5434|8080|8443)"
+netstat -tulpn | grep -E ":(5433|5434|8000|8443)"
 ```
 
 ### Configuration Validation
@@ -342,7 +342,7 @@ Before reporting issues, verify:
 4. **Network Information:**
    ```bash
    docker network ls
-   ss -tulpn | grep -E ":(5433|5434|8080|8443)"
+   ss -tulpn | grep -E ":(5433|5434|8000|8443)"
    ```
 
 ### Support Resources

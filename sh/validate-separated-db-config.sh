@@ -188,7 +188,7 @@ echo "🌐 Checking Port Configuration..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 KC_DB_PORT="${KC_DB_PORT:-5433}"
 USER_STORAGE_DB_PORT="${USER_STORAGE_DB_PORT:-5434}"  # Updated default port
-KEYCLOAK_HTTP_PORT="${KEYCLOAK_HTTP_PORT:-8080}"
+KEYCLOAK_HTTP_PORT="${KEYCLOAK_HTTP_PORT:-8000}"
 KEYCLOAK_HTTPS_PORT="${KEYCLOAK_HTTPS_PORT:-8443}"
 
 # Validate recent fixes
@@ -334,7 +334,7 @@ if [[ $ERRORS -eq 0 ]]; then
         echo ""
         echo "Next steps:"
         echo "1. Start the services: docker-compose -f docker-compose.runtime.yml up"
-        echo "2. Access Keycloak: http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/admin"
+        echo "2. Access Keycloak: http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin"
         echo "3. Check logs: docker logs obp-keycloak"
         echo "4. Database ports: Keycloak DB (5433), User Storage DB (5434)"
     else

@@ -78,7 +78,7 @@ INSERT INTO public.authuser (firstname,lastname,email,username...
 |---------|--------|-------|--------|
 | Keycloak Internal DB | 5433 | 5433 | ✅ No change needed |
 | User Storage DB | 5432 | 5434 | 🔧 Avoid system PostgreSQL conflict |
-| Keycloak Application | 8080/8443 | 8080/8443 | ✅ No change needed |
+| Keycloak Application | 8000/8443 | 8000/8443 | ✅ No change needed |
 
 ### Environment Variables
 
@@ -201,7 +201,7 @@ docker exec -it keycloak-postgres psql -U keycloak -d keycloak -c "SELECT versio
 docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "SELECT version();"
 
 # Test application accessibility
-curl -f http://localhost:8080/health/ready
+curl -f http://localhost:8000/health/ready
 
 # Verify container health
 docker ps --filter "name=obp" --format "table {{.Names}}\t{{.Status}}"

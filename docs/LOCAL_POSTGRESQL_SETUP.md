@@ -63,8 +63,8 @@ cat .env
 
 ### 4. Access Application
 
-- **HTTP**: http://localhost:8080
-- **HTTPS**: https://localhost:8443  
+- **HTTP**: http://localhost:8000
+- **HTTPS**: https://localhost:8443
 - **Admin Console**: https://localhost:8443/admin
 - **Login**: admin / admin
 
@@ -133,7 +133,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS authuser_username_provider ON public.authuser 
 INSERT INTO public.authuser 
 (firstname, lastname, email, username, password_pw, password_slt, provider, locale, validated, user_c, uniqueid, createdat, updatedat, timezone, superuser, passwordshouldbechanged)
 VALUES 
-('Test', 'User', 'test@tesobe.com', 'testuser', 'b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ', 'nXiDOLye3CtjzEke', 'http://127.0.0.1:8080', 'en_US', true, 1, 'TEST_USER_UNIQUE_ID_123', NOW(), NOW(), 'UTC', false, NULL)
+('Test', 'User', 'test@tesobe.com', 'testuser', 'b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ', 'nXiDOLye3CtjzEke', 'http://127.0.0.1:8000', 'en_US', true, 1, 'TEST_USER_UNIQUE_ID_123', NOW(), NOW(), 'UTC', false, NULL)
 ON CONFLICT (username, provider) DO NOTHING;
 
 -- Verify table creation
@@ -275,7 +275,7 @@ PGPASSWORD=f psql -h localhost -p 5432 -U obp -d obp_mapped -c "SELECT count(*) 
 docker ps --filter "name=obp-keycloak-local"
 
 # Test HTTP endpoint
-curl -f http://localhost:8080/health/ready
+curl -f http://localhost:8000/health/ready
 
 # Test HTTPS endpoint  
 curl -k https://localhost:8443/health/ready
@@ -409,14 +409,14 @@ DB_URL=jdbc:postgresql://172.17.0.1:5432/obp_mapped
 **Solutions**:
 ```bash
 # Check what's using the port
-sudo lsof -i :8080
+sudo lsof -i :8000
 sudo lsof -i :8443
 
 # Stop conflicting containers
-docker stop $(docker ps -q --filter "publish=8080")
+docker stop $(docker ps -q --filter "publish=8000")
 
 # Use different ports
-KEYCLOAK_HTTP_PORT=8081 KEYCLOAK_HTTPS_PORT=8444 ./sh/run-local-postgres.sh
+KEYCLOAK_HTTP_PORT=8001 KEYCLOAK_HTTPS_PORT=8444 ./sh/run-local-postgres.sh
 ```
 
 ### Debugging Commands

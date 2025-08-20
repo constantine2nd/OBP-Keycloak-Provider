@@ -36,227 +36,227 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       initContainers:
-      - name: wait-for-postgres
-        image: postgres:16-alpine
-        command:
-        - sh
-        - -c
-        - |
-          until pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER; do
-            echo "Waiting for PostgreSQL to be ready..."
-            sleep 2
-          done
-          echo "PostgreSQL is ready!"
-        env:
-        - name: DB_HOST
-          value: "postgresql-service"
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: DB_USER
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: DB_PASSWORD
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER; do
+                echo "Waiting for PostgreSQL to be ready..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: DB_HOST
+              value: "postgresql-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: DB_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: DB_PASSWORD
       containers:
-      - name: keycloak
-        image: obp-keycloak-provider:latest
-        imagePullPolicy: Always
-        ports:
-        - name: http
-          containerPort: 8080
-          protocol: TCP
-        - name: https
-          containerPort: 8443
-          protocol: TCP
-        env:
-        # Keycloak Admin Configuration
-        - name: KEYCLOAK_ADMIN
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: KEYCLOAK_ADMIN
-        - name: KEYCLOAK_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: keycloak
+          image: obp-keycloak-provider:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          env:
+            # Keycloak Admin Configuration
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
 
-        # Database Configuration (Runtime)
-        - name: DB_URL
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-db-connection
-              key: DB_URL
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: DB_USER
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: obp-keycloak-secrets
-              key: DB_PASSWORD
+            # Database Configuration (Runtime)
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-db-connection
+                  key: DB_URL
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: obp-keycloak-secrets
+                  key: DB_PASSWORD
 
-        # Database Configuration from ConfigMap
-        - name: DB_DRIVER
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: DB_DRIVER
-        - name: DB_DIALECT
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: DB_DIALECT
+            # Database Configuration from ConfigMap
+            - name: DB_DRIVER
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: DB_DRIVER
+            - name: DB_DIALECT
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: DB_DIALECT
 
-        # Hibernate Configuration
-        - name: HIBERNATE_DDL_AUTO
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: HIBERNATE_DDL_AUTO
-        - name: HIBERNATE_SHOW_SQL
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: HIBERNATE_SHOW_SQL
-        - name: HIBERNATE_FORMAT_SQL
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: HIBERNATE_FORMAT_SQL
+            # Hibernate Configuration
+            - name: HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: HIBERNATE_DDL_AUTO
+            - name: HIBERNATE_SHOW_SQL
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: HIBERNATE_SHOW_SQL
+            - name: HIBERNATE_FORMAT_SQL
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: HIBERNATE_FORMAT_SQL
 
-        # Keycloak Runtime Configuration
-        - name: KC_HOSTNAME_STRICT
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_HOSTNAME_STRICT
-        - name: KC_HOSTNAME_STRICT_HTTPS
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_HOSTNAME_STRICT_HTTPS
-        - name: KC_HTTP_ENABLED
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_HTTP_ENABLED
-        - name: KC_HEALTH_ENABLED
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_HEALTH_ENABLED
-        - name: KC_METRICS_ENABLED
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_METRICS_ENABLED
+            # Keycloak Runtime Configuration
+            - name: KC_HOSTNAME_STRICT
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_HOSTNAME_STRICT
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_HOSTNAME_STRICT_HTTPS
+            - name: KC_HTTP_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_HTTP_ENABLED
+            - name: KC_HEALTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_HEALTH_ENABLED
+            - name: KC_METRICS_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_METRICS_ENABLED
 
-        # JVM Configuration for Production
-        - name: JAVA_OPTS_APPEND
-          value: "-Xms512m -Xmx2g -XX:MetaspaceSize=96m -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true"
+            # JVM Configuration for Production
+            - name: JAVA_OPTS_APPEND
+              value: "-Xms512m -Xmx2g -XX:MetaspaceSize=96m -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true"
 
-        # Keycloak specific JVM options
-        - name: KC_LOG_LEVEL
-          valueFrom:
-            configMapKeyRef:
-              name: obp-keycloak-config
-              key: KC_LOG_LEVEL
+            # Keycloak specific JVM options
+            - name: KC_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: KC_LOG_LEVEL
 
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "1000m"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
 
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 120
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
-          successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
 
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-          successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
 
-        startupProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 30
-          successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
 
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1000
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: false
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
 
-        volumeMounts:
-        - name: tmp
-          mountPath: /tmp
-        - name: cache
-          mountPath: /opt/keycloak/data/cache
-        - name: themes
-          mountPath: /opt/keycloak/themes/custom
-          readOnly: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /opt/keycloak/data/cache
+            - name: themes
+              mountPath: /opt/keycloak/themes/custom
+              readOnly: true
 
       volumes:
-      - name: tmp
-        emptyDir: {}
-      - name: cache
-        emptyDir: {}
-      - name: themes
-        configMap:
-          name: obp-keycloak-themes
-          optional: true
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+        - name: themes
+          configMap:
+            name: obp-keycloak-themes
+            optional: true
 
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - obp-keycloak
-              topologyKey: kubernetes.io/hostname
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - obp-keycloak
+                topologyKey: kubernetes.io/hostname
 
       tolerations:
-      - key: "app"
-        operator: "Equal"
-        value: "obp-keycloak"
-        effect: "NoSchedule"
+        - key: "app"
+          operator: "Equal"
+          value: "obp-keycloak"
+          effect: "NoSchedule"
 
       nodeSelector:
         node-type: "application"
@@ -286,14 +286,14 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - name: http
-    port: 80
-    targetPort: 8080
-    protocol: TCP
-  - name: https
-    port: 443
-    targetPort: 8443
-    protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 8443
+      protocol: TCP
   selector:
     app: obp-keycloak
     component: user-storage-provider
@@ -311,10 +311,10 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
-    protocol: TCP
+    - name: http
+      port: 8000
+      targetPort: 8080
+      protocol: TCP
   selector:
     app: obp-keycloak
     component: user-storage-provider
@@ -337,31 +337,31 @@ spec:
   minReplicas: 2
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300
       policies:
-      - type: Percent
-        value: 10
-        periodSeconds: 60
+        - type: Percent
+          value: 10
+          periodSeconds: 60
     scaleUp:
       stabilizationWindowSeconds: 60
       policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 
 ---
 # PodDisruptionBudget for high availability
@@ -379,7 +379,6 @@ spec:
     matchLabels:
       app: obp-keycloak
       component: user-storage-provider
-
 # Usage Instructions:
 #
 # 1. Apply in order:
@@ -396,7 +395,7 @@ spec:
 #
 # 4. Access service:
 #    kubectl get services
-#    kubectl port-forward service/obp-keycloak-service 8080:80
+#    kubectl port-forward service/obp-keycloak-service 8000:80
 #
 # 5. Scale manually:
 #    kubectl scale deployment obp-keycloak --replicas=3

@@ -196,11 +196,11 @@ show_urls() {
     if check_container_status > /dev/null; then
         echo ""
         echo -e "${GREEN}Keycloak Access URLs:${NC}"
-        echo "  HTTP:  http://localhost:8080"
+        echo "  HTTP:  http://localhost:8000"
         echo "  HTTPS: https://localhost:8443"
         echo ""
         echo "Admin Console:"
-        echo "  HTTP:  http://localhost:8080/admin"
+        echo "  HTTP:  http://localhost:8000/admin"
         echo "  HTTPS: https://localhost:8443/admin"
         echo ""
         echo "Default Admin Credentials:"

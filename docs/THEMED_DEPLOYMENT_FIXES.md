@@ -24,7 +24,7 @@ The themed deployment was experiencing container startup failures when using the
 
 The container was actually starting successfully:
 - **Container Status**: Running and healthy
-- **Keycloak Service**: Starting correctly and listening on ports 8080/8443
+- **Keycloak Service**: Starting correctly and listening on ports 8000/8443
 - **Logs**: Showing successful startup with only expected warnings
 - **Admin Console**: Accessible and functional
 
@@ -59,7 +59,7 @@ sleep 10
 KEYCLOAK_READY=false
 MAX_WAIT=120
 while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$KEYCLOAK_READY" = false ]; do
-    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/admin/" > /dev/null 2>&1; then
+    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin/" > /dev/null 2>&1; then
         KEYCLOAK_READY=true
         echo "✓ Keycloak is ready and responding"
     else
@@ -120,13 +120,13 @@ done
 **Health Check Strategy**:
 ```bash
 # Instead of /health/ready (404), use admin console
-curl -s -f -m 5 "http://localhost:8080/admin/" > /dev/null 2>&1
+curl -s -f -m 5 "http://localhost:8000/admin/" > /dev/null 2>&1
 
 # Instead of container pgrep, use process file check
 docker exec $CONTAINER_NAME test -f /proc/1/cmdline
 
 # Instead of container curl, use host-based testing
-curl -s -f -m 10 "http://localhost:8080/realms/master"
+curl -s -f -m 10 "http://localhost:8000/realms/master"
 ```
 
 ### 4. Enhanced Error Handling and Reporting
@@ -180,7 +180,7 @@ docker rm obp-keycloak-local
 ./sh/validate-themed-setup.sh
 
 # With custom container name or ports
-./sh/validate-themed-setup.sh --container my-keycloak --http-port 8080
+./sh/validate-themed-setup.sh --container my-keycloak --http-port 8000
 ```
 
 ### 3. Theme Activation
@@ -218,7 +218,7 @@ KC_METRICS_ENABLED=true
 
 ### Network Configuration
 
-- **HTTP Port**: 8080 (admin console, API)
+- **HTTP Port**: 8000 (admin console, API)
 - **HTTPS Port**: 8443 (secure admin console)
 - **Management Port**: 9000 (internal management interface)
 - **Host Access**: Uses `host.docker.internal` for local PostgreSQL access
@@ -248,7 +248,7 @@ docker stats obp-keycloak-local
 ```
 
 **Common Troubleshooting**:
-- **Port conflicts**: Check if ports 8080/8443 are available
+- **Port conflicts**: Check if ports 8000/8443 are available
 - **Database connectivity**: Verify PostgreSQL is running on localhost:5432
 - **Theme not visible**: Ensure theme is activated in admin console
 - **Slow startup**: Normal for first run; subsequent starts are faster

@@ -295,11 +295,11 @@ test_docker_network() {
     fi
 
     # Test port availability
-    log_test "Port availability (8080)"
-    if ! ss -tuln 2>/dev/null | grep -q ":8080 " && ! netstat -tuln 2>/dev/null | grep -q ":8080 "; then
-        log_pass "Port 8080 available"
+    log_test "Port availability (8000)"
+    if ! ss -tuln 2>/dev/null | grep -q ":8000 " && ! netstat -tuln 2>/dev/null | grep -q ":8000 "; then
+        log_pass "Port 8000 available"
     else
-        log_warn "Port 8080 in use"
+        log_warn "Port 8000 in use"
     fi
 
     log_test "Port availability (8443)"
@@ -327,7 +327,7 @@ test_running_container() {
 
     # Test HTTP endpoint
     log_test "HTTP endpoint health"
-    if curl -f http://localhost:8080/health/ready &> /dev/null; then
+    if curl -f http://localhost:8000/health/ready &> /dev/null; then
         log_pass "HTTP health check passed"
     else
         log_warn "HTTP health check failed - container may still be starting"
@@ -376,7 +376,7 @@ test_user_federation() {
     max_wait=60
     wait_time=0
     while [ $wait_time -lt $max_wait ]; do
-        if curl -f http://localhost:8080/health/ready &> /dev/null; then
+        if curl -f http://localhost:8000/health/ready &> /dev/null; then
             log_pass "Keycloak is ready"
             break
         fi

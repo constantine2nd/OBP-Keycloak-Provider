@@ -29,7 +29,7 @@ cleanup_and_exit() {
     echo "  Stop & Remove: docker stop obp-keycloak-local && docker rm obp-keycloak-local"
     echo ""
     echo "Access URLs (if container is running):"
-    echo "  HTTP:  http://localhost:8080"
+    echo "  HTTP:  http://localhost:8000"
     echo "  HTTPS: https://localhost:8443"
     echo "  Admin Console: https://localhost:8443/admin"
     echo ""
@@ -279,7 +279,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS authuser_username_provider ON public.authuser 
 
 -- Insert sample user
 INSERT INTO public.authuser (firstname,lastname,email,username,password_pw,password_slt,provider,locale,validated,user_c,uniqueid,createdat,updatedat,timezone,superuser,passwordshouldbechanged)
-VALUES ('Test','User','test@tesobe.com','testuser','b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ','nXiDOLye3CtjzEke','http://127.0.0.1:8080','en_US',true,1,'TEST_USER_UNIQUE_ID_123','2023-06-06 05:28:25.959','2023-06-06 05:28:25.967','UTC',false,NULL)
+VALUES ('Test','User','test@tesobe.com','testuser','b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ','nXiDOLye3CtjzEke','http://127.0.0.1:8000','en_US',true,1,'TEST_USER_UNIQUE_ID_123','2023-06-06 05:28:25.959','2023-06-06 05:28:25.967','UTC',false,NULL)
 ON CONFLICT (username, provider) DO NOTHING;
 EOF
 
@@ -396,7 +396,7 @@ echo ""
 echo "Starting Keycloak container with local PostgreSQL..."
 docker run -d \
     --name "$CONTAINER_NAME" \
-    -p "${KEYCLOAK_HTTP_PORT:-8080}:8080" \
+    -p "${KEYCLOAK_HTTP_PORT:-8000}:8080" \
     -p "${KEYCLOAK_HTTPS_PORT:-8443}:8443" \
     $NETWORK_ARGS \
     "${CONTAINER_ENV_VARS[@]}" \
@@ -433,7 +433,7 @@ WAIT_COUNT=0
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$KEYCLOAK_READY" = false ]; do
     # Check if admin console is accessible (which means Keycloak is ready)
-    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/admin/" > /dev/null 2>&1; then
+    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin/" > /dev/null 2>&1; then
         KEYCLOAK_READY=true
         echo -e "${GREEN}✓ Keycloak is ready and responding${NC}"
     else
@@ -473,7 +473,7 @@ echo "  User Storage DB:  localhost:5432/obp_mapped (obp/f)"
 echo ""
 
 echo "Application Access:"
-echo "  HTTP:          http://localhost:${KEYCLOAK_HTTP_PORT:-8080}"
+echo "  HTTP:          http://localhost:${KEYCLOAK_HTTP_PORT:-8000}"
 echo "  HTTPS:         https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}"
 echo "  Admin Console: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
 echo "  Admin User:    ${KEYCLOAK_ADMIN:-admin} / ${KEYCLOAK_ADMIN_PASSWORD:-admin}"
@@ -502,7 +502,7 @@ echo "  User Storage: PGPASSWORD=f psql -h localhost -p 5432 -U obp -d obp_mappe
 echo ""
 
 echo "Testing Commands:"
-echo "  Service check: curl -f http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/admin/"
+echo "  Service check: curl -f http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin/"
 echo "  Admin access: curl -k https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
 echo ""
 
@@ -513,7 +513,7 @@ if [[ "$*" == *"--validate"* ]]; then
 
     # Test admin console accessibility
     echo -n "Testing admin console accessibility... "
-    if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/admin/" > /dev/null 2>&1; then
+    if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin/" > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗${NC}"
@@ -538,7 +538,7 @@ if [[ "$*" == *"--validate"* ]]; then
     if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
         echo -n "Testing theme accessibility... "
         # Check if theme resources are accessible
-        if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/resources/obp/" > /dev/null 2>&1; then
+        if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/resources/obp/" > /dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
         else
             echo -e "${YELLOW}~ (Theme resources may load after realm configuration)${NC}"
@@ -553,7 +553,7 @@ echo "Checking container health..."
 sleep 10
 
 # Test HTTP endpoint
-if curl -f "http://localhost:${KEYCLOAK_HTTP_PORT:-8080}/health/ready" >/dev/null 2>&1; then
+if curl -f "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/health/ready" >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Keycloak health check passed${NC}"
 else
     echo -e "${YELLOW}⚠ Keycloak may still be starting up${NC}"

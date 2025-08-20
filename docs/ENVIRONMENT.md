@@ -177,7 +177,7 @@ docker run \
   -e DB_PASSWORD="password" \
   -e KC_BOOTSTRAP_ADMIN_USERNAME="admin" \
   -e KC_BOOTSTRAP_ADMIN_PASSWORD="admin" \
-  -p 8080:8080 \
+  -p 8000:8080 \
   -p 8443:8443 \
   obp-keycloak-provider
 ```
@@ -294,7 +294,7 @@ Error: Failed to start quarkus
 - Check all required environment variables are set
 - Run `./sh/validate-env.sh` for detailed validation
 - Check Keycloak logs for specific error messages
-- Verify no port conflicts (8080, 8443)
+- Verify no port conflicts (8000, 8443)
 
 ### Debugging Steps
 

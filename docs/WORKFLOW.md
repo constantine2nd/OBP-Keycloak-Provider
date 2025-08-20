@@ -41,7 +41,7 @@ This script will:
 
 - **Script terminates**: The `run-with-env.sh` script stops
 - **Container continues**: The Docker container keeps running in the background
-- **Services remain accessible**: Keycloak stays available at http://localhost:8080 and https://localhost:8443
+- **Services remain accessible**: Keycloak stays available at http://localhost:8000 and https://localhost:8443
 
 ### 4. Managing the Running Container
 
@@ -154,7 +154,7 @@ The container exposes these ports:
 
 | Port | Protocol | Purpose |
 |------|----------|---------|
-| 8080 | HTTP | Keycloak web interface |
+| 8000 | HTTP | Keycloak web interface |
 | 8443 | HTTPS | Keycloak web interface (SSL) |
 | 9000 | HTTP | Internal health/metrics |
 
@@ -205,7 +205,7 @@ docker logs obp-keycloak
 ./sh/validate-env.sh
 
 # Check port conflicts
-netstat -tulpn | grep -E ":8080|:8443"
+netstat -tulpn | grep -E ":8000|:8443"
 ```
 
 ### Container Stops Unexpectedly

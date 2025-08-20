@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL database for Keycloak's internal data
@@ -69,7 +69,7 @@ services:
       DB_PASSWORD: user_storage_secure_password
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-      
+
       # Hibernate configuration for user storage
       HIBERNATE_DDL_AUTO: validate
       HIBERNATE_SHOW_SQL: "true"
@@ -82,14 +82,15 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
     ports:
-      - "8080:8080"
+      - "8000:8080"
       - "8443:8443"
     networks:
       - keycloak-network
     volumes:
       - keycloak_data:/opt/keycloak/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -135,13 +136,12 @@ volumes:
 networks:
   keycloak-network:
     driver: bridge
-
 # Usage:
 # 1. Start all services:
 #    docker-compose -f docker-compose.example.yml up
 #
 # 2. Access Keycloak admin console:
-#    http://localhost:8080/admin (admin/admin_password)
+#    http://localhost:8000/admin (admin/admin_password)
 #
 # 3. Access Keycloak database via pgAdmin:
 #    http://localhost:5051 (keycloak-admin@obp.com/admin)

@@ -126,7 +126,7 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
-      - "8080:8080"
+      - "8000:8080"
       - "8443:8443"
 ```
 
@@ -219,7 +219,7 @@ docker run -d \
   -e DB_URL="jdbc:postgresql://your-db:5432/your_database" \
   -e DB_USER="your_user" \
   -e DB_PASSWORD="your_password" \
-  -p 8080:8080 \
+  -p 8000:8080 \
   your-org/obp-keycloak-provider:latest
 ```
 
@@ -381,8 +381,8 @@ The application provides health endpoints:
 
 ```bash
 # Kubernetes health checks
-curl http://keycloak:8080/health/ready
-curl http://keycloak:8080/health/live
+curl http://keycloak:8000/health/ready
+curl http://keycloak:8000/health/live
 ```
 
 ### Configuration Validation

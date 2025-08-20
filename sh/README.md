@@ -158,7 +158,7 @@ USER_STORAGE_DB_PASSWORD=secure_user_password
 |---------|---------------|---------------|---------|
 | `keycloak-postgres` | 5433 | 5432 | Keycloak's internal data |
 | `user-storage-postgres` | 5434 | 5432 | External user federation |
-| `obp-keycloak` | 8080, 8443 | 8080, 8443 | Keycloak application |
+| `obp-keycloak` | 8000, 8443 | 8080, 8443 | Keycloak application |
 
 ### Recent Port Changes
 
@@ -202,7 +202,7 @@ docker-compose -f docker-compose.runtime.yml down -v
 ### Application Health
 ```bash
 # Keycloak health endpoint
-curl -f http://localhost:8080/health/ready
+curl -f http://localhost:8000/health/ready
 
 # Database connectivity
 docker exec -it keycloak-postgres pg_isready -U keycloak

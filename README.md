@@ -299,7 +299,7 @@ The project supports **cloud-native deployment patterns**:
 When you run `./sh/run-with-env.sh`, it starts the Keycloak container and follows the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
 
 **After pressing Ctrl+C:**
-- The container remains accessible at http://localhost:8080 and https://localhost:8443
+- The container remains accessible at http://localhost:8000 and https://localhost:8443
 - Use `./sh/manage-container.sh` for an interactive container management menu
 - Or use these direct commands:
   - View logs: `docker logs -f obp-keycloak`
@@ -469,7 +469,7 @@ The following critical issues have been resolved:
 ### Port Changes
 - **Keycloak Internal Database**: `localhost:5433` (unchanged)
 - **User Storage Database**: `localhost:5434` (changed from 5432)
-- **Keycloak Application**: `localhost:8080` (HTTP) and `localhost:8443` (HTTPS)
+- **Keycloak Application**: `localhost:8000` (HTTP) and `localhost:8443` (HTTPS)
 
 ### Troubleshooting
 If you encounter connection issues:

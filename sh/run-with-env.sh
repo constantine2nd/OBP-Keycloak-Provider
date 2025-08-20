@@ -24,7 +24,7 @@ cleanup_and_exit() {
     echo "  Manage:       ./sh/manage-container.sh"
     echo ""
     echo "Access URLs (if container is running):"
-    echo "  HTTP:  http://localhost:8080"
+    echo "  HTTP:  http://localhost:8000"
     echo "  HTTPS: https://localhost:8443"
     echo ""
     exit 0
@@ -242,7 +242,7 @@ fi
 
 docker run -d \
     --name obp-keycloak \
-    -p 8080:8080 \
+    -p 8000:8080 \
     -p 8443:8443 \
     "${CONTAINER_ENV_VARS[@]}" \
     "$IMAGE_TAG"
@@ -259,7 +259,7 @@ echo "  Container Name: obp-keycloak"
 echo "  Image: $IMAGE_TAG"
 echo "  Deployment Type: $DEPLOYMENT_TYPE"
 echo "  Configuration: Runtime (cloud-native)"
-echo "  HTTP Port: 8080"
+echo "  HTTP Port: 8000"
 echo "  HTTPS Port: 8443"
 echo "  Admin Username: admin"
 echo "  Admin Password: admin"
@@ -275,7 +275,7 @@ fi
 
 echo ""
 echo "Access URLs:"
-echo "  HTTP:  http://localhost:8080"
+echo "  HTTP:  http://localhost:8000"
 echo "  HTTPS: https://localhost:8443"
 echo "  Admin Console: https://localhost:8443/admin"
 echo ""

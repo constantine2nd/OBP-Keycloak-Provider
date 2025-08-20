@@ -17,7 +17,7 @@ echo "======================================================="
 echo ""
 
 # Configuration
-KEYCLOAK_URL="http://localhost:8080"
+KEYCLOAK_URL="http://localhost:8000"
 REALM="master"
 CLIENT_ID="security-admin-console"
 USERNAME="aria.milic"

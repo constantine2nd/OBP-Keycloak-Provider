@@ -195,7 +195,7 @@ docker-compose -f docker-compose.runtime.yml up keycloak
    ```
 
 3. **Test Authentication**:
-   - Access Keycloak admin console: http://localhost:8080/admin
+   - Access Keycloak admin console: http://localhost:8000/admin
    - Log in with your admin credentials
    - Verify user federation is working
 

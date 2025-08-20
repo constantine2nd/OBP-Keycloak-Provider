@@ -215,7 +215,7 @@ if [ "$validation_passed" = true ]; then
     echo -e "${GREEN}Next steps:${NC}"
     echo "  1. Review any warnings above"
     echo "  2. Run: ./sh/run-with-env.sh"
-    echo "  3. Access Keycloak at: http://localhost:8080 or https://localhost:8443"
+    echo "  3. Access Keycloak at: http://localhost:8000 or https://localhost:8443"
 
 else
     echo -e "${RED}Validation failed! Please fix the errors above${NC}"
