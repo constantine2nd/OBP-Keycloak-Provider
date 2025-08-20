@@ -26,7 +26,50 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
         super(session, realm, model);
         this.entity = entity;
         log.info("UserAdapter created for: " + this.entity);
-        this.keycloakId = StorageId.keycloakId(model, entity.getUniqueId());
+
+        // FIXED MIGRATION: Always use primary key id for external ID generation
+        // This ensures all users migrate to id-based external IDs regardless of how they were looked up
+        String externalId;
+        if (entity.getId() != null) {
+            externalId = String.valueOf(entity.getId());
+
+            // Log migration progress for users that have uniqueid values (legacy users)
+            if (
+                entity.getUniqueId() != null &&
+                !entity.getUniqueId().trim().isEmpty()
+            ) {
+                log.warnf(
+                    "🚀 MIGRATION: User %s uses id %s as external ID (was uniqueid %s)",
+                    entity.getUsername(),
+                    entity.getId(),
+                    entity.getUniqueId()
+                );
+                log.infof(
+                    "⚡ PERFORMANCE: User %s now benefits from integer-based lookups",
+                    entity.getUsername()
+                );
+            } else {
+                log.infof(
+                    "✅ ID-BASED: User %s using optimal id-based external ID: %s",
+                    entity.getUsername(),
+                    externalId
+                );
+            }
+        } else {
+            // This should never happen in a properly configured database
+            log.errorf(
+                "❌ FATAL: Primary key id is null for user: %s (uniqueid: %s)",
+                entity.getUsername(),
+                entity.getUniqueId()
+            );
+            throw new IllegalStateException(
+                "Primary key id is null for user: " +
+                entity.getUsername() +
+                " - this indicates a database integrity issue"
+            );
+        }
+
+        this.keycloakId = StorageId.keycloakId(model, externalId);
     }
 
     // Username
