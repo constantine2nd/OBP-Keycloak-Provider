@@ -69,7 +69,7 @@ services:
       DB_PASSWORD: user_storage_secure_password
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-      DB_AUTHUSER_TABLE: v_authuser_oidc
+      DB_AUTHUSER_TABLE: v_oidc_users
 
       # Hibernate configuration for user storage
       HIBERNATE_DDL_AUTO: validate

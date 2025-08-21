@@ -659,7 +659,7 @@ public class KcUserStorageProvider
 
     /**
      * Gets the field list for SQL queries when using limited views
-     * Only includes fields available in v_authuser_oidc1 and similar limited views
+     * Only includes fields available in v_oidc_users1 and similar limited views
      */
     private String getFieldList() {
         return "id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat";

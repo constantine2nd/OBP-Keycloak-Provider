@@ -10,12 +10,12 @@ The system has been updated to expose only the minimum required fields for OIDC 
 
 ### 1. Database View Updates (`sql/script.sql`)
 
-#### Updated `v_authuser_oidc` View
+#### Updated `v_oidc_users` View
 - **Removed fields**: `locale`, `timezone` (non-essential for OIDC)
 - **Reordered fields**: Organized fields logically with `username` first after `id`
 - **Maintained security**: Kept `WHERE validated = true` filter
 
-#### Added `v_authuser_oidc1` View
+#### Added `v_oidc_users1` View
 - **Purpose**: Enhanced security view with minimal field exposure
 - **Fields exposed**: Only 11 essential fields
 - **Ordering**: Includes `ORDER BY username` for consistent results
@@ -87,7 +87,7 @@ ORDER BY username;
 ```bash
 DB_USER=oidc_user
 DB_PASSWORD=secure_oidc_password
-DB_AUTHUSER_TABLE=v_authuser_oidc1
+DB_AUTHUSER_TABLE=v_oidc_users1
 ```
 **Benefits**: Minimal field exposure, enhanced security
 
@@ -95,7 +95,7 @@ DB_AUTHUSER_TABLE=v_authuser_oidc1
 ```bash
 DB_USER=oidc_user
 DB_PASSWORD=secure_oidc_password
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 **Benefits**: View-based access with essential fields
 
@@ -240,6 +240,6 @@ All changes have been tested and verified to work correctly without breaking exi
 
 ---
 
-**Implementation Date:** January 2025  
-**Files Modified:** `sql/script.sql`, `KcUserStorageProvider.java`, `VIEW_BASED_ACCESS.md`  
+**Implementation Date:** January 2025
+**Files Modified:** `sql/script.sql`, `KcUserStorageProvider.java`, `VIEW_BASED_ACCESS.md`
 **Compatible With:** PostgreSQL 12+, Keycloak 26+, Java 11+

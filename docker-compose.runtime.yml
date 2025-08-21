@@ -74,7 +74,7 @@ services:
       DB_PASSWORD: ${USER_STORAGE_DB_PASSWORD:-changeme}
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-      DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_authuser_oidc}
+      DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_oidc_users}
 
       # Hibernate Configuration for User Storage
       HIBERNATE_DDL_AUTO: ${HIBERNATE_DDL_AUTO:-validate}

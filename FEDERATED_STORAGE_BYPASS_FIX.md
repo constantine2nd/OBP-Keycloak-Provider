@@ -31,13 +31,13 @@ Modified `UserAdapter` methods to return **only database values**:
 public Map<String, List<String>> getAttributes() {
     // Create new map with ONLY database fields - ignore federated storage
     Map<String, List<String>> attributes = new HashMap<>();
-    
+
     // Add database fields as attributes
     addAttributeIfNotNull(attributes, "firstName", entity.getFirstName());
     addAttributeIfNotNull(attributes, "lastName", entity.getLastName());
     addAttributeIfNotNull(attributes, "email", entity.getEmail());
     // ... other database fields
-    
+
     return attributes;
 }
 ```
@@ -177,7 +177,7 @@ email: "current@example.com"        // From authuser table
 ### No Changes Required
 - **Database schema**: No changes needed
 - **Existing data**: All database data remains unchanged
-- **Views**: `v_authuser_oidc` and `v_authuser_oidc1` work as before
+- **Views**: `v_oidc_users` and `v_oidc_users1` work as before
 - **Permissions**: Database permissions remain the same
 
 ### Federated Storage Tables
@@ -272,7 +272,7 @@ The implementation is backward compatible, requires no configuration changes, an
 
 ---
 
-**Implementation Date:** January 2025  
-**Impact:** Zero breaking changes, immediate data consistency  
-**Performance:** Improved (fewer database queries, no federated storage access)  
+**Implementation Date:** January 2025
+**Impact:** Zero breaking changes, immediate data consistency
+**Performance:** Improved (fewer database queries, no federated storage access)
 **Security:** Enhanced (single source of truth, simplified access control)

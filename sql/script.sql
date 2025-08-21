@@ -39,7 +39,7 @@ CREATE UNIQUE INDEX authuser_username_provider ON public.authuser USING btree (u
 CREATE USER oidc_user WITH PASSWORD 'secure_oidc_password';
 
 -- Create view with only OIDC-required fields for enhanced security
-CREATE OR REPLACE VIEW public.v_authuser_oidc AS
+CREATE OR REPLACE VIEW public.v_oidc_users AS
 SELECT
     id,
     firstname,
@@ -60,7 +60,7 @@ WHERE validated = true;  -- Only show validated users to OIDC
 -- Grant permissions to OIDC user
 GRANT CONNECT ON DATABASE obp_mapped TO oidc_user;
 GRANT USAGE ON SCHEMA public TO oidc_user;
-GRANT SELECT ON public.v_authuser_oidc TO oidc_user;
+GRANT SELECT ON public.v_oidc_users TO oidc_user;
 
 -- ===============================================
 -- LEGACY OBP USER SETUP (FOR BACKWARD COMPATIBILITY)
@@ -77,7 +77,7 @@ GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 -- Option 1 (RECOMMENDED - Production Security):
 --   DB_USER=oidc_user
 --   DB_PASSWORD=secure_oidc_password
---   DB_AUTHUSER_TABLE=v_authuser_oidc
+--   DB_AUTHUSER_TABLE=v_oidc_users
 --   Benefits: View-based access, minimal permissions, enhanced security
 --
 -- Option 2 (Legacy/Development):
@@ -101,7 +101,7 @@ GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 -- ===============================================
 -- SECURITY NOTES
 -- ===============================================
--- v_authuser_oidc view provides enhanced security by:
+-- v_oidc_users view provides enhanced security by:
 -- - Filtering out sensitive columns not needed for OIDC
 -- - Restricting access to validated users only
 -- - Providing database-level access control

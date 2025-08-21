@@ -18,14 +18,14 @@ This document summarizes the successful consolidation of environment configurati
 Updated all scripts that previously referenced `.env.local`:
 
 - ✅ `sh/run-local-postgres.sh`
-- ✅ `sh/run-local-postgres-cicd.sh` 
+- ✅ `sh/run-local-postgres-cicd.sh`
 - ✅ `sh/compare-deployment-scripts.sh`
 - ✅ `sh/test-local-postgres-setup.sh`
 - ✅ `sh/test-themed-deployment.sh`
 
 ### 3. Missing Environment Variable Added
 - ✅ Added `DB_AUTHUSER_TABLE` to container environment variables in all startup scripts
-- ✅ Fixed the core issue where `DB_AUTHUSER_TABLE=v_authuser_oidc1` wasn't being passed to Docker container
+- ✅ Fixed the core issue where `DB_AUTHUSER_TABLE=v_oidc_users1` wasn't being passed to Docker container
 
 ## Key Improvements
 
@@ -36,8 +36,8 @@ Updated all scripts that previously referenced `.env.local`:
 .env.local    # Other variables (not read by Docker)
 
 # Missing environment variable in container
-DB_AUTHUSER_TABLE=v_authuser_oidc1  # Not passed to container
-# Container used default: v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users1  # Not passed to container
+# Container used default: v_oidc_users
 ```
 
 ### After (Fixed)
@@ -46,7 +46,7 @@ DB_AUTHUSER_TABLE=v_authuser_oidc1  # Not passed to container
 .env          # All configuration variables
 
 # Environment variable properly passed to container
-DB_AUTHUSER_TABLE=v_authuser_oidc1  # ✓ Correctly passed and used
+DB_AUTHUSER_TABLE=v_oidc_users1  # ✓ Correctly passed and used
 ```
 
 ## Verification
@@ -55,13 +55,13 @@ DB_AUTHUSER_TABLE=v_authuser_oidc1  # ✓ Correctly passed and used
 ```bash
 # Container shows correct configuration
 $ docker exec obp-keycloak-local env | grep DB_AUTHUSER_TABLE
-DB_AUTHUSER_TABLE=v_authuser_oidc1
+DB_AUTHUSER_TABLE=v_oidc_users1
 ```
 
 ### Expected Database Behavior
-With `DB_AUTHUSER_TABLE=v_authuser_oidc1` (non-existent table):
+With `DB_AUTHUSER_TABLE=v_oidc_users1` (non-existent table):
 - ✅ **Expected**: Database errors occur when trying to query non-existent table
-- ✅ **Confirmed**: Application logs show `ERROR: relation "v_authuser_oidc1" does not exist`
+- ✅ **Confirmed**: Application logs show `ERROR: relation "v_oidc_users1" does not exist`
 - ✅ **Verified**: Environment variable changes now take immediate effect
 
 ## Files Affected
@@ -77,7 +77,7 @@ With `DB_AUTHUSER_TABLE=v_authuser_oidc1` (non-existent table):
 - `sh/run-local-postgres.sh` - Updated to use `.env`
 - `sh/run-local-postgres-cicd.sh` - Updated to use `.env` and added missing variable
 - `sh/compare-deployment-scripts.sh` - Updated to use `.env`
-- `sh/test-local-postgres-setup.sh` - Updated to use `.env`  
+- `sh/test-local-postgres-setup.sh` - Updated to use `.env`
 - `sh/test-themed-deployment.sh` - Updated reference to `.env`
 
 ### Removed Files
@@ -102,9 +102,9 @@ All variables are properly loaded from `.env` and passed to containers:
 DB_URL=jdbc:postgresql://host.docker.internal:5432/obp_mapped
 DB_USER=oidc_user
 DB_PASSWORD=NEW_VERY_STRONG_PASSWORD_2025!
-DB_AUTHUSER_TABLE=v_authuser_oidc1  # ← NOW WORKING CORRECTLY
+DB_AUTHUSER_TABLE=v_oidc_users1  # ← NOW WORKING CORRECTLY
 
-# Keycloak Configuration  
+# Keycloak Configuration
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=admin
 
@@ -123,7 +123,7 @@ HIBERNATE_SHOW_SQL=true
 ./sh/run-local-postgres.sh --themed
 ```
 
-### CI/CD Style Deployment  
+### CI/CD Style Deployment
 ```bash
 ./sh/run-local-postgres-cicd.sh --themed
 ```
@@ -153,7 +153,7 @@ docker logs obp-keycloak-local | grep -E "(ERROR|relation.*does not exist)"
 ## Benefits Achieved
 
 1. **Single Source of Truth**: All configuration in one place (`.env`)
-2. **Consistent Behavior**: All scripts use same configuration approach  
+2. **Consistent Behavior**: All scripts use same configuration approach
 3. **Fixed Core Issue**: `DB_AUTHUSER_TABLE` now properly passed to container
 4. **Better Security**: Clear separation between template (`.env.example`) and secrets (`.env`)
 5. **Easier Maintenance**: No more confusion between multiple config files
@@ -161,15 +161,15 @@ docker logs obp-keycloak-local | grep -E "(ERROR|relation.*does not exist)"
 
 ## Next Steps
 
-1. **Test with Valid Table**: Set `DB_AUTHUSER_TABLE=v_authuser_oidc` (or `authuser`) to test working configuration
-2. **Create Database View**: Use `sql/script.sql` to create the `v_authuser_oidc` view  
+1. **Test with Valid Table**: Set `DB_AUTHUSER_TABLE=v_oidc_users` (or `authuser`) to test working configuration
+2. **Create Database View**: Use `sql/script.sql` to create the `v_oidc_users` view
 3. **Remove Backup Files**: Clean up `.env.backup.*` files when satisfied with results
 4. **Update Documentation**: Update any remaining references to `.env.local` in documentation
 
 ## Original Problem Resolution
 
 ### Problem
-User set `DB_AUTHUSER_TABLE=v_authuser_oidc1` but could still authenticate, indicating the environment variable wasn't being used.
+User set `DB_AUTHUSER_TABLE=v_oidc_users1` but could still authenticate, indicating the environment variable wasn't being used.
 
 ### Root Cause
 - Configuration was in `.env.local` which Docker containers weren't reading
@@ -183,14 +183,14 @@ User set `DB_AUTHUSER_TABLE=v_authuser_oidc1` but could still authenticate, indi
 - Verified that non-existent table now causes expected database errors
 
 ### Result
-✅ **Environment variables are now loaded correctly**  
-✅ **Database configuration changes take immediate effect**  
-✅ **All deployment scripts work consistently**  
+✅ **Environment variables are now loaded correctly**
+✅ **Database configuration changes take immediate effect**
+✅ **All deployment scripts work consistently**
 ✅ **Clear error messages when tables don't exist**
 
 ---
 
-**Status**: COMPLETED  
-**Date**: August 21, 2025  
-**Verification**: All tests passing, environment variables correctly loaded  
+**Status**: COMPLETED
+**Date**: August 21, 2025
+**Verification**: All tests passing, environment variables correctly loaded
 **Next Action**: Choose appropriate `DB_AUTHUSER_TABLE` value for your environment

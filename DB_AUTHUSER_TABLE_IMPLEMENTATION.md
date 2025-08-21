@@ -1,11 +1,11 @@
 # DB_AUTHUSER_TABLE Implementation Summary
 
-This document summarizes the implementation of the `DB_AUTHUSER_TABLE` environment variable to support view-based access using `v_authuser_oidc` in the OBP Keycloak Provider.
+This document summarizes the implementation of the `DB_AUTHUSER_TABLE` environment variable to support view-based access using `v_oidc_users` in the OBP Keycloak Provider.
 
 ## Overview
 
 The `DB_AUTHUSER_TABLE` environment variable allows the application to use either:
-- **`v_authuser_oidc`** (default): A secure database view with read-only access
+- **`v_oidc_users`** (default): A secure database view with read-only access
 - **`authuser`**: Direct table access for backward compatibility
 
 This implementation enhances security by providing view-based access with minimal permissions for production environments.
@@ -15,7 +15,7 @@ This implementation enhances security by providing view-based access with minima
 ### 1. Core Application Changes
 
 #### DatabaseConfig.java
-- **Updated default value**: Changed `DEFAULT_AUTHUSER_TABLE` from `"authuser"` to `"v_authuser_oidc"`
+- **Updated default value**: Changed `DEFAULT_AUTHUSER_TABLE` from `"authuser"` to `"v_oidc_users"`
 - **Added getter method**: `getAuthUserTable()` method already existed and properly returns the configured table/view name
 - **Environment variable support**: `DB_AUTHUSER_TABLE` environment variable is properly loaded at runtime
 
@@ -32,32 +32,32 @@ This implementation enhances security by providing view-based access with minima
 ### 2. Configuration Files
 
 #### env.sample
-- **Updated default**: Changed `DB_AUTHUSER_TABLE=authuser` to `DB_AUTHUSER_TABLE=v_authuser_oidc`
-- **Updated comment**: Clarified that `v_authuser_oidc` is now the default for view-based access
+- **Updated default**: Changed `DB_AUTHUSER_TABLE=authuser` to `DB_AUTHUSER_TABLE=v_oidc_users`
+- **Updated comment**: Clarified that `v_oidc_users` is now the default for view-based access
 
 #### docker-compose.runtime.yml
-- **Added environment variable**: Added `DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_authuser_oidc}`
-- **Default value**: Uses `v_authuser_oidc` as default in container environment
+- **Added environment variable**: Added `DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_oidc_users}`
+- **Default value**: Uses `v_oidc_users` as default in container environment
 
 #### docker-compose.example.yml
-- **Added environment variable**: Added `DB_AUTHUSER_TABLE: v_authuser_oidc`
+- **Added environment variable**: Added `DB_AUTHUSER_TABLE: v_oidc_users`
 - **Hardcoded value**: Shows explicit configuration for production example
 
 ### 3. Scripts and Testing
 
 #### sh/test-local-postgres-setup.sh
-- **Updated default**: Changed default from `authuser` to `v_authuser_oidc` in `AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"`
+- **Updated default**: Changed default from `authuser` to `v_oidc_users` in `AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_oidc_users}"`
 - **Dynamic testing**: Script now tests whatever table/view is configured
 
 #### Profile Update Testing
-- **Read-only validation**: Built-in checks verify read-only behavior with `v_authuser_oidc` view
+- **Read-only validation**: Built-in checks verify read-only behavior with `v_oidc_users` view
 - **Consistent behavior**: Script now uses the new default consistently
 
 ### 4. Database Setup
 
 #### sql/script.sql
 - **Added OIDC user creation**: Creates `oidc_user` with secure password
-- **Added view definition**: Creates `v_authuser_oidc` view with filtered columns and validated users only
+- **Added view definition**: Creates `v_oidc_users` view with filtered columns and validated users only
 - **Added permissions**: Grants minimal SELECT permissions to `oidc_user` on the view
 - **Enhanced documentation**: Added configuration options and security notes
 - **Backward compatibility**: Maintains existing `obp` user permissions for legacy setups
@@ -94,7 +94,7 @@ This implementation enhances security by providing view-based access with minima
 ```bash
 DB_USER=oidc_user
 DB_PASSWORD=secure_oidc_password
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 
 **Benefits:**
@@ -116,15 +116,15 @@ DB_AUTHUSER_TABLE=authuser
 - Full dataset access including unvalidated users
 
 ### Default Behavior
-- **New default**: `v_authuser_oidc` (view-based access)
-- **Automatic fallback**: If `DB_AUTHUSER_TABLE` is not set, uses `v_authuser_oidc`
+- **New default**: `v_oidc_users` (view-based access)
+- **Automatic fallback**: If `DB_AUTHUSER_TABLE` is not set, uses `v_oidc_users`
 - **Runtime configuration**: Value is read at application startup from environment
 
 ## Database Requirements
 
-### For v_authuser_oidc (Production)
+### For v_oidc_users (Production)
 1. **User creation**: `oidc_user` with secure password
-2. **View creation**: `v_authuser_oidc` with filtered columns and validated users
+2. **View creation**: `v_oidc_users` with filtered columns and validated users
 3. **Permissions**: SELECT permission on view for `oidc_user`
 
 ### For authuser (Development/Legacy)
@@ -171,10 +171,10 @@ The implementation supports zero-downtime migration:
 ### Manual Testing
 ```bash
 # Test view access
-PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "SELECT count(*) FROM v_authuser_oidc;"
+PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "SELECT count(*) FROM v_oidc_users;"
 
 # Test application configuration
-export DB_AUTHUSER_TABLE=v_authuser_oidc
+export DB_AUTHUSER_TABLE=v_oidc_users
 ./sh/test-local-postgres-setup.sh
 ```
 
@@ -218,7 +218,7 @@ export DB_AUTHUSER_TABLE=v_authuser_oidc
 
 ### ✅ Completed
 - [x] Core application support for `DB_AUTHUSER_TABLE`
-- [x] Default value changed to `v_authuser_oidc`
+- [x] Default value changed to `v_oidc_users`
 - [x] All SQL queries use configurable table/view name
 - [x] Environment configuration updated
 - [x] Docker compose files updated
@@ -243,7 +243,7 @@ export DB_AUTHUSER_TABLE=v_authuser_oidc
 
 ## Next Steps
 
-1. **Database administrator**: Create `oidc_user` and `v_authuser_oidc` view using provided SQL
+1. **Database administrator**: Create `oidc_user` and `v_oidc_users` view using provided SQL
 2. **Development team**: Test view-based access in development environment
 3. **Production deployment**: Update environment variables to use new secure defaults
 4. **Monitoring**: Verify authentication works and monitor for any issues
@@ -274,6 +274,6 @@ export DB_AUTHUSER_TABLE=v_authuser_oidc
 
 ---
 
-**Implementation Date**: January 2025  
-**Status**: Complete and Ready for Production  
+**Implementation Date**: January 2025
+**Status**: Complete and Ready for Production
 **Compatibility**: OBP Keycloak Provider v1.0+, PostgreSQL 12+, Keycloak 26+

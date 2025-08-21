@@ -44,7 +44,7 @@ The OBP Keycloak Provider has been migrated from hardcoded configuration values 
 | `DB_PASSWORD` | Yes | `changeme` | Database password |
 | `DB_DRIVER` | No | `org.postgresql.Driver` | JDBC driver class |
 | `DB_DIALECT` | No | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate SQL dialect |
-| `DB_AUTHUSER_TABLE` | No | `v_authuser_oidc` | Table/view name for user data (view-based access for security) |
+| `DB_AUTHUSER_TABLE` | No | `v_oidc_users` | Table/view name for user data (view-based access for security) |
 
 #### Database URL Format
 ```
@@ -62,10 +62,10 @@ The `DB_AUTHUSER_TABLE` variable controls which table or view is used to access 
 
 | Value | Description | Use Case |
 |-------|-------------|----------|
-| `v_authuser_oidc` | **Default**: View-based access with restricted permissions | **Production** (recommended for security) |
+| `v_oidc_users` | **Default**: View-based access with restricted permissions | **Production** (recommended for security) |
 | `authuser` | Direct table access | **Development** or when full table access is available |
 
-**Security Note**: Using `v_authuser_oidc` view provides better security through:
+**Security Note**: Using `v_oidc_users` view provides better security through:
 - Read-only access preventing accidental data modification
 - Limited column exposure (only OIDC-required fields)
 - Database-level access control
@@ -141,7 +141,7 @@ LOG_LEVEL=DEBUG
 DB_URL=jdbc:postgresql://prod-db.company.com:5432/obp_mapped?ssl=true&sslmode=require
 DB_USER=oidc_user  # Read-only user for security
 DB_PASSWORD=very_strong_production_password_2023!
-DB_AUTHUSER_TABLE=v_authuser_oidc  # View-based access for security
+DB_AUTHUSER_TABLE=v_oidc_users  # View-based access for security
 
 # Keycloak (production settings)
 KC_BOOTSTRAP_ADMIN_USERNAME=keycloak_admin
@@ -164,7 +164,7 @@ LOG_LEVEL=WARN
 DB_URL=jdbc:postgresql://postgres:5432/obp_mapped
 DB_USER=obp
 DB_PASSWORD=docker_password_123
-DB_AUTHUSER_TABLE=v_authuser_oidc  # Use view for consistency
+DB_AUTHUSER_TABLE=v_oidc_users  # Use view for consistency
 
 # Keycloak (Docker settings)
 KC_BOOTSTRAP_ADMIN_USERNAME=admin
@@ -193,7 +193,7 @@ docker run \
   -e DB_URL="jdbc:postgresql://host:5432/db" \
   -e DB_USER="oidc_user" \
   -e DB_PASSWORD="password" \
-  -e DB_AUTHUSER_TABLE="v_authuser_oidc" \
+  -e DB_AUTHUSER_TABLE="v_oidc_users" \
   -e KC_BOOTSTRAP_ADMIN_USERNAME="admin" \
   -e KC_BOOTSTRAP_ADMIN_PASSWORD="admin" \
   -p 8000:8080 \
@@ -212,7 +212,7 @@ services:
       - DB_URL=jdbc:postgresql://postgres:5432/obp_mapped
       - DB_USER=oidc_user
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_AUTHUSER_TABLE=v_authuser_oidc
+      - DB_AUTHUSER_TABLE=v_oidc_users
       - KC_BOOTSTRAP_ADMIN_USERNAME=${ADMIN_USER}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PASSWORD}
     env_file:
@@ -249,7 +249,7 @@ spec:
               name: db-secret
               key: password
         - name: DB_AUTHUSER_TABLE
-          value: "v_authuser_oidc"
+          value: "v_oidc_users"
 ```
 
 ## Security Best Practices
@@ -303,10 +303,10 @@ Error: Schema-validation: missing table [authuser]
 ```
 
 **Solutions:**
-- Verify `DB_AUTHUSER_TABLE` is set correctly (`v_authuser_oidc` for view-based access)
+- Verify `DB_AUTHUSER_TABLE` is set correctly (`v_oidc_users` for view-based access)
 - Ensure the specified table/view exists in the database
 - For development: Set `HIBERNATE_DDL_AUTO=update` and use `DB_AUTHUSER_TABLE=authuser`
-- For production: Ensure `v_authuser_oidc` view is created by database administrator
+- For production: Ensure `v_oidc_users` view is created by database administrator
 - Verify database user has SELECT permissions on the table/view
 
 #### 4. Keycloak Won't Start
@@ -351,7 +351,7 @@ Error: Failed to start quarkus
    ```bash
    # Test if the configured table/view is accessible
    PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" \
-     -c "SELECT count(*) FROM ${DB_AUTHUSER_TABLE:-v_authuser_oidc};"
+     -c "SELECT count(*) FROM ${DB_AUTHUSER_TABLE:-v_oidc_users};"
    ```
 
 ## Transition from Hardcoded Configuration
@@ -372,7 +372,7 @@ If you're migrating from the previous hardcoded configuration:
 DB_URL=jdbc:postgresql://192.168.1.23:5432/obp_mapped
 DB_USER=oidc_user  # Read-only user for better security
 DB_PASSWORD=f
-DB_AUTHUSER_TABLE=v_authuser_oidc  # View-based access for security
+DB_AUTHUSER_TABLE=v_oidc_users  # View-based access for security
 ```
 
 ### Transition Steps
@@ -426,6 +426,6 @@ HIBERNATE_DDL_AUTO=update
 
 ---
 
-**Last Updated**: August 2025  
-**Version**: 1.0  
+**Last Updated**: August 2025
+**Version**: 1.0
 **Compatibility**: Keycloak 26.0.5, Java 17+

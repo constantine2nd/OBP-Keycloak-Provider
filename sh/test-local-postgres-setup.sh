@@ -206,8 +206,8 @@ test_database_permissions() {
 test_authuser_table() {
     log_section "User Storage Schema"
 
-    # Get table name from environment or default to v_authuser_oidc
-    AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
+    # Get table name from environment or default to v_oidc_users
+    AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_oidc_users}"
 
     # Test if user data table/view exists
     log_test "$AUTHUSER_TABLE table/view existence"

@@ -21,7 +21,7 @@ This project demonstrates the ability to use Postgres as user storage provider o
 
 ## 🔒 Security Features
 
-- ✅ **View-Based Access**: Uses `v_authuser_oidc` view for secure, read-only data access
+- ✅ **View-Based Access**: Uses `v_oidc_users` view for secure, read-only data access
 - ✅ **Read-Only Operations**: All write operations (INSERT, UPDATE, DELETE) are disabled
 - ✅ **Minimal Permissions**: Dedicated `oidc_user` with SELECT-only database permissions
 - ✅ **Column Filtering**: Only OIDC-required fields exposed through database view
@@ -54,7 +54,7 @@ See the links above for installation instructions on your platform. You can veri
 # Environment variables for secure view-based access
 DB_USER=oidc_user
 DB_PASSWORD=your_secure_password
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 
 **Benefits:**
@@ -347,7 +347,7 @@ The project provides two focused deployment approaches:
 ./sh/test-theme-validation.sh
 ```
 
-📖 **Detailed Guides**: 
+📖 **Detailed Guides**:
 - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - Complete CI/CD documentation
 - [SCRIPT_REMOVAL_SUMMARY.md](SCRIPT_REMOVAL_SUMMARY.md) - Legacy script removal summary
 
@@ -469,7 +469,7 @@ GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 - ✅ User profile viewing
 - ✅ Password validation
 - 🔴 User creation through Keycloak (disabled - read-only access)
-- 🔴 User profile updates through Keycloak (disabled - read-only access)  
+- 🔴 User profile updates through Keycloak (disabled - read-only access)
 - 🔴 User deletion through Keycloak (disabled - read-only access)
 - 🔴 Table creation through setup scripts (disabled - insufficient permissions)
 

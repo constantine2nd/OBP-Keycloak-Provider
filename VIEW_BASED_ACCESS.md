@@ -1,6 +1,6 @@
 # View-Based Access Setup Guide
 
-This document explains how to set up and use the `v_authuser_oidc` view for secure, read-only access to user data in the OBP Keycloak Provider.
+This document explains how to set up and use the `v_oidc_users` view for secure, read-only access to user data in the OBP Keycloak Provider.
 
 ## Overview
 
@@ -25,7 +25,7 @@ Execute the following SQL as a database administrator (e.g., `postgres` user):
 CREATE USER oidc_user WITH PASSWORD 'your_secure_password_here';
 
 -- Create the view
-CREATE OR REPLACE VIEW public.v_authuser_oidc AS
+CREATE OR REPLACE VIEW public.v_oidc_users AS
 SELECT
     id,
     username,
@@ -44,7 +44,7 @@ WHERE validated = true;
 -- Grant permissions
 GRANT CONNECT ON DATABASE obp_mapped TO oidc_user;
 GRANT USAGE ON SCHEMA public TO oidc_user;
-GRANT SELECT ON public.v_authuser_oidc TO oidc_user;
+GRANT SELECT ON public.v_oidc_users TO oidc_user;
 ```
 
 ### 2. Application Configuration
@@ -55,7 +55,7 @@ Update your environment variables:
 # Use view-based access (recommended for production)
 DB_USER=oidc_user
 DB_PASSWORD=your_secure_password_here
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 
 ## Configuration Options
@@ -67,7 +67,7 @@ DB_AUTHUSER_TABLE=v_authuser_oidc
 DB_URL=jdbc:postgresql://your-db-host:5432/obp_mapped
 DB_USER=oidc_user
 DB_PASSWORD=secure_oidc_password
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 
 **Benefits:**
@@ -93,10 +93,10 @@ DB_AUTHUSER_TABLE=authuser
 
 ## View Definition
 
-The `v_authuser_oidc` view is defined as:
+The `v_oidc_users` view is defined as:
 
 ```sql
-CREATE OR REPLACE VIEW public.v_authuser_oidc AS
+CREATE OR REPLACE VIEW public.v_oidc_users AS
 SELECT
     id,                    -- Primary key for user identification
     username,              -- Unique username for login
@@ -161,7 +161,7 @@ DB_AUTHUSER_TABLE=authuser  # or not set (defaults to authuser)
 ```bash
 DB_USER=oidc_user
 DB_PASSWORD=your_secure_password
-DB_AUTHUSER_TABLE=v_authuser_oidc
+DB_AUTHUSER_TABLE=v_oidc_users
 ```
 
 **Migration steps:**
@@ -188,15 +188,15 @@ DB_AUTHUSER_TABLE=authuser
 
 ```sql
 -- Verify view exists
-\d v_authuser_oidc
+\d v_oidc_users
 
 -- Test view access
-SELECT count(*) FROM v_authuser_oidc;
+SELECT count(*) FROM v_oidc_users;
 
 -- Verify data consistency
-SELECT 
+SELECT
     (SELECT count(*) FROM authuser WHERE validated = true) as expected,
-    (SELECT count(*) FROM v_authuser_oidc) as actual;
+    (SELECT count(*) FROM v_oidc_users) as actual;
 ```
 
 ### 2. User Permissions Test
@@ -206,12 +206,12 @@ SELECT
 PGPASSWORD='your_password' psql -h localhost -U oidc_user -d obp_mapped
 
 # Should work
-SELECT count(*) FROM v_authuser_oidc;
+SELECT count(*) FROM v_oidc_users;
 
 # Should fail (good!)
-INSERT INTO v_authuser_oidc (username) VALUES ('test');
-UPDATE v_authuser_oidc SET email = 'test@test.com';
-DELETE FROM v_authuser_oidc WHERE id = 1;
+INSERT INTO v_oidc_users (username) VALUES ('test');
+UPDATE v_oidc_users SET email = 'test@test.com';
+DELETE FROM v_oidc_users WHERE id = 1;
 ```
 
 ### 3. Application Test
@@ -220,7 +220,7 @@ DELETE FROM v_authuser_oidc WHERE id = 1;
 # Set environment variables
 export DB_USER=oidc_user
 export DB_PASSWORD=your_secure_password
-export DB_AUTHUSER_TABLE=v_authuser_oidc
+export DB_AUTHUSER_TABLE=v_oidc_users
 
 # Test with validation script
 ./sh/test-local-postgres-setup.sh
@@ -237,19 +237,19 @@ curl -X POST http://localhost:8000/realms/your-realm/protocol/openid-connect/tok
 
 #### 1. View Does Not Exist
 ```
-ERROR: relation "v_authuser_oidc" does not exist
+ERROR: relation "v_oidc_users" does not exist
 ```
 
 **Solution:** Create the view using the SQL provided above as database administrator.
 
 #### 2. Permission Denied
 ```
-ERROR: permission denied for relation v_authuser_oidc
+ERROR: permission denied for relation v_oidc_users
 ```
 
 **Solution:** Grant SELECT permission to `oidc_user`:
 ```sql
-GRANT SELECT ON public.v_authuser_oidc TO oidc_user;
+GRANT SELECT ON public.v_oidc_users TO oidc_user;
 ```
 
 #### 3. No Users Found
@@ -271,7 +271,7 @@ SELECT count(*) FROM authuser;
 SELECT count(*) FROM authuser WHERE validated = true;
 
 -- Check view data
-SELECT count(*) FROM v_authuser_oidc;
+SELECT count(*) FROM v_oidc_users;
 ```
 
 #### 4. Authentication Failures
@@ -291,10 +291,10 @@ UPDATE authuser SET validated = true WHERE username = 'your_user';
 PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "SELECT 1"
 
 # Verify view structure
-PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "\d v_authuser_oidc"
+PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "\d v_oidc_users"
 
 # Check user count
-PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "SELECT count(*) FROM v_authuser_oidc"
+PGPASSWORD='password' psql -h host -U oidc_user -d obp_mapped -c "SELECT count(*) FROM v_oidc_users"
 
 # Validate environment
 ./sh/test-local-postgres-setup.sh
@@ -331,17 +331,17 @@ Monitor view performance:
 
 ```sql
 -- Check query performance
-EXPLAIN ANALYZE SELECT * FROM v_authuser_oidc WHERE username = 'testuser';
+EXPLAIN ANALYZE SELECT * FROM v_oidc_users WHERE username = 'testuser';
 
 -- Monitor view usage
-SELECT 
+SELECT
     schemaname,
     viewname,
     n_tup_ins,
     n_tup_upd,
     n_tup_del
-FROM pg_stat_user_tables 
-WHERE relname = 'v_authuser_oidc';
+FROM pg_stat_user_tables
+WHERE relname = 'v_oidc_users';
 ```
 
 ## Security Audit
@@ -351,17 +351,17 @@ WHERE relname = 'v_authuser_oidc';
 1. **Permission audit:**
 ```sql
 -- Check who has access to the view
-SELECT 
-    grantee, 
-    privilege_type 
-FROM information_schema.role_table_grants 
-WHERE table_name = 'v_authuser_oidc';
+SELECT
+    grantee,
+    privilege_type
+FROM information_schema.role_table_grants
+WHERE table_name = 'v_oidc_users';
 ```
 
 2. **View definition audit:**
 ```sql
 -- Verify view definition hasn't changed
-SELECT definition FROM pg_views WHERE viewname = 'v_authuser_oidc';
+SELECT definition FROM pg_views WHERE viewname = 'v_oidc_users';
 ```
 
 3. **User activity audit:**
@@ -393,5 +393,5 @@ For issues or questions about view-based access:
 
 ---
 
-**Last Updated:** January 2025  
+**Last Updated:** January 2025
 **Compatible With:** OBP Keycloak Provider v1.0+, PostgreSQL 12+, Keycloak 26+

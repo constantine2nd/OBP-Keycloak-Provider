@@ -34,7 +34,7 @@ public class DatabaseConfig {
     private static final String DEFAULT_DB_USER = "obp";
     private static final String DEFAULT_DB_PASSWORD = "f";
     private static final String DEFAULT_DB_DRIVER = "org.postgresql.Driver";
-    private static final String DEFAULT_AUTHUSER_TABLE = "v_authuser_oidc";
+    private static final String DEFAULT_AUTHUSER_TABLE = "v_oidc_users";
 
     // Configuration properties
     private final String dbUrl;
@@ -252,7 +252,7 @@ public class DatabaseConfig {
 
     /**
      * Get the configured table/view name for user data
-     * @return The table/view name (default: "authuser", can be "v_authuser_oidc" for view-based access)
+     * @return The table/view name (default: "authuser", can be "v_oidc_users" for view-based access)
      */
     public String getAuthUserTable() {
         return authUserTable;
