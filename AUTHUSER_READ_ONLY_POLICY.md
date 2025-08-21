@@ -17,9 +17,9 @@ The `authuser` table in the OBP Keycloak User Storage Provider has been configur
 ### 🔴 Disabled Operations (Write Operations)
 
 - **User Creation**: `addUser()` method throws `UnsupportedOperationException`
-- **User Profile Updates**: `updateUserProfile()` method returns `false` and logs warning
+- **User Profile Updates**: All setter methods are disabled and log warnings
 - **User Deletion**: `removeUser()` method throws `UnsupportedOperationException`
-- **Direct Profile Persistence**: `persistProfileChangesDirectly()` method is disabled
+- **Direct Profile Updates**: All write operations are disabled at the UserAdapter level
 
 
 ## Technical Implementation
@@ -56,13 +56,16 @@ public boolean updateUserProfile(UserModel user) {
 
 #### UserAdapter.java
 
+Simplified to be completely read-only with all write operations disabled:
 ```java
-public void persistProfileChangesDirectly() {
+@Override
+public void setEmail(String email) {
     log.warnf(
-        "persistProfileChangesDirectly() called for user: %s - OPERATION DISABLED: authuser table is read-only",
+        "OPERATION DISABLED: setEmail() called for user %s. " +
+        "Database is read-only. Use external tools to update user data.",
         getUsername()
     );
-    // Changes are not persisted to database
+    // Do nothing - database is source of truth
 }
 ```
 
@@ -73,8 +76,8 @@ When write operations are attempted, you will see these warning messages in the 
 ```
 WARN: addUser() called with username: xyz - OPERATION DISABLED: authuser table is read-only
 WARN: removeUser() called with persistenceId: xyz - OPERATION DISABLED: authuser table is read-only
-WARN: updateUserProfile() called for user: xyz - OPERATION DISABLED: authuser table is read-only
-WARN: persistProfileChangesDirectly() called for user: xyz - OPERATION DISABLED: authuser table is read-only
+WARN: OPERATION DISABLED: setEmail() called for user xyz - Database is read-only. Use external tools to update user data.
+WARN: OPERATION DISABLED: setFirstName() called for user xyz - Database is read-only. Use external tools to update user data.
 ```
 
 ## User Management

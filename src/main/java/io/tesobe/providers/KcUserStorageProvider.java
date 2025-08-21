@@ -108,41 +108,12 @@ public class KcUserStorageProvider
             user.getCachedWith().put(SALT_CACHE_KEY, salt);
         }
 
-        // Check if user profile was modified and persist changes
+        // UserAdapter is read-only - no persistence operations needed
         if (delegate instanceof UserAdapter) {
-            UserAdapter adapter = (UserAdapter) delegate;
-            log.infof(
-                "onCache() called for user: %s, modified: %s",
-                user.getUsername(),
-                adapter.isModified()
+            log.debugf(
+                "onCache() called for read-only user: %s",
+                user.getUsername()
             );
-
-            // Only persist if explicitly marked as modified to avoid interfering with user sessions
-            if (adapter.isModified()) {
-                log.infof(
-                    "User profile was modified, persisting changes for: %s",
-                    user.getUsername()
-                );
-                try {
-                    updateUserProfile(delegate);
-                    adapter.clearModified();
-                    log.infof(
-                        "Successfully persisted profile changes for user: %s",
-                        user.getUsername()
-                    );
-                } catch (Exception e) {
-                    log.errorf(
-                        "Error persisting profile changes for user %s: %s",
-                        user.getUsername(),
-                        e.getMessage()
-                    );
-                }
-            } else {
-                log.infof(
-                    "No profile changes to persist for user: %s",
-                    user.getUsername()
-                );
-            }
         }
     }
 
@@ -181,6 +152,8 @@ public class KcUserStorageProvider
                                 model,
                                 entity
                             );
+                            // Force refresh to ensure database is source of truth
+                            adapter.forceRefreshFromDatabase();
                             log.infof(
                                 "✅ OPTIMAL: Found user %s by id %s (fast integer lookup)",
                                 entity.getUsername(),
@@ -234,6 +207,8 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
+                    // Force refresh to ensure database is source of truth
+                    adapter.forceRefreshFromDatabase();
                     log.infof(
                         "Created UserAdapter for user: %s",
                         entity.getUsername()
@@ -265,7 +240,15 @@ public class KcUserStorageProvider
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);
-                    return new UserAdapter(session, realm, model, entity);
+                    UserAdapter adapter = new UserAdapter(
+                        session,
+                        realm,
+                        model,
+                        entity
+                    );
+                    // Force refresh to ensure database is source of truth
+                    adapter.forceRefreshFromDatabase();
+                    return adapter;
                 }
             }
         } catch (SQLException e) {
@@ -469,12 +452,13 @@ public class KcUserStorageProvider
             return false;
         }
 
-        // Hash the new password using BCrypt
-        String hashedPassword =
-            "b;" + BCrypt.hashpw(newPassword, BCrypt.gensalt());
-        getUserAdapter(user).setPassword(hashedPassword);
-        log.infof("Password updated for user: %s", user.getUsername());
-        return true;
+        // Password updates are disabled - database is read-only
+        log.warnf(
+            "OPERATION DISABLED: Password update attempted for user %s. " +
+            "Database is read-only. Use external tools to update passwords.",
+            user.getUsername()
+        );
+        return false;
     }
 
     @Override
@@ -483,9 +467,13 @@ public class KcUserStorageProvider
         UserModel user,
         String credentialType
     ) {
-        if (supportsCredentialType(credentialType)) {
-            getUserAdapter(user).setPassword(null);
-        }
+        log.warnf(
+            "OPERATION DISABLED: Credential disable attempted for user %s, type %s. " +
+            "Database is read-only. Use external tools to manage credentials.",
+            user.getUsername(),
+            credentialType
+        );
+        // Do nothing - database is source of truth
     }
 
     @Override
@@ -591,7 +579,15 @@ public class KcUserStorageProvider
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);
-                    users.add(new UserAdapter(session, realm, model, entity));
+                    UserAdapter adapter = new UserAdapter(
+                        session,
+                        realm,
+                        model,
+                        entity
+                    );
+                    // Force refresh to ensure database is source of truth
+                    adapter.forceRefreshFromDatabase();
+                    users.add(adapter);
                 }
             }
             log.infof(
@@ -659,41 +655,6 @@ public class KcUserStorageProvider
         String value
     ) {
         return Stream.empty(); // Optional
-    }
-
-    /**
-     * Updates user profile information in the database
-     */
-    public boolean updateUserProfile(UserModel user) {
-        if (!(user instanceof UserAdapter)) {
-            log.warnf(
-                "Cannot update profile for non-UserAdapter user: %s",
-                user.getUsername()
-            );
-            return false;
-        }
-
-        UserAdapter adapter = (UserAdapter) user;
-        KcUserEntity entity = adapter.getEntity();
-
-        log.warnf(
-            "updateUserProfile() called for user: %s - OPERATION DISABLED: authuser table is read-only",
-            user.getUsername()
-        );
-        log.infof(
-            "Requested values - firstName: '%s', lastName: '%s', email: '%s' - CHANGES NOT SAVED",
-            entity.getFirstName(),
-            entity.getLastName(),
-            entity.getEmail()
-        );
-
-        // The authuser table is read-only. Update operations are not supported.
-        // This provider only supports reading existing users from the database.
-        log.warnf(
-            "Profile update blocked for user: %s - authuser table is read-only",
-            user.getUsername()
-        );
-        return false;
     }
 
     /**
@@ -783,6 +744,8 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
+                    // Force refresh to ensure database is source of truth
+                    adapter.forceRefreshFromDatabase();
                     users.add(adapter);
                 }
             }

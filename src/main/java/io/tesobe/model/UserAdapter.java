@@ -11,6 +11,13 @@ import org.keycloak.models.*;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
 
+/**
+ * Simplified UserAdapter for OBP Keycloak Provider
+ *
+ * This adapter treats the database as the single source of truth.
+ * The Keycloak GUI reflects the database data but cannot modify it.
+ * All write operations are disabled to maintain read-only access.
+ */
 public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     private static final Logger log = Logger.getLogger(UserAdapter.class);
@@ -25,222 +32,88 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     ) {
         super(session, realm, model);
         this.entity = entity;
-        log.info("UserAdapter created for: " + this.entity);
+        log.infof(
+            "UserAdapter created for user: %s with database values - firstName: '%s', lastName: '%s', email: '%s'",
+            entity.getUsername(),
+            entity.getFirstName(),
+            entity.getLastName(),
+            entity.getEmail()
+        );
 
-        // Use primary key id for external ID generation
-        String externalId;
-        if (entity.getId() != null) {
-            externalId = String.valueOf(entity.getId());
-            log.debugf(
-                "User %s using id-based external ID: %s",
-                entity.getUsername(),
-                externalId
-            );
-        } else {
-            // This should never happen in a properly configured database
-            log.errorf(
-                "Primary key id is null for user: %s",
-                entity.getUsername()
-            );
+        // Generate Keycloak ID using database primary key
+        if (entity.getId() == null) {
             throw new IllegalStateException(
-                "Primary key id is null for user: " +
-                entity.getUsername() +
-                " - this indicates a database integrity issue"
+                "Primary key id is null for user: " + entity.getUsername()
             );
         }
 
-        this.keycloakId = StorageId.keycloakId(model, externalId);
-    }
+        this.keycloakId = StorageId.keycloakId(
+            model,
+            String.valueOf(entity.getId())
+        );
 
-    // Username
-    @Override
-    public String getUsername() {
-        return entity.getUsername();
-    }
+        // Clear any existing federated storage data to ensure database is source of truth
+        clearFederatedStorageAttributes();
 
-    @Override
-    public void setUsername(String username) {
-        log.info(
-            "DIRECT setUsername() called with: " +
-            username +
-            " for user: " +
+        // Add timestamp to ensure fresh data retrieval
+        log.infof(
+            "UserAdapter initialized at %d for user: %s",
+            System.currentTimeMillis(),
             getUsername()
         );
-        if (!java.util.Objects.equals(entity.getUsername(), username)) {
-            entity.setUsername(username);
-            markAsModified();
-            log.info(
-                "Username update marked as modified, attempting to persist..."
-            );
-            persistProfileChangesDirectly();
-            log.info("Username update persistence completed");
-            // Also update the federated storage to ensure Keycloak sees the change
-            super.setSingleAttribute("username", username);
-        }
-        // Note: Username updates should be handled carefully in production
     }
 
-    // Email
-    @Override
-    public String getEmail() {
-        return entity.getEmail();
-    }
+    // =====================================================
+    // READ-ONLY METHODS (Database as Source of Truth)
+    // =====================================================
 
-    @Override
-    public void setEmail(String email) {
-        log.info(
-            "🔵 DIRECT setEmail() called with: " +
-            email +
-            " for user: " +
-            getUsername()
-        );
-        log.info("Previous email was: " + entity.getEmail());
-        if (!java.util.Objects.equals(entity.getEmail(), email)) {
-            entity.setEmail(email);
-            markAsModified();
-            log.info(
-                "Email update marked as modified, attempting to persist..."
-            );
-            persistProfileChangesDirectly();
-            log.info("Email update persistence completed");
-            // Also update the federated storage to ensure Keycloak sees the change
-            super.setSingleAttribute("email", email);
-        }
-    }
-
-    // First name
-    @Override
-    public String getFirstName() {
-        return entity.getFirstName();
-    }
-
-    @Override
-    public void setFirstName(String firstName) {
-        log.info(
-            "DIRECT setFirstName() called with: " +
-            firstName +
-            " for user: " +
-            getUsername()
-        );
-        log.info("Previous first name was: " + entity.getFirstName());
-        if (!java.util.Objects.equals(entity.getFirstName(), firstName)) {
-            entity.setFirstName(firstName);
-            markAsModified();
-            log.info(
-                "First name update marked as modified, attempting to persist..."
-            );
-            persistProfileChangesDirectly();
-            log.info("First name update persistence completed");
-            // Also update the federated storage to ensure Keycloak sees the change
-            super.setSingleAttribute("firstName", firstName);
-        }
-    }
-
-    // Last name
-    @Override
-    public String getLastName() {
-        return entity.getLastName();
-    }
-
-    @Override
-    public void setLastName(String lastName) {
-        log.info(
-            "DIRECT setLastName() called with: " +
-            lastName +
-            " for user: " +
-            getUsername()
-        );
-        log.info("Previous last name was: " + entity.getLastName());
-        if (!java.util.Objects.equals(entity.getLastName(), lastName)) {
-            entity.setLastName(lastName);
-            markAsModified();
-            log.info(
-                "Last name update marked as modified, attempting to persist..."
-            );
-            persistProfileChangesDirectly();
-            log.info("Last name update persistence completed");
-            // Also update the federated storage to ensure Keycloak sees the change
-            super.setSingleAttribute("lastName", lastName);
-        }
-    }
-
-    // Password and salt (custom fields)
-    public String getPassword() {
-        return entity.getPassword();
-    }
-
-    public void setPassword(String password) {
-        log.info("$ setPassword() called with: password = [" + password + "]");
-        entity.setPassword(password);
-    }
-
-    public String getSalt() {
-        return entity.getSalt();
-    }
-
-    public void setSalt(String salt) {
-        log.info("$ setSalt() called with: " + salt);
-        entity.setSalt(salt);
-    }
-
-    // Entity access for persistence operations
-    public KcUserEntity getEntity() {
-        return entity;
-    }
-
-    // Track modifications for persistence
-    private boolean modified = false;
-
-    private void markAsModified() {
-        this.modified = true;
-    }
-
-    public boolean isModified() {
-        return modified;
-    }
-
-    public void clearModified() {
-        this.modified = false;
-        log.infof("Modified flag cleared for user: %s", getUsername());
-    }
-
-    // Method to persist user profile changes directly to database
-    public void persistProfileChangesDirectly() {
-        log.warnf(
-            "persistProfileChangesDirectly() called for user: %s, modified: %s - OPERATION DISABLED: authuser table is read-only",
-            getUsername(),
-            modified
-        );
-
-        if (modified) {
-            log.warnf(
-                "Profile changes requested for user: %s (ID: %d) - firstName='%s', lastName='%s', email='%s' - CHANGES NOT SAVED",
-                getUsername(),
-                entity.getId(),
-                entity.getFirstName(),
-                entity.getLastName(),
-                entity.getEmail()
-            );
-
-            // The authuser table is read-only. Update operations are not supported.
-            // This provider only supports reading existing users from the database.
-            log.warnf(
-                "Profile persistence blocked for user: %s - authuser table is read-only. " +
-                "User profile changes must be made through other means outside of Keycloak.",
-                getUsername()
-            );
-
-            // Clear the modified flag to prevent further attempts
-            clearModified();
-        } else {
-            log.infof("No changes to persist for user: %s", getUsername());
-        }
-    }
-
-    // Keycloak ID (used internally)
     @Override
     public String getId() {
         return keycloakId;
+    }
+
+    @Override
+    public String getUsername() {
+        String value = entity.getUsername();
+        log.infof(
+            "🔍 getUsername() for user %s returning DATABASE value: '%s'",
+            value,
+            value
+        );
+        return value;
+    }
+
+    @Override
+    public String getEmail() {
+        String value = entity.getEmail();
+        log.infof(
+            "🔍 getEmail() for user %s returning DATABASE value: '%s'",
+            getUsername(),
+            value
+        );
+        return value;
+    }
+
+    @Override
+    public String getFirstName() {
+        String value = entity.getFirstName();
+        log.infof(
+            "🔍 getFirstName() for user %s returning DATABASE value: '%s'",
+            getUsername(),
+            value
+        );
+        return value;
+    }
+
+    @Override
+    public String getLastName() {
+        String value = entity.getLastName();
+        log.infof(
+            "🔍 getLastName() for user %s returning DATABASE value: '%s'",
+            getUsername(),
+            value
+        );
+        return value;
     }
 
     @Override
@@ -249,213 +122,310 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     }
 
     @Override
-    public void setEmailVerified(boolean verified) {
-        log.infof(
-            "setEmailVerified() called with: %s for user: %s",
-            verified,
-            getUsername()
-        );
-        entity.setValidated(verified);
-    }
-
-    // Optional: Required actions
-    @Override
-    public Stream<String> getRequiredActionsStream() {
-        log.infof(
-            "getRequiredActionsStream() called for user: %s",
-            getUsername()
-        );
-        return super.getRequiredActionsStream(); // uses federated storage
-    }
-
-    // Additional profile update methods to catch all update mechanisms
-    @Override
-    public void removeAttribute(String name) {
-        log.infof(
-            "ATTRIBUTE removeAttribute() called: %s for user: %s",
-            name,
-            getUsername()
-        );
-        super.removeAttribute(name);
-    }
-
-    // Override core UserModel methods that might be called during updates
-    @Override
     public boolean isEnabled() {
-        return true; // Always enabled for federated users
+        return Boolean.TRUE.equals(entity.getValidated());
+    }
+
+    // Custom methods for password validation
+    public String getPassword() {
+        return entity.getPassword();
+    }
+
+    public String getSalt() {
+        return entity.getSalt();
+    }
+
+    // Password setters - disabled for read-only approach
+    public void setPassword(String password) {
+        log.warnf(
+            "OPERATION DISABLED: setPassword() called for user %s. " +
+            "Database is read-only. Use external tools to update passwords.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    public void setSalt(String salt) {
+        log.warnf(
+            "OPERATION DISABLED: setSalt() called for user %s. " +
+            "Database is read-only. Use external tools to update passwords.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    public KcUserEntity getEntity() {
+        return entity;
+    }
+
+    // =====================================================
+    // READ-ONLY ATTRIBUTES
+    // =====================================================
+
+    @Override
+    public String getFirstAttribute(String name) {
+        String value;
+        switch (name) {
+            case "firstName":
+                value = getFirstName();
+                break;
+            case "lastName":
+                value = getLastName();
+                break;
+            case "email":
+                value = getEmail();
+                break;
+            case "username":
+                value = getUsername();
+                break;
+            case "validated":
+                value = String.valueOf(isEmailVerified());
+                break;
+            case "provider":
+                value = entity.getProvider();
+                break;
+            default:
+                // For unknown attributes, explicitly check if it exists in federated storage
+                // and log a warning if it does
+                String federatedValue = super.getFirstAttribute(name);
+                if (federatedValue != null) {
+                    log.warnf(
+                        "⚠️ FEDERATED STORAGE LEAK: Attribute %s='%s' found in federated storage for user %s but not in database. Returning null to enforce database-only policy.",
+                        name,
+                        federatedValue,
+                        getUsername()
+                    );
+                }
+                value = null;
+        }
+        log.infof(
+            "getFirstAttribute(%s) for user %s returning DATABASE value: '%s'",
+            name,
+            getUsername(),
+            value
+        );
+        return value;
+    }
+
+    @Override
+    public Map<String, List<String>> getAttributes() {
+        log.infof("🔍 getAttributes() called for user: %s", getUsername());
+
+        // Check what federated storage contains before we return database-only values
+        Map<String, List<String>> federatedAttributes = super.getAttributes();
+        if (!federatedAttributes.isEmpty()) {
+            log.warnf(
+                "⚠️ FEDERATED STORAGE DETECTED: Found %d federated attributes for user %s: %s",
+                federatedAttributes.size(),
+                getUsername(),
+                federatedAttributes.keySet()
+            );
+        }
+
+        // Create new map with ONLY database fields - ignore federated storage
+        Map<String, List<String>> attributes = new HashMap<>();
+
+        // Add database fields as attributes
+        addAttributeIfNotNull(attributes, "firstName", entity.getFirstName());
+        addAttributeIfNotNull(attributes, "lastName", entity.getLastName());
+        addAttributeIfNotNull(attributes, "email", entity.getEmail());
+        addAttributeIfNotNull(attributes, "username", entity.getUsername());
+        addAttributeIfNotNull(attributes, "provider", entity.getProvider());
+        addAttributeIfNotNull(
+            attributes,
+            "validated",
+            String.valueOf(entity.getValidated())
+        );
+
+        if (entity.getCreatedAt() != null) {
+            addAttributeIfNotNull(
+                attributes,
+                "createdAt",
+                entity.getCreatedAt().toString()
+            );
+        }
+        if (entity.getUpdatedAt() != null) {
+            addAttributeIfNotNull(
+                attributes,
+                "updatedAt",
+                entity.getUpdatedAt().toString()
+            );
+        }
+
+        return attributes;
+    }
+
+    private void addAttributeIfNotNull(
+        Map<String, List<String>> attributes,
+        String key,
+        String value
+    ) {
+        if (value != null) {
+            attributes.put(key, Collections.singletonList(value));
+        }
+    }
+
+    public List<String> getAttribute(String name) {
+        // Return database values only - ignore federated storage
+        switch (name) {
+            case "firstName":
+                return entity.getFirstName() != null
+                    ? Collections.singletonList(entity.getFirstName())
+                    : Collections.emptyList();
+            case "lastName":
+                return entity.getLastName() != null
+                    ? Collections.singletonList(entity.getLastName())
+                    : Collections.emptyList();
+            case "email":
+                return entity.getEmail() != null
+                    ? Collections.singletonList(entity.getEmail())
+                    : Collections.emptyList();
+            case "username":
+                return entity.getUsername() != null
+                    ? Collections.singletonList(entity.getUsername())
+                    : Collections.emptyList();
+            case "validated":
+                return Collections.singletonList(
+                    String.valueOf(entity.getValidated())
+                );
+            case "provider":
+                return entity.getProvider() != null
+                    ? Collections.singletonList(entity.getProvider())
+                    : Collections.emptyList();
+            default:
+                // Return empty list for unknown attributes - do not use federated storage
+                return Collections.emptyList();
+        }
+    }
+
+    // =====================================================
+    // DISABLED WRITE OPERATIONS
+    // =====================================================
+
+    @Override
+    public void setUsername(String username) {
+        log.warnf(
+            "OPERATION DISABLED: setUsername() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    @Override
+    public void setEmail(String email) {
+        log.warnf(
+            "OPERATION DISABLED: setEmail() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    @Override
+    public void setFirstName(String firstName) {
+        log.warnf(
+            "OPERATION DISABLED: setFirstName() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    @Override
+    public void setLastName(String lastName) {
+        log.warnf(
+            "OPERATION DISABLED: setLastName() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    @Override
+    public void setEmailVerified(boolean verified) {
+        log.warnf(
+            "OPERATION DISABLED: setEmailVerified() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            getUsername()
+        );
+        // Do nothing - database is source of truth
     }
 
     @Override
     public void setEnabled(boolean enabled) {
-        log.infof(
-            "setEnabled() called with: %s for user: %s",
-            enabled,
+        log.warnf(
+            "OPERATION DISABLED: setEnabled() called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
-        // Store in entity if needed, or delegate to federated storage
-        super.setEnabled(enabled);
+        // Do nothing - database is source of truth
     }
 
-    // Override attribute management to handle profile updates
     @Override
     public void setSingleAttribute(String name, String value) {
-        log.infof(
-            "ATTRIBUTE setSingleAttribute() called: %s = %s for user: %s",
+        log.warnf(
+            "OPERATION DISABLED: setSingleAttribute(%s, %s) called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
             name,
             value,
             getUsername()
         );
-
-        // First update the federated storage
-        super.setSingleAttribute(name, value);
-
-        // Then update our entity and mark for persistence
-        switch (name) {
-            case "firstName":
-                if (!java.util.Objects.equals(entity.getFirstName(), value)) {
-                    log.info("Setting firstName via attribute: " + value);
-                    entity.setFirstName(value);
-                    markAsModified();
-                    persistProfileChangesDirectly();
-                }
-                break;
-            case "lastName":
-                if (!java.util.Objects.equals(entity.getLastName(), value)) {
-                    log.info("Setting lastName via attribute: " + value);
-                    entity.setLastName(value);
-                    markAsModified();
-                    persistProfileChangesDirectly();
-                }
-                break;
-            case "email":
-                if (!java.util.Objects.equals(entity.getEmail(), value)) {
-                    log.info("Setting email via attribute: " + value);
-                    entity.setEmail(value);
-                    markAsModified();
-                    persistProfileChangesDirectly();
-                }
-                break;
-            case "username":
-                if (!java.util.Objects.equals(entity.getUsername(), value)) {
-                    log.info("Setting username via attribute: " + value);
-                    entity.setUsername(value);
-                    markAsModified();
-                    persistProfileChangesDirectly();
-                }
-                break;
-            default:
-                // For other attributes, just use federated storage
-                break;
-        }
+        // Do nothing - database is source of truth
     }
 
     @Override
     public void setAttribute(String name, List<String> values) {
-        log.infof(
-            "ATTRIBUTE setAttribute() called: %s = %s for user: %s",
+        log.warnf(
+            "OPERATION DISABLED: setAttribute(%s, %s) called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
             name,
             values,
             getUsername()
         );
-
-        if (values == null || values.isEmpty()) {
-            // Remove attribute case
-            super.setAttribute(name, values);
-            return;
-        }
-
-        // Use setSingleAttribute for core profile fields to ensure consistency
-        String value = values.get(0);
-        switch (name) {
-            case "firstName":
-            case "lastName":
-            case "email":
-            case "username":
-                setSingleAttribute(name, value);
-                break;
-            default:
-                super.setAttribute(name, values);
-                break;
-        }
+        // Do nothing - database is source of truth
     }
 
     @Override
-    public String getFirstAttribute(String name) {
-        switch (name) {
-            case "firstName":
-                return getFirstName();
-            case "lastName":
-                return getLastName();
-            case "email":
-                return getEmail();
-            default:
-                return super.getFirstAttribute(name);
-        }
+    public void removeAttribute(String name) {
+        log.warnf(
+            "OPERATION DISABLED: removeAttribute(%s) called for user %s. " +
+            "Database is read-only. Use external tools to update user data.",
+            name,
+            getUsername()
+        );
+        // Do nothing - database is source of truth
+    }
+
+    // =====================================================
+    // REQUIRED ACTIONS (Delegated to Federated Storage)
+    // =====================================================
+
+    @Override
+    public Stream<String> getRequiredActionsStream() {
+        return super.getRequiredActionsStream();
     }
 
     @Override
     public void addRequiredAction(String action) {
-        log.infof(
-            "addRequiredAction() called with: %s for user: %s",
-            action,
-            getUsername()
-        );
+        log.debugf("addRequiredAction(%s) for user: %s", action, getUsername());
         super.addRequiredAction(action);
     }
 
     @Override
     public void removeRequiredAction(String action) {
-        log.infof(
-            "removeRequiredAction() called with: %s for user: %s",
+        log.debugf(
+            "removeRequiredAction(%s) for user: %s",
             action,
             getUsername()
         );
         super.removeRequiredAction(action);
     }
 
-    // User attributes (handled by the methods above)
+    // =====================================================
+    // GROUPS AND ROLES (Delegated to Federated Storage)
+    // =====================================================
 
-    @Override
-    public Map<String, List<String>> getAttributes() {
-        Map<String, List<String>> attributes = new HashMap<>(
-            super.getAttributes()
-        );
-
-        // Ensure core profile attributes are available
-        if (entity.getFirstName() != null) {
-            attributes.put(
-                "firstName",
-                Collections.singletonList(entity.getFirstName())
-            );
-        }
-        if (entity.getLastName() != null) {
-            attributes.put(
-                "lastName",
-                Collections.singletonList(entity.getLastName())
-            );
-        }
-        if (entity.getEmail() != null) {
-            attributes.put(
-                "email",
-                Collections.singletonList(entity.getEmail())
-            );
-        }
-        if (entity.getUsername() != null) {
-            attributes.put(
-                "username",
-                Collections.singletonList(entity.getUsername())
-            );
-        }
-
-        log.debugf(
-            "getAttributes() called for user: %s, returning: %s",
-            getUsername(),
-            attributes.keySet()
-        );
-        return attributes;
-    }
-
-    // Optional: Groups
     @Override
     public Stream<GroupModel> getGroupsStream() {
         return super.getGroupsStream();
@@ -476,7 +446,6 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
         return super.isMemberOf(group);
     }
 
-    // Optional: Roles
     @Override
     public Stream<RoleModel> getRoleMappingsStream() {
         return super.getRoleMappingsStream();
@@ -507,8 +476,115 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
         return super.getClientRoleMappingsStream(client);
     }
 
+    // =====================================================
+    // UTILITY METHODS
+    // =====================================================
+
+    /**
+     * Clears federated storage attributes to ensure database is the source of truth.
+     * This prevents fed_user_attribute table values from overriding database values.
+     */
+    private void clearFederatedStorageAttributes() {
+        try {
+            log.infof(
+                "🧹 CLEARING FEDERATED STORAGE for user: %s - Database values: firstName='%s', lastName='%s', email='%s'",
+                getUsername(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                entity.getEmail()
+            );
+
+            // Clear core profile attributes from federated storage
+            String[] coreAttributes = {
+                "firstName",
+                "lastName",
+                "email",
+                "username",
+                "validated",
+                "provider",
+            };
+            for (String attrName : coreAttributes) {
+                // Check what's currently in federated storage before clearing
+                String federatedValue = super.getFirstAttribute(attrName);
+                log.infof(
+                    "🔍 Attribute %s: federated='%s', database='%s' for user %s",
+                    attrName,
+                    federatedValue,
+                    getFirstAttribute(attrName),
+                    getUsername()
+                );
+
+                // Remove from federated storage - this calls the parent's method to actually clear it
+                super.removeAttribute(attrName);
+                log.infof(
+                    "🗑️ Removed %s from federated storage for user %s",
+                    attrName,
+                    getUsername()
+                );
+            }
+
+            log.infof(
+                "✅ FEDERATED STORAGE CLEARED for user: %s - Database is now source of truth",
+                getUsername()
+            );
+        } catch (Exception e) {
+            log.errorf(
+                "❌ Failed to clear federated storage attributes for user %s: %s",
+                getUsername(),
+                e.getMessage()
+            );
+            // Continue anyway - this is just cleanup
+        }
+    }
+
+    /**
+     * Forces a complete refresh of user data by clearing all federated attributes
+     * and ensuring database values are returned
+     */
+    public void forceRefreshFromDatabase() {
+        try {
+            log.infof(
+                "🔄 FORCING REFRESH from database for user: %s",
+                getUsername()
+            );
+
+            // Clear all possible federated storage attributes
+            String[] allAttributes = {
+                "firstName",
+                "lastName",
+                "email",
+                "username",
+                "validated",
+                "provider",
+                "locale",
+                "timezone",
+                "FIRST_NAME",
+                "LAST_NAME",
+                "EMAIL",
+                "USERNAME",
+            };
+
+            for (String attr : allAttributes) {
+                super.removeAttribute(attr);
+            }
+
+            log.infof("✅ Force refresh completed for user: %s", getUsername());
+        } catch (Exception e) {
+            log.errorf(
+                "Failed to force refresh for user %s: %s",
+                getUsername(),
+                e.getMessage()
+            );
+        }
+    }
+
     @Override
     public String toString() {
-        return "UserAdapter[" + keycloakId + ", " + getUsername() + "]";
+        return String.format(
+            "UserAdapter[id=%s, username=%s, email=%s]",
+            keycloakId,
+            getUsername(),
+            getEmail()
+        );
     }
 }
