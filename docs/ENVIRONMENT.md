@@ -323,7 +323,7 @@ Error: Failed to start quarkus
    docker exec obp-keycloak env | grep -E "(DB_|KC_|HIBERNATE_)"
    ```
 
-## Migration from Hardcoded Configuration
+## Transition from Hardcoded Configuration
 
 If you're migrating from the previous hardcoded configuration:
 
@@ -342,7 +342,7 @@ DB_USER=obp
 DB_PASSWORD=f
 ```
 
-### Migration Steps
+### Transition Steps
 1. Note your current database connection details from `persistence.xml`
 2. Create `.env` file: `cp .env.example .env`
 3. Update `.env` with your actual values

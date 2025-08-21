@@ -9,7 +9,7 @@ This project demonstrates the ability to use Postgres as user storage provider o
 - **Keycloak Internal Database**: Stores realms, clients, tokens, sessions (Port 5433)
 - **User Storage Database**: Contains your external user data for federation (Port 5434)
 
-📖 **Migration Guide**: If you're upgrading from a previous version, see [docs/DATABASE_SEPARATION_MIGRATION.md](docs/DATABASE_SEPARATION_MIGRATION.md)
+
 
 ## 🚀 Cloud-Native Features
 
@@ -36,18 +36,7 @@ See the links above for installation instructions on your platform. You can veri
     $ docker --version
     $ java --version
 
-## 🔄 UniqueID Migration
 
-If you're upgrading from a previous version that used legacy `uniqueid`-based user identification, you'll need to migrate to faster integer `id`-based lookups for optimal performance.
-
-**Quick Migration:**
-```bash
-./sh/final-migrate.sh
-```
-
-This provides ~10x faster user authentication and 75% storage reduction.
-
-📖 **Migration Guide**: See [MIGRATION_README.md](MIGRATION_README.md) for complete instructions and troubleshooting.
 
 ## Usage
 ### Docker containers
@@ -324,7 +313,7 @@ The project provides two focused deployment approaches:
 
 📖 **Detailed Guides**: 
 - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - Complete CI/CD documentation
-- [SCRIPT_REMOVAL_SUMMARY.md](SCRIPT_REMOVAL_SUMMARY.md) - Migration from legacy scripts
+- [SCRIPT_REMOVAL_SUMMARY.md](SCRIPT_REMOVAL_SUMMARY.md) - Legacy script removal summary
 
 #### Build Options
 
@@ -395,8 +384,20 @@ The system now uses two separate databases:
 
 > **Important**: Due to recent fixes, the user storage database now runs on port 5434 instead of 5432 to avoid conflicts with system PostgreSQL installations.
 
-In the **User Storage Database**, create a table `users` :
+In the **User Storage Database**, the `authuser` table must be created by a database administrator:
+
+> **⚠️ CRITICAL**: The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider and **MUST** be created by a database administrator with appropriate permissions. Keycloak setup scripts cannot create this table due to read-only access restrictions.
+
+> **📋 SETUP REQUIREMENT**: The authuser table must exist before running Keycloak. INSERT, UPDATE, and DELETE operations are not supported through Keycloak. Users must be managed through other means outside of Keycloak.
+
 ```sql
+-- ===============================================
+-- DATABASE ADMINISTRATOR SETUP REQUIRED
+-- ===============================================
+-- This SQL must be executed by a database administrator
+-- with CREATE privileges on the obp_mapped database.
+-- The Keycloak application has READ-ONLY access only.
+
 CREATE TABLE public.authuser (
 	id bigserial NOT NULL,
 	firstname varchar(100) NULL,
@@ -409,7 +410,6 @@ CREATE TABLE public.authuser (
 	locale varchar(16) NULL,
 	validated bool NULL,
 	user_c int8 NULL,
-	uniqueid varchar(32) NULL,
 	createdat timestamp NULL,
 	updatedat timestamp NULL,
 	timezone varchar(32) NULL,
@@ -417,8 +417,27 @@ CREATE TABLE public.authuser (
 	passwordshouldbechanged bool NULL,
 	CONSTRAINT authuser_pk PRIMARY KEY (id)
 );
+
+-- Grant READ-ONLY access to Keycloak user
+GRANT SELECT ON public.authuser TO obp;
+GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 ```
-Add mock user to the table.
+
+**Database Setup Requirements:**
+- 📋 Table must be created by database administrator BEFORE running Keycloak
+- 📋 Keycloak user (obp) needs only SELECT permissions on authuser table
+- 📋 Database administrator must create table structure and indexes
+
+**Keycloak Provider Limitations:**
+- ✅ User authentication and login
+- ✅ User profile viewing
+- ✅ Password validation
+- 🔴 User creation through Keycloak (disabled - read-only access)
+- 🔴 User profile updates through Keycloak (disabled - read-only access)  
+- 🔴 User deletion through Keycloak (disabled - read-only access)
+- 🔴 Table creation through setup scripts (disabled - insufficient permissions)
+
+Users must be added to the `authuser` table using external database administration tools outside of Keycloak.
 
 ### Using Keycloak
 
@@ -526,7 +545,7 @@ $ ./sh/compare-env.sh
 
 ## Recent Changes
 
-### Database Separation Migration Fixes (Latest)
+### Database Separation Fixes (Latest)
 
 The following critical issues have been resolved:
 
@@ -535,21 +554,7 @@ The following critical issues have been resolved:
 3. **Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
 4. **Updated Environment Variables**: All configuration now properly supports the separated database architecture
 
-### UniqueID to Primary Key Migration (New)
 
-**🔧 Critical Migration Update**: The system now automatically migrates from legacy `uniqueid`-based user identification to primary key `id`-based identification:
-
-1. **✅ Automatic Migration**: Users are seamlessly migrated from `uniqueid` to `id`-based external IDs when accessed
-2. **✅ Backward Compatibility**: Legacy users with `uniqueid`-based Keycloak IDs continue to work during transition
-3. **✅ Performance Improvement**: Primary key lookups are significantly faster than string-based `uniqueid` lookups
-4. **✅ Migration Monitoring**: Detailed logging and analysis tools help track migration progress
-5. **✅ Safe Cleanup**: Optional methods to clear `uniqueid` values after migration verification
-
-**Migration Benefits**:
-- 🚀 **Better Performance**: Integer primary key lookups vs. 32-character string lookups
-- 🔒 **Improved Security**: Eliminates potential uniqueid collision risks
-- 📊 **Database Optimization**: Smaller indexes and reduced storage overhead
-- 🧹 **Code Simplification**: Removes legacy uniqueid handling code paths
 
 ### Port Changes
 - **Keycloak Internal Database**: `localhost:5433` (unchanged)
@@ -560,15 +565,14 @@ The following critical issues have been resolved:
 If you encounter connection issues:
 1. Run the validation script: `./sh/validate-separated-db-config.sh`
 2. Check for port conflicts: `ss -tulpn | grep :5432` or `netstat -tulpn | grep :5432`
-3. Review the migration guide: [docs/DATABASE_SEPARATION_MIGRATION.md](docs/DATABASE_SEPARATION_MIGRATION.md)
+3. Review the setup documentation in the `docs/` directory
 
 ## Documentation
 
-- **[Database Separation Migration](docs/DATABASE_SEPARATION_MIGRATION.md)** - Migration guide and troubleshooting
-- **[UniqueID Migration Guide](docs/MIGRATION_README.md)** - Complete guide for migrating from uniqueid to primary key identification
+
 - **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
 - **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
 - **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines
-- **[Migration Guide](MIGRATION_README.md)** - UniqueID to ID migration for performance optimization
+
 - **[Kubernetes Examples](k8s/)** - Production-ready Kubernetes manifests
 - **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example

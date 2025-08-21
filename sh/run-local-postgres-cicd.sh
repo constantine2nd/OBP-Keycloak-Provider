@@ -466,8 +466,8 @@ echo "  Restart: docker restart $CONTAINER_NAME"
 echo "  Remove:  docker rm $CONTAINER_NAME"
 echo ""
 
-echo "Migration Monitoring:"
-echo "  docker logs $CONTAINER_NAME -f | grep -E '(MIGRATION|OPTIMAL|LEGACY)'"
+echo "Application Monitoring:"
+echo "  docker logs $CONTAINER_NAME -f"
 echo ""
 
 echo -e "${GREEN}Deployment pipeline completed successfully!${NC}"

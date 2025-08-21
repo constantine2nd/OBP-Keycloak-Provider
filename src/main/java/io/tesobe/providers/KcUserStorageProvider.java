@@ -62,26 +62,7 @@ public class KcUserStorageProvider
             throw new RuntimeException("Unable to connect to database");
         }
 
-        // Analyze uniqueid migration status
-        try {
-            log.warnf("==========================================");
-            log.warnf("🔍 OBP KEYCLOAK PROVIDER MIGRATION CHECK");
-            log.warnf("==========================================");
-            log.warnf(
-                "🔧 Checking uniqueid -> primary key migration status..."
-            );
-            analyzeUniqueidMigrationStatus();
-
-            log.warnf("");
-            log.warnf("🔍 CHECKING KEYCLOAK ID MIGRATION STATUS...");
-            identifyKeycloakIdMigrationCandidates();
-            log.warnf("==========================================");
-        } catch (Exception e) {
-            log.errorf(
-                "❌ Could not analyze uniqueid migration status: %s",
-                e.getMessage()
-            );
-        }
+        log.info("OBP User Storage Provider initialized successfully");
     }
 
     // Lifecycle
@@ -204,55 +185,16 @@ public class KcUserStorageProvider
                         }
                     }
                 } catch (NumberFormatException e) {
-                    // External ID is not numeric - likely a legacy uniqueid string
+                    // External ID is not numeric - cannot be an id
                     log.warnf(
-                        "🔍 LEGACY ID DETECTED: External ID '%s' is not numeric, checking uniqueid table",
+                        "Invalid external ID format: '%s' is not numeric",
                         externalId
                     );
                 }
             }
 
-            // STEP 2: Fallback to uniqueid lookup (backward compatibility for legacy users)
-            // This handles users who still have uniqueid-based Keycloak IDs
-            String legacySql = "SELECT * FROM authuser WHERE uniqueid = ?";
-            try (
-                Connection conn = dbConfig.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(legacySql)
-            ) {
-                stmt.setString(1, externalId);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        KcUserEntity entity = mapResultSetToEntity(rs);
-
-                        // IMPORTANT: UserAdapter will now create id-based external ID
-                        // This effectively migrates the user to use primary key lookups going forward
-                        UserAdapter adapter = new UserAdapter(
-                            session,
-                            realm,
-                            model,
-                            entity
-                        );
-
-                        log.warnf(
-                            "🔄 LEGACY USER: Found %s by uniqueid %s, but UserAdapter now uses id %s",
-                            entity.getUsername(),
-                            externalId,
-                            entity.getId()
-                        );
-                        log.infof(
-                            "📈 MIGRATION EFFECT: Next lookup for %s will use id %s (performance improvement)",
-                            entity.getUsername(),
-                            entity.getId()
-                        );
-                        return adapter;
-                    }
-                }
-            }
-            // User not found by either id or uniqueid
-            log.warnf(
-                "❌ USER NOT FOUND: No user found with external ID: %s",
-                externalId
-            );
+            // User not found
+            log.warnf("User not found with external ID: %s", externalId);
             return null;
         } catch (SQLException e) {
             log.error("Error in getUserById", e);
@@ -320,97 +262,33 @@ public class KcUserStorageProvider
     // Registration
     @Override
     public UserModel addUser(RealmModel realm, String username) {
-        log.infof("addUser() called with username: %s", username);
+        log.warnf(
+            "addUser() called with username: %s - OPERATION DISABLED: authuser table is read-only",
+            username
+        );
 
-        String sql =
-            "INSERT INTO authuser (username, firstname, lastname, createdat) VALUES (?, ?, ?, ?)";
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(
-                sql,
-                Statement.RETURN_GENERATED_KEYS
-            )
-        ) {
-            stmt.setString(1, username);
-            stmt.setString(2, "New");
-            stmt.setString(3, "User");
-            stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows > 0) {
-                conn.commit();
-
-                // Create entity object for return
-                KcUserEntity entity = new KcUserEntity();
-                entity.setUsername(username);
-                entity.setFirstName("New");
-                entity.setLastName("User");
-
-                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        entity.setId(generatedKeys.getLong(1));
-                    }
-                }
-
-                return new UserAdapter(session, realm, model, entity);
-            }
-        } catch (SQLException e) {
-            log.error("Error in addUser", e);
-        }
-        return null;
+        // The authuser table is read-only. Write operations are not supported.
+        // This provider only supports reading existing users from the database.
+        throw new UnsupportedOperationException(
+            "User creation is not supported. The authuser table is read-only. " +
+            "Users must be created through other means outside of Keycloak."
+        );
     }
 
     @Override
     public boolean removeUser(RealmModel realm, UserModel user) {
         String persistenceId = StorageId.externalId(user.getId());
-        log.infof("removeUser() called with persistenceId: %s", persistenceId);
+        log.warnf(
+            "removeUser() called with persistenceId: %s - OPERATION DISABLED: authuser table is read-only",
+            persistenceId
+        );
 
-        // Try to delete by id (primary key) first
-        String sql = "DELETE FROM authuser WHERE id = ?";
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            try {
-                // Try parsing as Long (id)
-                stmt.setLong(1, Long.parseLong(persistenceId));
-                int affectedRows = stmt.executeUpdate();
-                if (affectedRows > 0) {
-                    conn.commit();
-                    log.infof("Deleted user by id: %s", persistenceId);
-                    return true;
-                }
-            } catch (NumberFormatException e) {
-                // persistenceId is not a number, skip id deletion
-                log.infof(
-                    "Persistence ID is not numeric, skipping id deletion"
-                );
-            }
-        } catch (SQLException e) {
-            log.error("Error in removeUser (id)", e);
-        }
-
-        // Fallback to uniqueid deletion for backward compatibility
-        // This handles cases where legacy users still exist with uniqueid-based external IDs
-        String legacySql = "DELETE FROM authuser WHERE uniqueid = ?";
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(legacySql)
-        ) {
-            stmt.setString(1, persistenceId);
-            int affected = stmt.executeUpdate();
-            if (affected > 0) {
-                conn.commit();
-                log.infof(
-                    "Deleted user by uniqueid (legacy): %s - migration to id-based lookups recommended",
-                    persistenceId
-                );
-                return true;
-            }
-        } catch (SQLException e) {
-            log.error("Error in removeUser (uniqueid)", e);
-        }
-        return false;
+        // The authuser table is read-only. Delete operations are not supported.
+        // This provider only supports reading existing users from the database.
+        throw new UnsupportedOperationException(
+            "User deletion is not supported. The authuser table is read-only. " +
+            "Users must be removed through other means outside of Keycloak."
+        );
     }
 
     // Credential support
@@ -779,56 +657,24 @@ public class KcUserStorageProvider
         UserAdapter adapter = (UserAdapter) user;
         KcUserEntity entity = adapter.getEntity();
 
-        log.infof(
-            "updateUserProfile() called for user: %s",
+        log.warnf(
+            "updateUserProfile() called for user: %s - OPERATION DISABLED: authuser table is read-only",
             user.getUsername()
         );
         log.infof(
-            "Current values - firstName: '%s', lastName: '%s', email: '%s'",
+            "Requested values - firstName: '%s', lastName: '%s', email: '%s' - CHANGES NOT SAVED",
             entity.getFirstName(),
             entity.getLastName(),
             entity.getEmail()
         );
 
-        String sql =
-            "UPDATE authuser SET firstname = ?, lastname = ?, email = ?, updatedat = ? WHERE id = ?";
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setString(1, entity.getFirstName());
-            stmt.setString(2, entity.getLastName());
-            stmt.setString(3, entity.getEmail());
-            stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-            stmt.setLong(5, entity.getId());
-
-            log.infof("Executing SQL: %s", sql);
-            int affectedRows = stmt.executeUpdate();
-            log.infof("SQL execution result: %d rows affected", affectedRows);
-
-            if (affectedRows > 0) {
-                conn.commit();
-                log.infof(
-                    "Successfully updated profile for user: %s",
-                    user.getUsername()
-                );
-                return true;
-            } else {
-                log.warnf(
-                    "No rows updated for user profile: %s",
-                    user.getUsername()
-                );
-                return false;
-            }
-        } catch (SQLException e) {
-            log.errorf(
-                "Database error updating user profile for %s: %s",
-                user.getUsername(),
-                e.getMessage()
-            );
-            e.printStackTrace();
-            return false;
-        }
+        // The authuser table is read-only. Update operations are not supported.
+        // This provider only supports reading existing users from the database.
+        log.warnf(
+            "Profile update blocked for user: %s - authuser table is read-only",
+            user.getUsername()
+        );
+        return false;
     }
 
     /**
@@ -848,7 +694,6 @@ public class KcUserStorageProvider
         entity.setLocale(rs.getString("locale"));
         entity.setValidated(rs.getBoolean("validated"));
         entity.setUserC(rs.getLong("user_c"));
-        entity.setUniqueId(rs.getString("uniqueid"));
         Timestamp createdTs = rs.getTimestamp("createdat");
         Timestamp updatedTs = rs.getTimestamp("updatedat");
         entity.setCreatedAt(
@@ -912,316 +757,5 @@ public class KcUserStorageProvider
         }
 
         return users.stream();
-    }
-
-    /**
-     * Analyze uniqueid migration status - helps identify users that still need migration
-     */
-    public void analyzeUniqueidMigrationStatus() {
-        log.warnf("📋 Analyzing uniqueid migration status for all users...");
-
-        String sql =
-            "SELECT id, username, uniqueid FROM authuser WHERE uniqueid IS NOT NULL ORDER BY username";
-        int totalUsers = 0;
-        int usersWithUniqueId = 0;
-
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    totalUsers++;
-                    Long id = rs.getLong("id");
-                    String username = rs.getString("username");
-                    String uniqueId = rs.getString("uniqueid");
-
-                    if (uniqueId != null && !uniqueId.trim().isEmpty()) {
-                        usersWithUniqueId++;
-                        log.warnf(
-                            "🔄 MIGRATION CANDIDATE: User=%s, ID=%d, UniqueID=%s",
-                            username,
-                            id,
-                            uniqueId
-                        );
-                    }
-                }
-            }
-
-            log.warnf(
-                "📊 MIGRATION ANALYSIS COMPLETE: %d users total, %d users with uniqueid values",
-                totalUsers,
-                usersWithUniqueId
-            );
-
-            if (usersWithUniqueId > 0) {
-                log.warnf(
-                    "⚠️  MIGRATION NEEDED: Found %d users with uniqueid values. These users may still be accessed via legacy uniqueid-based Keycloak IDs. " +
-                    "The system will automatically migrate them to use id-based external IDs when they are accessed.",
-                    usersWithUniqueId
-                );
-                log.warnf(
-                    "🚀 PERFORMANCE NOTE: After migration, these %d users will experience ~10x faster lookup performance",
-                    usersWithUniqueId
-                );
-            } else {
-                log.warnf(
-                    "✅ MIGRATION STATUS: No users with uniqueid values found - migration complete or not needed"
-                );
-            }
-        } catch (SQLException e) {
-            log.errorf("❌ Error in migration analysis: %s", e.getMessage());
-        }
-    }
-
-    /**
-     * Clear uniqueid values for users after confirming migration is working properly.
-     * This should only be called after verifying that all users can be accessed via id-based lookups.
-     *
-     * @param confirmMigration Set to true to actually perform the operation
-     * @return Number of users updated
-     */
-    public int clearUniqueidValues(boolean confirmMigration) {
-        if (!confirmMigration) {
-            log.warn(
-                "clearUniqueidValues called without confirmation - no changes made. " +
-                "Set confirmMigration=true to actually clear uniqueid values."
-            );
-            return 0;
-        }
-
-        log.info(
-            "Starting to clear uniqueid values after migration confirmation..."
-        );
-
-        String updateSql =
-            "UPDATE authuser SET uniqueid = NULL WHERE uniqueid IS NOT NULL";
-        String countSql =
-            "SELECT COUNT(*) FROM authuser WHERE uniqueid IS NOT NULL";
-
-        int usersToUpdate = 0;
-        int usersUpdated = 0;
-
-        try (Connection conn = dbConfig.getConnection()) {
-            // First, count how many users will be affected
-            try (
-                PreparedStatement countStmt = conn.prepareStatement(countSql);
-                ResultSet rs = countStmt.executeQuery()
-            ) {
-                if (rs.next()) {
-                    usersToUpdate = rs.getInt(1);
-                }
-            }
-
-            if (usersToUpdate == 0) {
-                log.info(
-                    "No users with uniqueid values found - nothing to clear"
-                );
-                return 0;
-            }
-
-            log.infof(
-                "About to clear uniqueid values for %d users",
-                usersToUpdate
-            );
-
-            // Perform the update
-            try (
-                PreparedStatement updateStmt = conn.prepareStatement(updateSql)
-            ) {
-                usersUpdated = updateStmt.executeUpdate();
-                conn.commit();
-
-                log.infof(
-                    "✅ Successfully cleared uniqueid values for %d users. " +
-                    "Migration to id-based external IDs is now complete.",
-                    usersUpdated
-                );
-            }
-        } catch (SQLException e) {
-            log.errorf("❌ Error clearing uniqueid values: %s", e.getMessage());
-            throw new RuntimeException("Failed to clear uniqueid values", e);
-        }
-
-        return usersUpdated;
-    }
-
-    /**
-     * Identify users that may still have uniqueid-based Keycloak IDs stored in Keycloak's database.
-     * This method helps identify users who need their Keycloak sessions cleared to complete migration.
-     *
-     * @return Number of users that may need Keycloak ID migration
-     */
-    public int identifyKeycloakIdMigrationCandidates() {
-        log.warnf(
-            "🔍 IDENTIFYING USERS WITH POTENTIAL KEYCLOAK ID MIGRATION NEEDS..."
-        );
-
-        String sql =
-            "SELECT id, username, uniqueid FROM authuser WHERE uniqueid IS NOT NULL AND uniqueid != '' ORDER BY username";
-        int migrationCandidates = 0;
-
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()
-        ) {
-            while (rs.next()) {
-                migrationCandidates++;
-                Long id = rs.getLong("id");
-                String username = rs.getString("username");
-                String uniqueId = rs.getString("uniqueid");
-
-                log.warnf(
-                    "🔄 KEYCLOAK ID MIGRATION CANDIDATE: User=%s, Database_ID=%d, Legacy_UniqueID=%s",
-                    username,
-                    id,
-                    uniqueId
-                );
-            }
-
-            if (migrationCandidates > 0) {
-                log.warnf("==========================================");
-                log.warnf("⚠️  KEYCLOAK ID MIGRATION GUIDANCE");
-                log.warnf("==========================================");
-                log.warnf(
-                    "Found %d users with uniqueid values that may have legacy Keycloak IDs.",
-                    migrationCandidates
-                );
-                log.warnf(
-                    "These users are currently accessed via uniqueid-based external IDs."
-                );
-                log.warnf("");
-                log.warnf("🔧 TO COMPLETE MIGRATION:");
-                log.warnf(
-                    "1. Users will be automatically migrated when they next authenticate"
-                );
-                log.warnf(
-                    "2. For immediate migration, clear user sessions in Keycloak admin console"
-                );
-                log.warnf(
-                    "3. Or restart Keycloak to force all users to re-authenticate"
-                );
-                log.warnf("");
-                log.warnf("🚀 BENEFITS AFTER MIGRATION:");
-                log.warnf(
-                    "- ~10x faster user lookups (integer vs string comparison)"
-                );
-                log.warnf(
-                    "- 75%% reduced storage for user IDs (8 bytes vs 32 bytes)"
-                );
-                log.warnf("- Eliminated uniqueid collision risks");
-                log.warnf("==========================================");
-            } else {
-                log.warnf(
-                    "✅ NO KEYCLOAK ID MIGRATION NEEDED: All users use id-based identification"
-                );
-            }
-        } catch (SQLException e) {
-            log.errorf(
-                "❌ Error identifying Keycloak ID migration candidates: %s",
-                e.getMessage()
-            );
-        }
-
-        return migrationCandidates;
-    }
-
-    /**
-     * Verify that all users can be accessed via their id-based external IDs.
-     * This method helps validate that migration is working properly before clearing uniqueid values.
-     *
-     * @return true if all users can be accessed via id-based lookups
-     */
-    public boolean verifyIdBasedMigration() {
-        log.info("Verifying id-based migration for all users...");
-
-        String sql =
-            "SELECT id, username, uniqueid FROM authuser WHERE uniqueid IS NOT NULL";
-        int totalChecked = 0;
-        int successfulLookups = 0;
-
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()
-        ) {
-            while (rs.next()) {
-                totalChecked++;
-                Long id = rs.getLong("id");
-                String username = rs.getString("username");
-                String uniqueid = rs.getString("uniqueid");
-
-                // Try to create a UserAdapter using id-based external ID
-                try {
-                    KcUserEntity entity = new KcUserEntity();
-                    entity.setId(id);
-                    entity.setUsername(username);
-                    entity.setUniqueId(uniqueid);
-
-                    UserAdapter adapter = new UserAdapter(
-                        session,
-                        null,
-                        model,
-                        entity
-                    );
-                    String generatedId = adapter.getId();
-
-                    // Verify the generated ID uses the numeric id, not the uniqueid
-                    if (
-                        generatedId != null && !generatedId.contains(uniqueid)
-                    ) {
-                        successfulLookups++;
-                        log.debugf(
-                            "✅ User %s (id: %d) successfully uses id-based external ID",
-                            username,
-                            id
-                        );
-                    } else {
-                        log.warnf(
-                            "❌ User %s (id: %d) still generates uniqueid-based external ID: %s",
-                            username,
-                            id,
-                            generatedId
-                        );
-                    }
-                } catch (Exception e) {
-                    log.warnf(
-                        "❌ Failed to create UserAdapter for user %s (id: %d): %s",
-                        username,
-                        id,
-                        e.getMessage()
-                    );
-                }
-            }
-
-            boolean migrationSuccessful = (totalChecked == successfulLookups);
-
-            log.infof(
-                "Migration verification complete: %d/%d users successfully using id-based external IDs",
-                successfulLookups,
-                totalChecked
-            );
-
-            if (migrationSuccessful) {
-                log.info(
-                    "✅ All users are successfully using id-based external IDs. " +
-                    "You can now safely call clearUniqueidValues(true) to complete the migration."
-                );
-            } else {
-                log.warn(
-                    "❌ Some users are still using uniqueid-based external IDs. " +
-                    "Do not clear uniqueid values until all users are migrated."
-                );
-            }
-
-            return migrationSuccessful;
-        } catch (SQLException e) {
-            log.errorf(
-                "❌ Error verifying id-based migration: %s",
-                e.getMessage()
-            );
-            return false;
-        }
     }
 }

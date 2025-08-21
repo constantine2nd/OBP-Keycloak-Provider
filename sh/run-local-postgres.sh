@@ -245,52 +245,21 @@ if [ "$TEST_CONNECTIONS" = true ] || [ "$VALIDATE_SETUP" = true ]; then
             echo "The table may need to be created or updated."
         fi
     else
-        echo -e "${YELLOW}⚠ Table does not exist${NC}"
+        echo -e "${RED}✗ Table does not exist${NC}"
         echo ""
-        echo -e "${BLUE}Creating authuser table...${NC}"
-
-        # Create the table
-        PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped << 'EOF'
-CREATE TABLE IF NOT EXISTS public.authuser (
-    id bigserial NOT NULL,
-    firstname varchar(100) NULL,
-    lastname varchar(100) NULL,
-    email varchar(100) NULL,
-    username varchar(100) NULL,
-    password_pw varchar(48) NULL,
-    password_slt varchar(20) NULL,
-    provider varchar(100) NULL,
-    locale varchar(16) NULL,
-    validated bool NULL,
-    user_c int8 NULL,
-    uniqueid varchar(32) NULL,
-    createdat timestamp NULL,
-    updatedat timestamp NULL,
-    timezone varchar(32) NULL,
-    superuser bool NULL,
-    passwordshouldbechanged bool NULL,
-    CONSTRAINT authuser_pk PRIMARY KEY (id)
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS authuser_uniqueid ON public.authuser USING btree (uniqueid);
-CREATE INDEX IF NOT EXISTS authuser_user_c ON public.authuser USING btree (user_c);
-CREATE UNIQUE INDEX IF NOT EXISTS authuser_username_provider ON public.authuser USING btree (username, provider);
-
--- Insert sample user
-INSERT INTO public.authuser (firstname,lastname,email,username,password_pw,password_slt,provider,locale,validated,user_c,uniqueid,createdat,updatedat,timezone,superuser,passwordshouldbechanged)
-VALUES ('Test','User','test@tesobe.com','testuser','b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ','nXiDOLye3CtjzEke','http://127.0.0.1:8000','en_US',true,1,'TEST_USER_UNIQUE_ID_123','2023-06-06 05:28:25.959','2023-06-06 05:28:25.967','UTC',false,NULL)
-ON CONFLICT (username, provider) DO NOTHING;
-EOF
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ Table created successfully${NC}"
-        else
-            echo -e "${RED}✗ Failed to create table${NC}"
-            exit 1
-        fi
+        echo -e "${RED}ERROR: The authuser table must be created outside of this script.${NC}"
+        echo "The obp_mapped database is READ-ONLY for this application."
+        echo ""
+        echo "Please ensure the authuser table exists in the obp_mapped database"
+        echo "before running this script. The table must be created by a database"
+        echo "administrator with appropriate permissions."
+        echo ""
+        echo "Required table structure documented in:"
+        echo "  - README.md"
+        echo "  - docs/LOCAL_POSTGRESQL_SETUP.md"
+        echo "  - sql/script.sql"
+        exit 1
     fi
-fi
 
 # Display current configuration
 echo ""

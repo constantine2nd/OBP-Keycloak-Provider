@@ -27,40 +27,20 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
         this.entity = entity;
         log.info("UserAdapter created for: " + this.entity);
 
-        // FIXED MIGRATION: Always use primary key id for external ID generation
-        // This ensures all users migrate to id-based external IDs regardless of how they were looked up
+        // Use primary key id for external ID generation
         String externalId;
         if (entity.getId() != null) {
             externalId = String.valueOf(entity.getId());
-
-            // Log migration progress for users that have uniqueid values (legacy users)
-            if (
-                entity.getUniqueId() != null &&
-                !entity.getUniqueId().trim().isEmpty()
-            ) {
-                log.warnf(
-                    "🚀 MIGRATION: User %s uses id %s as external ID (was uniqueid %s)",
-                    entity.getUsername(),
-                    entity.getId(),
-                    entity.getUniqueId()
-                );
-                log.infof(
-                    "⚡ PERFORMANCE: User %s now benefits from integer-based lookups",
-                    entity.getUsername()
-                );
-            } else {
-                log.infof(
-                    "✅ ID-BASED: User %s using optimal id-based external ID: %s",
-                    entity.getUsername(),
-                    externalId
-                );
-            }
+            log.debugf(
+                "User %s using id-based external ID: %s",
+                entity.getUsername(),
+                externalId
+            );
         } else {
             // This should never happen in a properly configured database
             log.errorf(
-                "❌ FATAL: Primary key id is null for user: %s (uniqueid: %s)",
-                entity.getUsername(),
-                entity.getUniqueId()
+                "Primary key id is null for user: %s",
+                entity.getUsername()
             );
             throw new IllegalStateException(
                 "Primary key id is null for user: " +
@@ -226,85 +206,32 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     // Method to persist user profile changes directly to database
     public void persistProfileChangesDirectly() {
-        log.infof(
-            "persistProfileChangesDirectly() called for user: %s, modified: %s",
+        log.warnf(
+            "persistProfileChangesDirectly() called for user: %s, modified: %s - OPERATION DISABLED: authuser table is read-only",
             getUsername(),
             modified
         );
 
         if (modified) {
-            try {
-                io.tesobe.config.DatabaseConfig dbConfig =
-                    io.tesobe.config.DatabaseConfig.getInstance();
-                String sql =
-                    "UPDATE authuser SET firstname = ?, lastname = ?, email = ?, updatedat = ? WHERE id = ?";
+            log.warnf(
+                "Profile changes requested for user: %s (ID: %d) - firstName='%s', lastName='%s', email='%s' - CHANGES NOT SAVED",
+                getUsername(),
+                entity.getId(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                entity.getEmail()
+            );
 
-                log.infof(
-                    "Executing SQL update for user %s (ID: %d): %s",
-                    getUsername(),
-                    entity.getId(),
-                    sql
-                );
-                log.infof(
-                    "Values: firstName='%s', lastName='%s', email='%s'",
-                    entity.getFirstName(),
-                    entity.getLastName(),
-                    entity.getEmail()
-                );
+            // The authuser table is read-only. Update operations are not supported.
+            // This provider only supports reading existing users from the database.
+            log.warnf(
+                "Profile persistence blocked for user: %s - authuser table is read-only. " +
+                "User profile changes must be made through other means outside of Keycloak.",
+                getUsername()
+            );
 
-                try (
-                    java.sql.Connection conn = dbConfig.getConnection();
-                    java.sql.PreparedStatement stmt = conn.prepareStatement(sql)
-                ) {
-                    stmt.setString(1, entity.getFirstName());
-                    stmt.setString(2, entity.getLastName());
-                    stmt.setString(3, entity.getEmail());
-                    stmt.setTimestamp(
-                        4,
-                        new java.sql.Timestamp(System.currentTimeMillis())
-                    );
-                    stmt.setLong(5, entity.getId());
-
-                    log.infof(
-                        "About to execute update for user %s",
-                        getUsername()
-                    );
-                    int affectedRows = stmt.executeUpdate();
-                    log.infof(
-                        "SQL update executed, affected rows: %d",
-                        affectedRows
-                    );
-
-                    if (affectedRows > 0) {
-                        conn.commit();
-                        clearModified();
-                        log.infof(
-                            "Successfully persisted profile changes for user: %s",
-                            getUsername()
-                        );
-                    } else {
-                        log.warnf(
-                            "No rows updated for user profile: %s (user ID: %d)",
-                            getUsername(),
-                            entity.getId()
-                        );
-                    }
-                } catch (java.sql.SQLException e) {
-                    log.errorf(
-                        "Database error persisting profile changes for user %s: %s",
-                        getUsername(),
-                        e.getMessage()
-                    );
-                    e.printStackTrace();
-                }
-            } catch (Exception e) {
-                log.errorf(
-                    "Error persisting profile changes for user %s: %s",
-                    getUsername(),
-                    e.getMessage()
-                );
-                e.printStackTrace();
-            }
+            // Clear the modified flag to prevent further attempts
+            clearModified();
         } else {
             log.infof("No changes to persist for user: %s", getUsername());
         }

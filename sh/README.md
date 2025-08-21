@@ -164,7 +164,7 @@ USER_STORAGE_DB_PASSWORD=secure_user_password
 
 **Important**: User storage database port changed from 5432 to 5434 to avoid conflicts with system PostgreSQL.
 
-**Migration required for:**
+**Configuration required for:**
 - External applications connecting to user storage
 - Backup scripts
 - Monitoring tools
@@ -248,7 +248,6 @@ docker logs obp-keycloak --tail 50
 ## Documentation Links
 
 - **[Main README](../README.md)** - Project overview and setup
-- **[Migration Guide](../docs/DATABASE_SEPARATION_MIGRATION.md)** - Upgrading to separated databases
 - **[Troubleshooting](../docs/TROUBLESHOOTING.md)** - Common issues and recent fixes
 - **[Cloud Native](../docs/CLOUD_NATIVE.md)** - Kubernetes and Docker Hub deployment
 - **[Environment](../docs/ENVIRONMENT.md)** - Configuration reference

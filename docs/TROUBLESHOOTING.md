@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues with the OBP Keycloak Provider, particularly focusing on Database Separation Migration problems.
+This guide helps you diagnose and resolve common issues with the OBP Keycloak Provider, particularly focusing on Database Separation problems.
 
 ## 🔧 Recent Critical Fixes
 
@@ -184,8 +184,32 @@ docker exec -it keycloak-postgres psql -U keycloak -d keycloak -c "\l"
 # Test user storage database connection
 docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "\dt"
 
-# Verify table structure
+# Verify table structure (READ-ONLY for Keycloak)
 docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "\d authuser"
+
+# Check existing users (read-only operations only)
+docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "SELECT count(*) FROM authuser;"
+```
+
+### ⚠️ Important: authuser Table Read-Only Policy
+
+The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider:
+
+**Supported Operations:**
+- ✅ User authentication and login
+- ✅ User profile viewing
+- ✅ Password validation
+
+**Disabled Operations:**
+- 🔴 User creation through Keycloak (will throw UnsupportedOperationException)
+- 🔴 User profile updates through Keycloak (changes not persisted)
+- 🔴 User deletion through Keycloak (will throw UnsupportedOperationException)
+
+**Expected Log Messages:**
+```
+WARN: addUser() called with username: xyz - OPERATION DISABLED: authuser table is read-only
+WARN: removeUser() called with persistenceId: xyz - OPERATION DISABLED: authuser table is read-only
+WARN: updateUserProfile() called for user: xyz - OPERATION DISABLED: authuser table is read-only
 ```
 
 ## 🛠️ Step-by-Step Troubleshooting
@@ -283,8 +307,11 @@ docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "\dt"
 # Verify Keycloak schema
 docker exec -it keycloak-postgres psql -U keycloak -d keycloak -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';"
 
-# Check user table structure
+# Check user table structure (READ-ONLY for Keycloak)
 docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "\d authuser"
+
+# Verify existing users (Keycloak can only read, not modify)
+docker exec -it user-storage-postgres psql -U obp -d obp_mapped -c "SELECT username, firstname, lastname FROM authuser LIMIT 5;"
 ```
 
 ### Environment Variable Debugging
@@ -347,7 +374,6 @@ Before reporting issues, verify:
 
 ### Support Resources
 
-- **Migration Guide**: [DATABASE_SEPARATION_MIGRATION.md](DATABASE_SEPARATION_MIGRATION.md)
 - **Cloud Native Guide**: [CLOUD_NATIVE.md](CLOUD_NATIVE.md)
 - **Environment Reference**: [ENVIRONMENT.md](ENVIRONMENT.md)
 - **Main Documentation**: [README.md](../README.md)

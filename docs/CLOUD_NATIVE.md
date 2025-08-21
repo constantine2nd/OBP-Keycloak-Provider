@@ -223,7 +223,7 @@ docker run -d \
   your-org/obp-keycloak-provider:latest
 ```
 
-## Migration Guide
+## Deployment Guide
 
 ### For Existing Deployments
 
@@ -447,7 +447,7 @@ Use the provided validation script:
 ./sh/test-db-connection.sh
 ```
 
-## Migration Benefits
+## Deployment Benefits
 
 ### Before vs. After Comparison
 

@@ -1,3 +1,13 @@
+-- ===============================================
+-- DATABASE ADMINISTRATOR SETUP REQUIRED
+-- ===============================================
+-- This SQL must be executed by a database administrator
+-- with CREATE privileges on the obp_mapped database.
+-- The Keycloak application has READ-ONLY access only.
+
+-- Connect as database administrator (NOT as obp user)
+-- Example: sudo -u postgres psql -d obp_mapped
+
 CREATE TABLE if not exists public.authuser (
 	id bigserial NOT NULL,
 	firstname varchar(100) NULL,
@@ -10,7 +20,6 @@ CREATE TABLE if not exists public.authuser (
 	locale varchar(16) NULL,
 	validated bool NULL,
 	user_c int8 NULL,
-	uniqueid varchar(32) NULL,
 	createdat timestamp NULL,
 	updatedat timestamp NULL,
 	timezone varchar(32) NULL,
@@ -18,9 +27,23 @@ CREATE TABLE if not exists public.authuser (
 	passwordshouldbechanged bool NULL,
 	CONSTRAINT authuser_pk PRIMARY KEY (id)
 );
-CREATE INDEX authuser_uniqueid ON public.authuser USING btree (uniqueid);
+
+-- Create indexes
 CREATE INDEX authuser_user_c ON public.authuser USING btree (user_c);
 CREATE UNIQUE INDEX authuser_username_provider ON public.authuser USING btree (username, provider);
 
-INSERT INTO public.authuser (firstname,lastname,email,username,password_pw,password_slt,provider,locale,validated,user_c,uniqueid,createdat,updatedat,timezone,superuser,passwordshouldbechanged) VALUES
-	 ('Aria','Milic','marko@tesobe.com','aria.milic','b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ','nXiDOLye3CtjzEke','http://127.0.0.1:8000','en_US',true,2,'LRE3RRDGPKMZALRDR0O0G350JTPTF0SK','2023-06-06 05:28:25.959','2023-06-06 05:28:25.967','UTC',false,NULL);
+-- Grant READ-ONLY access to Keycloak user
+GRANT SELECT ON public.authuser TO obp;
+GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
+
+-- ===============================================
+-- KEYCLOAK PROVIDER LIMITATIONS
+-- ===============================================
+-- NOTE: The authuser table is READ-ONLY for the Keycloak User Storage Provider
+-- INSERT, UPDATE, and DELETE operations are not supported through Keycloak
+-- Users must be managed through database administration tools outside of Keycloak
+-- The Keycloak application cannot create, modify, or delete users in this table
+
+-- ✅ Supported: User authentication, login, profile viewing, password validation
+-- 🔴 Disabled: User creation, profile updates, user deletion through Keycloak
+-- 🔴 Disabled: Table creation through Keycloak setup scripts (insufficient permissions)

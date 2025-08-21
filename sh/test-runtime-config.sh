@@ -300,7 +300,7 @@ main() {
         echo -e "${RED}❌ FAILURE: Some tests failed${NC}"
         echo ""
         echo "Please review the failed tests above and fix the issues."
-        echo "The runtime configuration migration may not be complete."
+        echo "The runtime configuration may not be complete."
         echo ""
         echo "Common issues:"
         echo "  • Build artifacts missing (run 'mvn clean package')"

@@ -47,7 +47,7 @@ The remaining scripts provide clear, purpose-built deployment strategies:
 - **Issues**: Outdated approach, no modern configuration support
 - **Replacement**: Modern scripts with proper error handling and validation
 
-## Migration Guide
+## Transition Guide
 
 ### If you were using `sh/run-with-env.sh`
 **Old approach:**
@@ -201,9 +201,9 @@ With fewer deployment scripts, development effort can focus on:
 - **Multi-environment support**: Enhanced configuration management
 - **Monitoring integration**: Better observability for deployments
 
-## Support and Migration Help
+## Support and Help
 
-### Common Migration Issues
+### Common Transition Issues
 
 1. **"run-with-env.sh not found"**
    - **Solution**: Use `./sh/run-local-postgres.sh --themed --validate`

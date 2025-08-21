@@ -98,11 +98,22 @@ GRANT ALL ON SCHEMA public TO obp;
 
 The User Storage database needs the `authuser` table for user federation:
 
-```sql
--- Connect to obp_mapped database
-PGPASSWORD=f psql -h localhost -p 5432 -U obp -d obp_mapped
+> **⚠️ CRITICAL**: The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider and must be created by a database administrator with appropriate permissions. The Keycloak setup scripts cannot create this table due to read-only access restrictions.
 
--- Create authuser table
+> **📋 SETUP REQUIREMENT**: The authuser table must exist before running Keycloak. INSERT, UPDATE, and DELETE operations are not supported through Keycloak. Users must be managed through other means outside of Keycloak.
+
+```sql
+-- ===============================================
+-- DATABASE ADMINISTRATOR SETUP REQUIRED
+-- ===============================================
+-- This SQL must be executed by a database administrator
+-- with CREATE privileges on the obp_mapped database.
+-- The Keycloak application has READ-ONLY access only.
+
+-- Connect as database administrator (NOT as obp user)
+-- Example: sudo -u postgres psql -d obp_mapped
+
+-- Create authuser table (READ-ONLY for Keycloak)
 CREATE TABLE IF NOT EXISTS public.authuser (
     id bigserial NOT NULL,
     firstname varchar(100) NULL,
@@ -115,7 +126,6 @@ CREATE TABLE IF NOT EXISTS public.authuser (
     locale varchar(16) NULL,
     validated bool NULL,
     user_c int8 NULL,
-    uniqueid varchar(32) NULL,
     createdat timestamp NULL,
     updatedat timestamp NULL,
     timezone varchar(32) NULL,
@@ -125,20 +135,30 @@ CREATE TABLE IF NOT EXISTS public.authuser (
 );
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS authuser_uniqueid ON public.authuser USING btree (uniqueid);
 CREATE INDEX IF NOT EXISTS authuser_user_c ON public.authuser USING btree (user_c);
 CREATE UNIQUE INDEX IF NOT EXISTS authuser_username_provider ON public.authuser USING btree (username, provider);
 
--- Insert sample user
-INSERT INTO public.authuser 
-(firstname, lastname, email, username, password_pw, password_slt, provider, locale, validated, user_c, uniqueid, createdat, updatedat, timezone, superuser, passwordshouldbechanged)
-VALUES 
-('Test', 'User', 'test@tesobe.com', 'testuser', 'b;$2a$10$SGIAR0RtthMlgJK9DhElBekIvo5ulZ26GBZJQ', 'nXiDOLye3CtjzEke', 'http://127.0.0.1:8000', 'en_US', true, 1, 'TEST_USER_UNIQUE_ID_123', NOW(), NOW(), 'UTC', false, NULL)
-ON CONFLICT (username, provider) DO NOTHING;
+-- Grant READ-ONLY access to obp user
+GRANT SELECT ON public.authuser TO obp;
+GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 
 -- Verify table creation
 \d authuser
 SELECT count(*) FROM authuser;
+
+-- ===============================================
+-- KEYCLOAK PROVIDER LIMITATIONS
+-- ===============================================
+-- ✅ User authentication and login
+-- ✅ User profile viewing  
+-- ✅ Password validation
+-- 🔴 User creation (disabled - read-only table)
+-- 🔴 User profile updates (disabled - read-only table)
+-- 🔴 User deletion (disabled - read-only table)
+
+-- NOTE: Users must be added to authuser table through external
+-- applications or database administration tools outside of Keycloak.
+-- The Keycloak provider only supports reading existing users.
 ```
 
 ### Step 3: Environment Configuration
@@ -508,7 +528,6 @@ docker stats obp-keycloak-local
 
 ### Related Documentation
 - **[Main README](../README.md)** - Project overview
-- **[Database Separation Migration](DATABASE_SEPARATION_MIGRATION.md)** - Migration guide
 - **[Cloud Native Deployment](CLOUD_NATIVE.md)** - Kubernetes deployment
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues
 

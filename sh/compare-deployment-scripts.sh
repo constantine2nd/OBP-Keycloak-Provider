@@ -139,8 +139,8 @@ echo "  • Testing scenarios requiring clean state"
 echo "  • Consistent, repeatable deployments"
 echo ""
 
-# Migration guidance
-echo -e "${BLUE}Migration Guide:${NC}"
+# Implementation guidance
+echo -e "${BLUE}Implementation Guide:${NC}"
 echo ""
 
 echo "To switch from Original to CI/CD:"

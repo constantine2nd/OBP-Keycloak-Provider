@@ -356,7 +356,6 @@ fi
 echo ""
 echo "For more help, see:"
 echo "- README.md for general setup"
-echo "- docs/DATABASE_SEPARATION_MIGRATION.md for migration guide"
 echo "- docs/CLOUD_NATIVE.md for deployment options"
 echo "- docs/TROUBLESHOOTING.md for common issues and recent fixes"
 

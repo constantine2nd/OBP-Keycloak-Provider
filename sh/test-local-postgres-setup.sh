@@ -212,7 +212,8 @@ test_authuser_table() {
         log_pass "authuser table exists"
     else
         log_fail "authuser table does not exist"
-        echo -e "${YELLOW}   Run: ./sh/run-local-postgres.sh --validate to create table${NC}"
+        echo -e "${RED}   ERROR: authuser table must be created by database administrator${NC}"
+        echo -e "${YELLOW}   The obp_mapped database is READ-ONLY for this application${NC}"
         return 1
     fi
 
@@ -234,14 +235,14 @@ test_authuser_table() {
         return 1
     fi
 
-    # Test sample data
-    log_test "authuser sample data"
+    # Test existing data (read-only table)
+    log_test "authuser existing data"
     user_count=$(PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -t -c "SELECT count(*) FROM authuser;" 2>/dev/null | tr -d ' ')
     if [ "$user_count" -gt 0 ] 2>/dev/null; then
-        log_pass "$user_count users found"
+        log_pass "$user_count users found (READ-ONLY table)"
     else
-        log_warn "No users in authuser table"
-        echo -e "${YELLOW}   Run: ./sh/run-local-postgres.sh --validate to add sample user${NC}"
+        log_warn "No users in authuser table (READ-ONLY)"
+        echo -e "${YELLOW}   NOTE: authuser table is READ-ONLY. Users must be added outside of Keycloak.${NC}"
     fi
 
     return 0

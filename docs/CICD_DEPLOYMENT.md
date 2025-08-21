@@ -186,10 +186,10 @@ docker ps --filter name=obp-keycloak-local
 docker stop obp-keycloak-local && docker rm obp-keycloak-local
 ```
 
-### Migration Monitoring
+### Application Monitoring
 ```bash
-# Monitor migration logs
-docker logs obp-keycloak-local -f | grep -E "(MIGRATION|OPTIMAL|LEGACY)"
+# Monitor application logs
+docker logs obp-keycloak-local -f
 ```
 
 ### Build Information
@@ -284,7 +284,7 @@ pipeline {
 - ✅ Manual debugging sessions
 - ✅ Resource-constrained environments
 
-## Migration from Original Script
+## Transition from Original Script
 
 1. **Update automation**: Replace script calls
    ```bash
