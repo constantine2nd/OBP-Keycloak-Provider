@@ -49,8 +49,8 @@ This implementation enhances security by providing view-based access with minima
 - **Updated default**: Changed default from `authuser` to `v_authuser_oidc` in `AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"`
 - **Dynamic testing**: Script now tests whatever table/view is configured
 
-#### test-profile-update.sh
-- **Updated default**: Changed default from `authuser` to `v_authuser_oidc` in both locations where the variable is used
+#### Profile Update Testing
+- **Read-only validation**: Built-in checks verify read-only behavior with `v_authuser_oidc` view
 - **Consistent behavior**: Script now uses the new default consistently
 
 ### 4. Database Setup
@@ -165,7 +165,7 @@ The implementation supports zero-downtime migration:
 
 ### Automated Testing
 - **Script validation**: `sh/test-local-postgres-setup.sh` validates configured table/view
-- **Profile testing**: `test-profile-update.sh` verifies read-only behavior
+- **Profile testing**: Built-in validation verifies read-only behavior
 - **Environment validation**: Configuration scripts check all required variables
 
 ### Manual Testing
@@ -265,7 +265,7 @@ export DB_AUTHUSER_TABLE=v_authuser_oidc
 
 ### Scripts
 - `sh/test-local-postgres-setup.sh`
-- `test-profile-update.sh`
+- Profile update validation scripts
 
 ### Documentation
 - `docs/ENVIRONMENT.md`

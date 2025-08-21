@@ -147,7 +147,7 @@ User deletion must be performed outside of Keycloak by authorized administrators
 ## Script Changes
 
 - `sh/run-local-postgres.sh`: Sample user INSERT removed
-- `test-profile-update.sh`: Updated to expect blocked operations
+- Profile update validation: Built-in checks expect blocked operations
 
 ## Documentation Updates
 
