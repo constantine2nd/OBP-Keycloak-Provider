@@ -161,12 +161,12 @@ echo "  3. Leverage caching for faster subsequent builds"
 echo ""
 
 # Environment analysis
-if [ -f ".env.local" ]; then
+if [ -f ".env" ]; then
     echo -e "${BLUE}Current Environment:${NC}"
-    echo -e "${GREEN}✓ .env.local file exists${NC}"
+    echo -e "${GREEN}✓ .env file exists${NC}"
 
     # Check for common variables
-    source .env.local 2>/dev/null || true
+    source .env 2>/dev/null || true
 
     if [ -n "$KEYCLOAK_ADMIN" ]; then
         echo "✓ Keycloak admin configured: $KEYCLOAK_ADMIN"
@@ -186,7 +186,7 @@ if [ -f ".env.local" ]; then
         echo "⚠ User storage database not configured"
     fi
 else
-    echo -e "${YELLOW}⚠ .env.local file not found${NC}"
+    echo -e "${YELLOW}⚠ .env file not found${NC}"
     echo "Both scripts require this file. Create it from env.sample"
 fi
 

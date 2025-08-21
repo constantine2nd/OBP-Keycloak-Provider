@@ -1,12 +1,12 @@
 package io.tesobe.config;
 
-import org.jboss.logging.Logger;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import org.jboss.logging.Logger;
 
 /**
  * Runtime database configuration manager that reads environment variables
@@ -26,18 +26,22 @@ public class DatabaseConfig {
     private static final String DB_USER = "DB_USER";
     private static final String DB_PASSWORD = "DB_PASSWORD";
     private static final String DB_DRIVER = "DB_DRIVER";
+    private static final String DB_AUTHUSER_TABLE = "DB_AUTHUSER_TABLE";
 
     // Default values
-    private static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/obp_mapped";
+    private static final String DEFAULT_DB_URL =
+        "jdbc:postgresql://localhost:5434/obp_mapped";
     private static final String DEFAULT_DB_USER = "obp";
-    private static final String DEFAULT_DB_PASSWORD = "changeme";
+    private static final String DEFAULT_DB_PASSWORD = "f";
     private static final String DEFAULT_DB_DRIVER = "org.postgresql.Driver";
+    private static final String DEFAULT_AUTHUSER_TABLE = "v_authuser_oidc";
 
     // Configuration properties
     private final String dbUrl;
     private final String dbUser;
     private final String dbPassword;
     private final String dbDriver;
+    private final String authUserTable;
 
     private DatabaseConfig() {
         // Load configuration from environment variables
@@ -45,6 +49,10 @@ public class DatabaseConfig {
         this.dbUser = getEnvOrDefault(DB_USER, DEFAULT_DB_USER);
         this.dbPassword = getEnvOrDefault(DB_PASSWORD, DEFAULT_DB_PASSWORD);
         this.dbDriver = getEnvOrDefault(DB_DRIVER, DEFAULT_DB_DRIVER);
+        this.authUserTable = getEnvOrDefault(
+            DB_AUTHUSER_TABLE,
+            DEFAULT_AUTHUSER_TABLE
+        );
 
         // Load JDBC driver
         try {
@@ -52,7 +60,10 @@ public class DatabaseConfig {
             log.infof("JDBC driver loaded successfully: %s", this.dbDriver);
         } catch (ClassNotFoundException e) {
             log.errorf("Failed to load JDBC driver: %s", this.dbDriver);
-            throw new RuntimeException("Failed to load JDBC driver: " + this.dbDriver, e);
+            throw new RuntimeException(
+                "Failed to load JDBC driver: " + this.dbDriver,
+                e
+            );
         }
 
         // Log configuration (without password)
@@ -60,6 +71,39 @@ public class DatabaseConfig {
         log.infof("  URL: %s", this.dbUrl);
         log.infof("  User: %s", this.dbUser);
         log.infof("  Driver: %s", this.dbDriver);
+        log.infof("  Auth User Table: %s", this.authUserTable);
+
+        // Enhanced debugging for DB_AUTHUSER_TABLE
+        String envValue = System.getenv(DB_AUTHUSER_TABLE);
+        if (envValue != null && !envValue.trim().isEmpty()) {
+            log.infof(
+                "🔍 DEBUGGING: System.getenv('%s') = '%s'",
+                DB_AUTHUSER_TABLE,
+                envValue
+            );
+            if (!envValue.equals(this.authUserTable)) {
+                log.errorf(
+                    "❌ MISMATCH: Expected '%s' but got '%s'",
+                    envValue,
+                    this.authUserTable
+                );
+            }
+        } else {
+            log.warnf(
+                "🔍 DEBUGGING: System.getenv('%s') returned null or empty",
+                DB_AUTHUSER_TABLE
+            );
+        }
+
+        // Log all environment variables containing 'DB_' for debugging
+        log.infof("🔍 All DB_* environment variables:");
+        System.getenv()
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getKey().startsWith("DB_"))
+            .forEach(entry ->
+                log.infof("  %s = %s", entry.getKey(), entry.getValue())
+            );
     }
 
     /**
@@ -97,7 +141,10 @@ public class DatabaseConfig {
             log.debugf("Database connection created successfully");
             return connection;
         } catch (SQLException e) {
-            log.errorf("Failed to create database connection: %s", e.getMessage());
+            log.errorf(
+                "Failed to create database connection: %s",
+                e.getMessage()
+            );
             throw e;
         }
     }
@@ -111,7 +158,9 @@ public class DatabaseConfig {
             if (isValid) {
                 log.info("Database connection test successful");
             } else {
-                log.warn("Database connection test failed - connection not valid");
+                log.warn(
+                    "Database connection test failed - connection not valid"
+                );
             }
             return isValid;
         } catch (SQLException e) {
@@ -128,11 +177,15 @@ public class DatabaseConfig {
 
         if (isEnvMissing(DB_URL)) missingVars.append(DB_URL).append(" ");
         if (isEnvMissing(DB_USER)) missingVars.append(DB_USER).append(" ");
-        if (isEnvMissing(DB_PASSWORD)) missingVars.append(DB_PASSWORD).append(" ");
+        if (isEnvMissing(DB_PASSWORD)) missingVars
+            .append(DB_PASSWORD)
+            .append(" ");
 
         if (missingVars.length() > 0) {
-            String warning = "Warning: Required environment variables not set: " + missingVars.toString().trim() +
-                           ". Using default values which may not work in production.";
+            String warning =
+                "Warning: Required environment variables not set: " +
+                missingVars.toString().trim() +
+                ". Using default values which may not work in production.";
             log.warn(warning);
         } else {
             log.info("All required environment variables are configured");
@@ -145,9 +198,18 @@ public class DatabaseConfig {
     private static String getEnvOrDefault(String envName, String defaultValue) {
         String value = System.getenv(envName);
         if (value == null || value.trim().isEmpty()) {
-            log.debugf("Environment variable %s not set, using default: %s", envName, defaultValue);
+            log.warnf(
+                "⚠️  Environment variable %s not set, using default: %s",
+                envName,
+                defaultValue
+            );
             return defaultValue;
         }
+        log.infof(
+            "✅ Environment variable %s loaded: %s",
+            envName,
+            value.trim()
+        );
         return value.trim();
     }
 
@@ -186,5 +248,13 @@ public class DatabaseConfig {
 
     public String getDbDriver() {
         return dbDriver;
+    }
+
+    /**
+     * Get the configured table/view name for user data
+     * @return The table/view name (default: "authuser", can be "v_authuser_oidc" for view-based access)
+     */
+    public String getAuthUserTable() {
+        return authUserTable;
     }
 }

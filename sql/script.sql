@@ -32,18 +32,77 @@ CREATE TABLE if not exists public.authuser (
 CREATE INDEX authuser_user_c ON public.authuser USING btree (user_c);
 CREATE UNIQUE INDEX authuser_username_provider ON public.authuser USING btree (username, provider);
 
--- Grant READ-ONLY access to Keycloak user
+-- ===============================================
+-- OIDC USER SETUP (RECOMMENDED FOR PRODUCTION)
+-- ===============================================
+-- Create dedicated OIDC user with minimal permissions
+CREATE USER oidc_user WITH PASSWORD 'secure_oidc_password';
+
+-- Create view with only OIDC-required fields for enhanced security
+CREATE OR REPLACE VIEW public.v_authuser_oidc AS
+SELECT
+    id,
+    firstname,
+    lastname,
+    email,
+    username,
+    password_pw,
+    password_slt,
+    provider,
+    locale,
+    validated,
+    createdat,
+    updatedat,
+    timezone
+FROM public.authuser
+WHERE validated = true;  -- Only show validated users to OIDC
+
+-- Grant permissions to OIDC user
+GRANT CONNECT ON DATABASE obp_mapped TO oidc_user;
+GRANT USAGE ON SCHEMA public TO oidc_user;
+GRANT SELECT ON public.v_authuser_oidc TO oidc_user;
+
+-- ===============================================
+-- LEGACY OBP USER SETUP (FOR BACKWARD COMPATIBILITY)
+-- ===============================================
+-- Grant READ-ONLY access to legacy Keycloak user
 GRANT SELECT ON public.authuser TO obp;
 GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 
 -- ===============================================
+-- CONFIGURATION OPTIONS
+-- ===============================================
+-- Use DB_AUTHUSER_TABLE environment variable to choose access method:
+--
+-- Option 1 (RECOMMENDED - Production Security):
+--   DB_USER=oidc_user
+--   DB_PASSWORD=secure_oidc_password
+--   DB_AUTHUSER_TABLE=v_authuser_oidc
+--   Benefits: View-based access, minimal permissions, enhanced security
+--
+-- Option 2 (Legacy/Development):
+--   DB_USER=obp
+--   DB_PASSWORD=f
+--   DB_AUTHUSER_TABLE=authuser
+--   Benefits: Direct table access, backward compatibility
+
+-- ===============================================
 -- KEYCLOAK PROVIDER LIMITATIONS
 -- ===============================================
--- NOTE: The authuser table is READ-ONLY for the Keycloak User Storage Provider
+-- NOTE: The authuser table/view is READ-ONLY for the Keycloak User Storage Provider
 -- INSERT, UPDATE, and DELETE operations are not supported through Keycloak
 -- Users must be managed through database administration tools outside of Keycloak
--- The Keycloak application cannot create, modify, or delete users in this table
+-- The Keycloak application cannot create, modify, or delete users in this table/view
 
 -- ✅ Supported: User authentication, login, profile viewing, password validation
 -- 🔴 Disabled: User creation, profile updates, user deletion through Keycloak
 -- 🔴 Disabled: Table creation through Keycloak setup scripts (insufficient permissions)
+
+-- ===============================================
+-- SECURITY NOTES
+-- ===============================================
+-- v_authuser_oidc view provides enhanced security by:
+-- - Filtering out sensitive columns not needed for OIDC
+-- - Restricting access to validated users only
+-- - Providing database-level access control
+-- - Preventing accidental data modification

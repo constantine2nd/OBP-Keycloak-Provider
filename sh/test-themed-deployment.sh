@@ -230,7 +230,7 @@ echo "  • Easy customization through CSS and properties files"
 echo ""
 
 echo -e "${YELLOW}Next Steps:${NC}"
-echo "1. Configure your .env.local file with database settings"
+echo "1. Configure your .env file with database settings"
 echo "2. Run: ./sh/run-local-postgres.sh --themed --validate"
 echo "3. Access Keycloak at https://localhost:8443"
 echo "4. The custom theme will be automatically applied"

@@ -158,7 +158,12 @@ public class KcUserStorageProvider
             );
 
             // STEP 1: Try to find user by id (primary key) first - optimal path
-            String sql = "SELECT * FROM authuser WHERE id = ?";
+            String sql =
+                "SELECT " +
+                getFieldList() +
+                " FROM " +
+                dbConfig.getAuthUserTable() +
+                " WHERE id = ?";
             try (
                 Connection conn = dbConfig.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)
@@ -209,7 +214,12 @@ public class KcUserStorageProvider
     public UserModel getUserByUsername(RealmModel realm, String username) {
         log.infof("getUserByUsername() called with: %s", username);
 
-        String sql = "SELECT * FROM authuser WHERE username = ?";
+        String sql =
+            "SELECT " +
+            getFieldList() +
+            " FROM " +
+            dbConfig.getAuthUserTable() +
+            " WHERE username = ?";
         try (
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)
@@ -241,7 +251,12 @@ public class KcUserStorageProvider
     public UserModel getUserByEmail(RealmModel realm, String email) {
         log.infof("getUserByEmail() called with: %s", email);
 
-        String sql = "SELECT * FROM authuser WHERE email = ?";
+        String sql =
+            "SELECT " +
+            getFieldList() +
+            " FROM " +
+            dbConfig.getAuthUserTable() +
+            " WHERE email = ?";
         try (
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)
@@ -516,7 +531,7 @@ public class KcUserStorageProvider
     @Override
     public int getUsersCount(RealmModel realm) {
         log.infof("getUsersCount() called for realm: %s", realm.getName());
-        String sql = "SELECT COUNT(*) FROM authuser";
+        String sql = "SELECT COUNT(*) FROM " + dbConfig.getAuthUserTable();
         try (
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -549,7 +564,11 @@ public class KcUserStorageProvider
         List<UserModel> users = new ArrayList<>();
 
         String sql =
-            "SELECT * FROM authuser WHERE LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? ORDER BY username";
+            "SELECT " +
+            getFieldList() +
+            " FROM " +
+            dbConfig.getAuthUserTable() +
+            " WHERE LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? ORDER BY username";
 
         // Add pagination if specified
         if (max != null && max >= 0) {
@@ -678,22 +697,30 @@ public class KcUserStorageProvider
     }
 
     /**
+     * Gets the field list for SQL queries when using limited views
+     * Only includes fields available in v_authuser_oidc1 and similar limited views
+     */
+    private String getFieldList() {
+        return "id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat";
+    }
+
+    /**
      * Maps a ResultSet row to a KcUserEntity object
+     * Only accesses fields available in the limited view:
+     * id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat
      */
     private KcUserEntity mapResultSetToEntity(ResultSet rs)
         throws SQLException {
         KcUserEntity entity = new KcUserEntity();
         entity.setId(rs.getLong("id"));
+        entity.setUsername(rs.getString("username"));
         entity.setFirstName(rs.getString("firstname"));
         entity.setLastName(rs.getString("lastname"));
         entity.setEmail(rs.getString("email"));
-        entity.setUsername(rs.getString("username"));
+        entity.setValidated(rs.getBoolean("validated"));
+        entity.setProvider(rs.getString("provider"));
         entity.setPassword(rs.getString("password_pw"));
         entity.setSalt(rs.getString("password_slt"));
-        entity.setProvider(rs.getString("provider"));
-        entity.setLocale(rs.getString("locale"));
-        entity.setValidated(rs.getBoolean("validated"));
-        entity.setUserC(rs.getLong("user_c"));
         Timestamp createdTs = rs.getTimestamp("createdat");
         Timestamp updatedTs = rs.getTimestamp("updatedat");
         entity.setCreatedAt(
@@ -702,11 +729,14 @@ public class KcUserStorageProvider
         entity.setUpdatedAt(
             updatedTs != null ? updatedTs.toLocalDateTime() : null
         );
-        entity.setTimezone(rs.getString("timezone"));
-        entity.setSuperuser(rs.getBoolean("superuser"));
-        entity.setPasswordShouldBeChanged(
-            rs.getBoolean("passwordshouldbechanged")
-        );
+
+        // Fields not available in limited view - set to default values
+        entity.setLocale(null);
+        entity.setUserC(null);
+        entity.setTimezone(null);
+        entity.setSuperuser(false);
+        entity.setPasswordShouldBeChanged(false);
+
         return entity;
     }
 
@@ -725,7 +755,12 @@ public class KcUserStorageProvider
         );
         List<UserModel> users = new ArrayList<>();
 
-        String sql = "SELECT * FROM authuser ORDER BY username";
+        String sql =
+            "SELECT " +
+            getFieldList() +
+            " FROM " +
+            dbConfig.getAuthUserTable() +
+            " ORDER BY username";
 
         // Add pagination if specified
         if (max != null && max >= 0) {

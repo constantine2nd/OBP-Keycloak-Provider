@@ -75,8 +75,9 @@ get_current_profile() {
 
     # Check if we can access the database
     if command -v psql > /dev/null; then
+        AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
         PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-            -c "SELECT id, username, firstname, lastname, email, updatedat FROM authuser WHERE username = '$USERNAME';" \
+            -c "SELECT id, username, firstname, lastname, email, updatedat FROM $AUTHUSER_TABLE WHERE username = '$USERNAME';" \
             2>/dev/null || {
             log_warning "Could not connect to database directly. Using container method..."
             return 1
@@ -185,18 +186,20 @@ show_manual_test_instructions() {
     echo "5. Monitor Logs (run in another terminal):"
     echo "   docker logs obp-keycloak --follow | grep -E \"OPERATION DISABLED|read-only|blocked\""
     echo ""
+    AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
     echo "6. Check Database (READ-ONLY - No Changes Expected):"
     echo "   PGPASSWORD=\"$DB_PASSWORD\" psql -h $DB_HOST -U $DB_USER -d $DB_NAME \\"
-    echo "   -c \"SELECT firstname, lastname, email, updatedat FROM authuser WHERE username = '$USERNAME';\""
+    echo "   -c \"SELECT firstname, lastname, email, updatedat FROM $AUTHUSER_TABLE WHERE username = '$USERNAME';\""
     echo ""
-    echo "⚠️  IMPORTANT: authuser table is READ-ONLY"
+    echo "⚠️  IMPORTANT: $AUTHUSER_TABLE table/view is READ-ONLY"
     echo ""
     echo "Expected Behavior:"
     echo "🔴 Profile update attempts will be BLOCKED"
-    echo "🔴 Logs will show 'OPERATION DISABLED: authuser table is read-only'"
+    echo "🔴 Logs will show 'OPERATION DISABLED: $AUTHUSER_TABLE table is read-only'"
     echo "🔴 Database values will NOT change"
     echo "🔴 updatedat timestamp will remain unchanged"
     echo "✅ User can still login and view profile (read operations work)"
+    echo "📋 Using table/view: $AUTHUSER_TABLE"
 }
 
 # Function to run automated checks

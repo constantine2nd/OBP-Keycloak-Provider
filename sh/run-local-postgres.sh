@@ -123,11 +123,11 @@ echo -e "${BLUE}Database: Existing Local PostgreSQL Instances${NC}"
 echo -e "${BLUE}Deployment: $DEPLOYMENT_TYPE${NC}"
 echo ""
 
-# Check if .env.local file exists, create if not
-if [ ! -f ".env.local" ]; then
-    echo -e "${RED}Error: .env.local file not found!${NC}"
+# Check if .env file exists, create if not
+if [ ! -f ".env" ]; then
+    echo -e "${RED}Error: .env file not found!${NC}"
     echo ""
-    echo "Please create .env.local file with your local PostgreSQL configuration."
+    echo "Please create .env file with your local PostgreSQL configuration."
     echo "Example content:"
     echo ""
     cat << 'EOF'
@@ -154,14 +154,14 @@ KC_HTTP_ENABLED=true
 KC_HOSTNAME_STRICT=false
 EOF
     echo ""
-    echo "Run: cp .env.local.example .env.local # (if example exists)"
+    echo "Run: cp .env.example .env # (if example exists)"
     echo "Or create the file manually with the above content."
     exit 1
 fi
 
-# Load environment variables from .env.local
-echo "Loading environment variables from .env.local..."
-source .env.local
+# Load environment variables from .env
+echo "Loading environment variables from .env..."
+source .env
 
 echo -e "${GREEN}✓ Environment variables loaded${NC}"
 
@@ -182,7 +182,7 @@ if [ ${#missing_vars[@]} -ne 0 ]; then
     for var in "${missing_vars[@]}"; do
         echo -e "${RED}  - $var${NC}"
     done
-    echo -e "${YELLOW}Please set these variables in your .env.local file.${NC}"
+    echo -e "${YELLOW}Please set these variables in your .env file.${NC}"
     exit 1
 fi
 
@@ -222,37 +222,42 @@ if [ "$TEST_CONNECTIONS" = true ] || [ "$VALIDATE_SETUP" = true ]; then
         exit 1
     fi
 
-    # Check if authuser table exists
-    echo -n "Checking authuser table... "
-    if PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped -c "\d authuser" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Table exists${NC}"
+    # Get table name from environment or default to authuser
+    AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-authuser}"
+
+    # Check if user data table/view exists
+    echo -n "Checking user data table/view ($AUTHUSER_TABLE)... "
+    if PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped -c "\d $AUTHUSER_TABLE" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Table/View exists${NC}"
 
         # Check table structure
-        echo -n "Validating authuser table structure... "
+        echo -n "Validating $AUTHUSER_TABLE structure... "
         required_columns=("id" "username" "password_pw" "email" "firstname" "lastname")
         missing_columns=()
 
         for column in "${required_columns[@]}"; do
-            if ! PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped -c "\d authuser" 2>/dev/null | grep -q "$column"; then
+            if ! PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped -c "\d $AUTHUSER_TABLE" 2>/dev/null | grep -q "$column"; then
                 missing_columns+=("$column")
             fi
         done
 
         if [ ${#missing_columns[@]} -eq 0 ]; then
-            echo -e "${GREEN}✓ Valid structure${NC}"
+            echo -e "${GREEN}✓ All required columns present${NC}"
         else
             echo -e "${YELLOW}⚠ Missing columns: ${missing_columns[*]}${NC}"
-            echo "The table may need to be created or updated."
+            echo "The table/view may need to be created or updated."
         fi
     else
-        echo -e "${RED}✗ Table does not exist${NC}"
+        echo -e "${RED}✗ Table/View does not exist${NC}"
         echo ""
-        echo -e "${RED}ERROR: The authuser table must be created outside of this script.${NC}"
+        echo -e "${RED}ERROR: The $AUTHUSER_TABLE table/view must be created outside of this script.${NC}"
         echo "The obp_mapped database is READ-ONLY for this application."
         echo ""
-        echo "Please ensure the authuser table exists in the obp_mapped database"
-        echo "before running this script. The table must be created by a database"
+        echo "Please ensure the $AUTHUSER_TABLE table/view exists in the obp_mapped database"
+        echo "before running this script. The table/view must be created by a database"
         echo "administrator with appropriate permissions."
+        echo ""
+        echo "Environment variable DB_AUTHUSER_TABLE=$AUTHUSER_TABLE"
         echo ""
         echo "Required table structure documented in:"
         echo "  - README.md"
@@ -347,6 +352,7 @@ CONTAINER_ENV_VARS=(
     "-e" "DB_PASSWORD=$DB_PASSWORD"
     "-e" "DB_DRIVER=${DB_DRIVER:-org.postgresql.Driver}"
     "-e" "DB_DIALECT=${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}"
+    "-e" "DB_AUTHUSER_TABLE=${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
     "-e" "HIBERNATE_DDL_AUTO=${HIBERNATE_DDL_AUTO:-validate}"
     "-e" "HIBERNATE_SHOW_SQL=${HIBERNATE_SHOW_SQL:-true}"
     "-e" "HIBERNATE_FORMAT_SQL=${HIBERNATE_FORMAT_SQL:-true}"

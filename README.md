@@ -19,6 +19,14 @@ This project demonstrates the ability to use Postgres as user storage provider o
 - ✅ **12-Factor App Compliant**: Follows modern cloud-native principles
 - ✅ **CI/CD Friendly**: "Build once, deploy everywhere" approach
 
+## 🔒 Security Features
+
+- ✅ **View-Based Access**: Uses `v_authuser_oidc` view for secure, read-only data access
+- ✅ **Read-Only Operations**: All write operations (INSERT, UPDATE, DELETE) are disabled
+- ✅ **Minimal Permissions**: Dedicated `oidc_user` with SELECT-only database permissions
+- ✅ **Column Filtering**: Only OIDC-required fields exposed through database view
+- ✅ **User Validation**: Only validated users accessible through OIDC authentication
+
 ## Requirements
 
 The following software is required to work build it locally:
@@ -37,6 +45,34 @@ See the links above for installation instructions on your platform. You can veri
     $ java --version
 
 
+
+## 🔧 Quick Configuration
+
+### View-Based Access (Recommended for Production)
+
+```bash
+# Environment variables for secure view-based access
+DB_USER=oidc_user
+DB_PASSWORD=your_secure_password
+DB_AUTHUSER_TABLE=v_authuser_oidc
+```
+
+**Benefits:**
+- Enhanced security through PostgreSQL view filtering
+- Read-only access prevents accidental data modification
+- Only validated users are accessible through OIDC
+- Minimal database permissions for the application user
+
+### Direct Table Access (Development/Legacy)
+
+```bash
+# Environment variables for direct table access
+DB_USER=obp
+DB_PASSWORD=f
+DB_AUTHUSER_TABLE=authuser
+```
+
+See [VIEW_BASED_ACCESS.md](VIEW_BASED_ACCESS.md) for detailed setup instructions.
 
 ## Usage
 ### Docker containers

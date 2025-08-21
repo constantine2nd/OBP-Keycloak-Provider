@@ -73,13 +73,13 @@ if ! command -v mvn &> /dev/null; then
 fi
 
 # Load environment variables
-if [ ! -f ".env.local" ]; then
-    echo -e "${RED}✗ .env.local file not found${NC}"
-    echo "Create .env.local with database configuration"
+if [ ! -f ".env" ]; then
+    echo -e "${RED}✗ .env file not found${NC}"
+    echo "Create .env with database configuration"
     exit 1
 fi
 
-source .env.local
+source .env
 
 # Validate required vars
 required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD")
@@ -317,6 +317,7 @@ CONTAINER_ENV_VARS=(
     "-e" "DB_PASSWORD=$DB_PASSWORD"
     "-e" "DB_DRIVER=${DB_DRIVER:-org.postgresql.Driver}"
     "-e" "DB_DIALECT=${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}"
+    "-e" "DB_AUTHUSER_TABLE=${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
     "-e" "HIBERNATE_DDL_AUTO=${HIBERNATE_DDL_AUTO:-validate}"
     "-e" "HIBERNATE_SHOW_SQL=${HIBERNATE_SHOW_SQL:-true}"
     "-e" "HIBERNATE_FORMAT_SQL=${HIBERNATE_FORMAT_SQL:-true}"

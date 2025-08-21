@@ -206,24 +206,28 @@ test_database_permissions() {
 test_authuser_table() {
     log_section "User Storage Schema"
 
-    # Test if authuser table exists
-    log_test "authuser table existence"
-    if PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -c "\d authuser" &> /dev/null; then
-        log_pass "authuser table exists"
+    # Get table name from environment or default to v_authuser_oidc
+    AUTHUSER_TABLE="${DB_AUTHUSER_TABLE:-v_authuser_oidc}"
+
+    # Test if user data table/view exists
+    log_test "$AUTHUSER_TABLE table/view existence"
+    if PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -c "\d $AUTHUSER_TABLE" &> /dev/null; then
+        log_pass "$AUTHUSER_TABLE table/view exists"
     else
-        log_fail "authuser table does not exist"
-        echo -e "${RED}   ERROR: authuser table must be created by database administrator${NC}"
+        log_fail "$AUTHUSER_TABLE table/view does not exist"
+        echo -e "${RED}   ERROR: $AUTHUSER_TABLE table/view must be created by database administrator${NC}"
         echo -e "${YELLOW}   The obp_mapped database is READ-ONLY for this application${NC}"
+        echo -e "${YELLOW}   Environment variable DB_AUTHUSER_TABLE=$AUTHUSER_TABLE${NC}"
         return 1
     fi
 
     # Test required columns
-    log_test "authuser table structure"
+    log_test "$AUTHUSER_TABLE structure"
     required_columns=("id" "username" "password_pw" "email" "firstname" "lastname")
     missing_columns=()
 
     for column in "${required_columns[@]}"; do
-        if ! PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -c "\d authuser" 2>/dev/null | grep -q "$column"; then
+        if ! PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -c "\d $AUTHUSER_TABLE" 2>/dev/null | grep -q "$column"; then
             missing_columns+=("$column")
         fi
     done
@@ -235,14 +239,14 @@ test_authuser_table() {
         return 1
     fi
 
-    # Test existing data (read-only table)
-    log_test "authuser existing data"
-    user_count=$(PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -t -c "SELECT count(*) FROM authuser;" 2>/dev/null | tr -d ' ')
+    # Test existing data (read-only table/view)
+    log_test "$AUTHUSER_TABLE existing data"
+    user_count=$(PGPASSWORD="$USER_STORAGE_DB_PASSWORD" psql -h localhost -p 5432 -U "$USER_STORAGE_DB_USER" -d "$USER_STORAGE_DB_NAME" -t -c "SELECT count(*) FROM $AUTHUSER_TABLE;" 2>/dev/null | tr -d ' ')
     if [ "$user_count" -gt 0 ] 2>/dev/null; then
-        log_pass "$user_count users found (READ-ONLY table)"
+        log_pass "$user_count users found (READ-ONLY table/view)"
     else
-        log_warn "No users in authuser table (READ-ONLY)"
-        echo -e "${YELLOW}   NOTE: authuser table is READ-ONLY. Users must be added outside of Keycloak.${NC}"
+        log_warn "No users in $AUTHUSER_TABLE table/view (READ-ONLY)"
+        echo -e "${YELLOW}   NOTE: $AUTHUSER_TABLE is READ-ONLY. Users must be added outside of Keycloak.${NC}"
     fi
 
     return 0
@@ -251,13 +255,13 @@ test_authuser_table() {
 test_environment_configuration() {
     log_section "Environment Configuration"
 
-    # Test .env.local file
-    log_test ".env.local file"
-    if [ -f ".env.local" ]; then
-        log_pass ".env.local exists"
+    # Test .env file
+    log_test ".env file"
+    if [ -f ".env" ]; then
+        log_pass ".env exists"
 
         # Check key environment variables
-        source .env.local 2>/dev/null || true
+        source .env 2>/dev/null || true
 
         log_test "Environment variables"
         missing_vars=()
@@ -276,8 +280,8 @@ test_environment_configuration() {
             return 1
         fi
     else
-        log_fail ".env.local not found"
-        echo -e "${YELLOW}   Create: cp .env.local.example .env.local${NC}"
+        log_fail ".env not found"
+        echo -e "${YELLOW}   Create: cp .env.example .env${NC}"
         return 1
     fi
 
