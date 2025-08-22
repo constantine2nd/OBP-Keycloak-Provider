@@ -148,6 +148,9 @@ DB_PASSWORD=f
 DB_DRIVER=org.postgresql.Driver
 DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
 
+# MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+OBP_AUTHUSER_PROVIDER=your_provider_name
+
 # Configuration
 HIBERNATE_DDL_AUTO=validate
 KC_HTTP_ENABLED=true
@@ -168,7 +171,7 @@ echo -e "${GREEN}✓ Environment variables loaded${NC}"
 # Validate required environment variables
 echo ""
 echo "Validating environment variables..."
-required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD")
+required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "OBP_AUTHUSER_PROVIDER")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -181,12 +184,16 @@ if [ ${#missing_vars[@]} -ne 0 ]; then
     echo -e "${RED}Error: Missing required environment variables:${NC}"
     for var in "${missing_vars[@]}"; do
         echo -e "${RED}  - $var${NC}"
+        if [ "$var" = "OBP_AUTHUSER_PROVIDER" ]; then
+            echo -e "${RED}    CRITICAL: OBP_AUTHUSER_PROVIDER is MANDATORY for security${NC}"
+            echo -e "${YELLOW}    Add to .env file: OBP_AUTHUSER_PROVIDER=your_provider_name${NC}"
+        fi
     done
     echo -e "${YELLOW}Please set these variables in your .env file.${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Environment variables validated${NC}"
+echo -e "${GREEN}✓ Environment variables validated (including mandatory OBP_AUTHUSER_PROVIDER)${NC}"
 
 # Test database connections if requested
 if [ "$TEST_CONNECTIONS" = true ] || [ "$VALIDATE_SETUP" = true ]; then
@@ -353,6 +360,7 @@ CONTAINER_ENV_VARS=(
     "-e" "DB_DRIVER=${DB_DRIVER:-org.postgresql.Driver}"
     "-e" "DB_DIALECT=${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}"
     "-e" "DB_AUTHUSER_TABLE=${DB_AUTHUSER_TABLE:-v_oidc_users}"
+    "-e" "OBP_AUTHUSER_PROVIDER=$OBP_AUTHUSER_PROVIDER"
     "-e" "HIBERNATE_DDL_AUTO=${HIBERNATE_DDL_AUTO:-validate}"
     "-e" "HIBERNATE_SHOW_SQL=${HIBERNATE_SHOW_SQL:-true}"
     "-e" "HIBERNATE_FORMAT_SQL=${HIBERNATE_FORMAT_SQL:-true}"

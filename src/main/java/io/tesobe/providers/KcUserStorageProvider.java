@@ -134,7 +134,7 @@ public class KcUserStorageProvider
                 getFieldList() +
                 " FROM " +
                 dbConfig.getAuthUserTable() +
-                " WHERE id = ?";
+                " WHERE id = ? AND provider = ?";
             try (
                 Connection conn = dbConfig.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)
@@ -143,6 +143,7 @@ public class KcUserStorageProvider
                     // Try parsing external ID as Long (database primary key id)
                     Long userId = Long.parseLong(externalId);
                     stmt.setLong(1, userId);
+                    stmt.setString(2, dbConfig.getAuthUserProvider());
                     try (ResultSet rs = stmt.executeQuery()) {
                         if (rs.next()) {
                             KcUserEntity entity = mapResultSetToEntity(rs);
@@ -155,9 +156,10 @@ public class KcUserStorageProvider
                             // Force refresh to ensure database is source of truth
                             adapter.forceRefreshFromDatabase();
                             log.infof(
-                                "✅ OPTIMAL: Found user %s by id %s (fast integer lookup)",
+                                "✅ OPTIMAL: Found user %s by id %s with provider %s (fast integer lookup)",
                                 entity.getUsername(),
-                                entity.getId()
+                                entity.getId(),
+                                entity.getProvider()
                             );
                             return adapter;
                         }
@@ -192,15 +194,37 @@ public class KcUserStorageProvider
             getFieldList() +
             " FROM " +
             dbConfig.getAuthUserTable() +
-            " WHERE username = ?";
+            " WHERE username = ? AND provider = ?";
+
         try (
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setString(1, username);
+            stmt.setString(2, dbConfig.getAuthUserProvider());
+
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    KcUserEntity entity = mapResultSetToEntity(rs);
+                KcUserEntity entity = null;
+                int rowCount = 0;
+
+                while (rs.next()) {
+                    rowCount++;
+                    if (rowCount == 1) {
+                        entity = mapResultSetToEntity(rs);
+                    }
+                }
+
+                if (rowCount > 1) {
+                    log.errorf(
+                        "Ambiguous login attempt: getUserByUsername found %d rows for username '%s' with provider '%s'. Login denied for security.",
+                        rowCount,
+                        username,
+                        dbConfig.getAuthUserProvider()
+                    );
+                    return null;
+                }
+
+                if (entity != null) {
                     UserAdapter adapter = new UserAdapter(
                         session,
                         realm,
@@ -210,8 +234,9 @@ public class KcUserStorageProvider
                     // Force refresh to ensure database is source of truth
                     adapter.forceRefreshFromDatabase();
                     log.infof(
-                        "Created UserAdapter for user: %s",
-                        entity.getUsername()
+                        "Created UserAdapter for user: %s with provider: %s",
+                        entity.getUsername(),
+                        entity.getProvider()
                     );
                     return adapter;
                 }
@@ -231,12 +256,15 @@ public class KcUserStorageProvider
             getFieldList() +
             " FROM " +
             dbConfig.getAuthUserTable() +
-            " WHERE email = ?";
+            " WHERE email = ? AND provider = ?";
+
         try (
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setString(1, email);
+            stmt.setString(2, dbConfig.getAuthUserProvider());
+
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);
@@ -246,8 +274,11 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
+                    log.infof(
+                        "Created UserAdapter for email: %s with provider: %s",
+                        entity.getEmail(),
+                        entity.getProvider()
+                    );
                     return adapter;
                 }
             }
@@ -519,16 +550,27 @@ public class KcUserStorageProvider
     @Override
     public int getUsersCount(RealmModel realm) {
         log.infof("getUsersCount() called for realm: %s", realm.getName());
-        String sql = "SELECT COUNT(*) FROM " + dbConfig.getAuthUserTable();
+        String sql =
+            "SELECT COUNT(*) FROM " +
+            dbConfig.getAuthUserTable() +
+            " WHERE provider = ?";
+
         try (
             Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()
+            PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
-            if (rs.next()) {
-                int count = rs.getInt(1);
-                log.infof("Found %d users in database", count);
-                return count;
+            stmt.setString(1, dbConfig.getAuthUserProvider());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    log.infof(
+                        "Total users count for provider '%s': %d",
+                        dbConfig.getAuthUserProvider(),
+                        count
+                    );
+                    return count;
+                }
             }
         } catch (SQLException e) {
             log.error("Error in getUsersCount", e);
@@ -556,7 +598,7 @@ public class KcUserStorageProvider
             getFieldList() +
             " FROM " +
             dbConfig.getAuthUserTable() +
-            " WHERE LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? ORDER BY username";
+            " WHERE (LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ?) AND provider = ? ORDER BY username";
 
         // Add pagination if specified
         if (max != null && max >= 0) {
@@ -575,6 +617,7 @@ public class KcUserStorageProvider
             stmt.setString(2, searchPattern);
             stmt.setString(3, searchPattern);
             stmt.setString(4, searchPattern);
+            stmt.setString(5, dbConfig.getAuthUserProvider());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -721,7 +764,7 @@ public class KcUserStorageProvider
             getFieldList() +
             " FROM " +
             dbConfig.getAuthUserTable() +
-            " ORDER BY username";
+            " WHERE provider = ? ORDER BY username";
 
         // Add pagination if specified
         if (max != null && max >= 0) {
@@ -735,6 +778,7 @@ public class KcUserStorageProvider
             Connection conn = dbConfig.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
+            stmt.setString(1, dbConfig.getAuthUserProvider());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);

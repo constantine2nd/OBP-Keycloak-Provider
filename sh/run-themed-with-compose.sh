@@ -249,7 +249,32 @@ if [ -f ".env" ]; then
     echo "  Keycloak HTTP Port: ${KEYCLOAK_HTTP_PORT:-8000}"
     echo "  Keycloak HTTPS Port: ${KEYCLOAK_HTTPS_PORT:-8443}"
     echo "  Hibernate DDL Mode: ${HIBERNATE_DDL_AUTO:-validate}"
+    echo "  Auth User Provider: ${OBP_AUTHUSER_PROVIDER:-NOT SET}"
+else
+    echo -e "${RED}Error: .env file not found!${NC}"
+    echo "Create .env file with your configuration including OBP_AUTHUSER_PROVIDER"
+    exit 1
 fi
+
+# Validate mandatory environment variables
+echo ""
+echo "Validating mandatory environment variables..."
+if [ -z "${OBP_AUTHUSER_PROVIDER:-}" ]; then
+    echo -e "${RED}CRITICAL: OBP_AUTHUSER_PROVIDER is MANDATORY and not set!${NC}"
+    echo -e "${RED}System will fail to start without this variable.${NC}"
+    echo ""
+    echo -e "${YELLOW}Add to your .env file:${NC}"
+    echo "OBP_AUTHUSER_PROVIDER=your_provider_name"
+    echo ""
+    echo "Examples:"
+    echo "  OBP_AUTHUSER_PROVIDER=obp_production"
+    echo "  OBP_AUTHUSER_PROVIDER=obp_development"
+    echo "  OBP_AUTHUSER_PROVIDER=tenant_a"
+    echo ""
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Mandatory OBP_AUTHUSER_PROVIDER is set: ${OBP_AUTHUSER_PROVIDER}${NC}"
 
 echo ""
 echo "Theme Configuration:"

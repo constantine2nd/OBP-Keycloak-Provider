@@ -82,10 +82,14 @@ fi
 source .env
 
 # Validate required vars
-required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD")
+required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "OBP_AUTHUSER_PROVIDER")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo -e "${RED}✗ Missing environment variable: $var${NC}"
+        if [ "$var" = "OBP_AUTHUSER_PROVIDER" ]; then
+            echo -e "${RED}CRITICAL: OBP_AUTHUSER_PROVIDER is MANDATORY for security${NC}"
+            echo "Add to .env file: OBP_AUTHUSER_PROVIDER=your_provider_name"
+        fi
         exit 1
     fi
 done
@@ -205,7 +209,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     fi
 fi
 
-echo -e "${GREEN}✓ Environment validated${NC}"
+echo -e "${GREEN}✓ Environment validated (including mandatory OBP_AUTHUSER_PROVIDER)${NC}"
 
 # Step 2: Database connectivity test
 echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"
@@ -318,6 +322,7 @@ CONTAINER_ENV_VARS=(
     "-e" "DB_DRIVER=${DB_DRIVER:-org.postgresql.Driver}"
     "-e" "DB_DIALECT=${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}"
     "-e" "DB_AUTHUSER_TABLE=${DB_AUTHUSER_TABLE:-v_oidc_users}"
+    "-e" "OBP_AUTHUSER_PROVIDER=$OBP_AUTHUSER_PROVIDER"
     "-e" "HIBERNATE_DDL_AUTO=${HIBERNATE_DDL_AUTO:-validate}"
     "-e" "HIBERNATE_SHOW_SQL=${HIBERNATE_SHOW_SQL:-true}"
     "-e" "HIBERNATE_FORMAT_SQL=${HIBERNATE_FORMAT_SQL:-true}"
@@ -426,6 +431,7 @@ echo "  JAR Checksum: $JAR_CHECKSUM"
 echo "  Container: $CONTAINER_NAME"
 echo "  Image: $IMAGE_TAG"
 echo "  Type: $DEPLOYMENT_TYPE"
+echo "  Provider: $OBP_AUTHUSER_PROVIDER"
 echo ""
 
 echo "Service Access:"

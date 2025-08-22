@@ -114,6 +114,18 @@ spec:
                 configMapKeyRef:
                   name: obp-keycloak-config
                   key: DB_DIALECT
+            - name: DB_AUTHUSER_TABLE
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: DB_AUTHUSER_TABLE
+
+            # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+            - name: OBP_AUTHUSER_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: obp-keycloak-config
+                  key: OBP_AUTHUSER_PROVIDER
 
             # Hibernate Configuration
             - name: HIBERNATE_DDL_AUTO

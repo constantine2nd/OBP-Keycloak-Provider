@@ -71,6 +71,9 @@ services:
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       DB_AUTHUSER_TABLE: v_oidc_users
 
+      # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+      OBP_AUTHUSER_PROVIDER: example_provider
+
       # Hibernate configuration for user storage
       HIBERNATE_DDL_AUTO: validate
       HIBERNATE_SHOW_SQL: "true"
@@ -153,3 +156,8 @@ networks:
 # 5. Direct database connections:
 #    Keycloak DB: localhost:5433 (keycloak/keycloak_secure_password/keycloak)
 #    User Storage DB: localhost:5432 (obp/user_storage_secure_password/obp_mapped)
+#
+# CRITICAL REQUIREMENT:
+#   OBP_AUTHUSER_PROVIDER is mandatory and must be set to match your provider
+#   Edit the environment variable above or set it in your environment:
+#   export OBP_AUTHUSER_PROVIDER=your_provider_name

@@ -27,6 +27,7 @@ public class DatabaseConfig {
     private static final String DB_PASSWORD = "DB_PASSWORD";
     private static final String DB_DRIVER = "DB_DRIVER";
     private static final String DB_AUTHUSER_TABLE = "DB_AUTHUSER_TABLE";
+    private static final String OBP_AUTHUSER_PROVIDER = "OBP_AUTHUSER_PROVIDER";
 
     // Default values
     private static final String DEFAULT_DB_URL =
@@ -35,6 +36,7 @@ public class DatabaseConfig {
     private static final String DEFAULT_DB_PASSWORD = "f";
     private static final String DEFAULT_DB_DRIVER = "org.postgresql.Driver";
     private static final String DEFAULT_AUTHUSER_TABLE = "v_oidc_users";
+    // No default for provider - it's mandatory
 
     // Configuration properties
     private final String dbUrl;
@@ -42,6 +44,7 @@ public class DatabaseConfig {
     private final String dbPassword;
     private final String dbDriver;
     private final String authUserTable;
+    private final String authUserProvider;
 
     private DatabaseConfig() {
         // Load configuration from environment variables
@@ -53,6 +56,7 @@ public class DatabaseConfig {
             DB_AUTHUSER_TABLE,
             DEFAULT_AUTHUSER_TABLE
         );
+        this.authUserProvider = getMandatoryEnv(OBP_AUTHUSER_PROVIDER);
 
         // Load JDBC driver
         try {
@@ -72,6 +76,7 @@ public class DatabaseConfig {
         log.infof("  User: %s", this.dbUser);
         log.infof("  Driver: %s", this.dbDriver);
         log.infof("  Auth User Table: %s", this.authUserTable);
+        log.infof("  Auth User Provider: %s", this.authUserProvider);
 
         // Enhanced debugging for DB_AUTHUSER_TABLE
         String envValue = System.getenv(DB_AUTHUSER_TABLE);
@@ -180,13 +185,17 @@ public class DatabaseConfig {
         if (isEnvMissing(DB_PASSWORD)) missingVars
             .append(DB_PASSWORD)
             .append(" ");
+        if (isEnvMissing(OBP_AUTHUSER_PROVIDER)) missingVars
+            .append(OBP_AUTHUSER_PROVIDER)
+            .append(" ");
 
         if (missingVars.length() > 0) {
-            String warning =
-                "Warning: Required environment variables not set: " +
+            String error =
+                "FATAL: Required environment variables not set: " +
                 missingVars.toString().trim() +
-                ". Using default values which may not work in production.";
-            log.warn(warning);
+                ". These variables are mandatory for security and proper operation.";
+            log.error(error);
+            throw new RuntimeException(error);
         } else {
             log.info("All required environment variables are configured");
         }
@@ -207,6 +216,30 @@ public class DatabaseConfig {
         }
         log.infof(
             "✅ Environment variable %s loaded: %s",
+            envName,
+            value.trim()
+        );
+        return value.trim();
+    }
+
+    /**
+     * Gets mandatory environment variable value or throws exception
+     */
+    private static String getMandatoryEnv(String envName) {
+        String value = System.getenv(envName);
+        if (value == null || value.trim().isEmpty()) {
+            String error = String.format(
+                "FATAL: Mandatory environment variable '%s' is not set. " +
+                "This variable is required for security and must be configured. " +
+                "Please set %s=your_provider_name in your environment configuration.",
+                envName,
+                envName
+            );
+            log.error(error);
+            throw new RuntimeException(error);
+        }
+        log.infof(
+            "✅ Mandatory environment variable %s loaded: %s",
             envName,
             value.trim()
         );
@@ -256,5 +289,13 @@ public class DatabaseConfig {
      */
     public String getAuthUserTable() {
         return authUserTable;
+    }
+
+    /**
+     * Get the configured provider value for filtering user data
+     * @return The provider value to filter by, or null if not configured
+     */
+    public String getAuthUserProvider() {
+        return authUserProvider;
     }
 }

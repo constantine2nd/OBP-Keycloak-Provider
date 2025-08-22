@@ -169,18 +169,47 @@ check_env_var "DB_USER" "obp" true "User storage database username"
 check_env_var "DB_PASSWORD" "changeme" true "User storage database password"
 check_env_var "DB_DRIVER" "org.postgresql.Driver" false "JDBC driver class"
 check_env_var "DB_DIALECT" "org.hibernate.dialect.PostgreSQLDialect" false "Hibernate dialect"
+check_env_var "DB_AUTHUSER_TABLE" "v_oidc_users" false "User storage table/view name"
+check_env_var "OBP_AUTHUSER_PROVIDER" "" true "User provider filtering (MANDATORY for security)"
 validate_jdbc_url "DB_URL" "obp_mapped"
 echo ""
 
 # === Configuration Settings ===
 echo "⚙️  Checking Configuration Settings..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 check_env_var "HIBERNATE_DDL_AUTO" "validate" false "Hibernate DDL auto mode"
 check_env_var "HIBERNATE_SHOW_SQL" "true" false "Enable SQL logging"
 check_env_var "KC_HOSTNAME_STRICT" "false" false "Keycloak hostname strict mode"
 check_env_var "KC_HTTP_ENABLED" "true" false "Enable HTTP (for development)"
 check_env_var "KC_HEALTH_ENABLED" "true" false "Enable health endpoints"
 check_env_var "KC_METRICS_ENABLED" "true" false "Enable metrics endpoints"
+
+# === MANDATORY Security Configuration ===
+echo ""
+echo "🔒 Checking Mandatory Security Configuration..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+((CHECKS++))
+if [[ -z "${OBP_AUTHUSER_PROVIDER:-}" ]]; then
+    log_error "OBP_AUTHUSER_PROVIDER is MANDATORY and must be set"
+    echo "   This variable is required for security and system will fail to start without it"
+    echo "   Example: export OBP_AUTHUSER_PROVIDER=production_provider"
+else
+    log_success "OBP_AUTHUSER_PROVIDER is properly configured: ${OBP_AUTHUSER_PROVIDER}"
+
+    # Validate provider value format
+    if [[ "${OBP_AUTHUSER_PROVIDER}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_success "Provider name format is valid"
+    else
+        log_warning "Provider name contains special characters - ensure it matches database values"
+    fi
+
+    # Check for common test/default values
+    if [[ "${OBP_AUTHUSER_PROVIDER}" == "REPLACE_WITH_ACTUAL_PROVIDER" ]] ||
+       [[ "${OBP_AUTHUSER_PROVIDER}" == "your_provider_name" ]] ||
+       [[ "${OBP_AUTHUSER_PROVIDER}" == "test" ]]; then
+        log_warning "OBP_AUTHUSER_PROVIDER uses a placeholder/test value - update for production"
+    fi
+fi
 echo ""
 
 # === Port checks ===
@@ -331,25 +360,32 @@ if [[ $ERRORS -eq 0 ]]; then
     if [[ $WARNINGS -eq 0 ]]; then
         echo -e "\n${GREEN}🎉 Configuration validation passed! Your setup looks good.${NC}"
         echo -e "${GREEN}✅ Recent fixes are properly applied.${NC}"
+        echo -e "${GREEN}✅ OBP_AUTHUSER_PROVIDER is properly configured.${NC}"
         echo ""
         echo "Next steps:"
         echo "1. Start the services: docker-compose -f docker-compose.runtime.yml up"
         echo "2. Access Keycloak: http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin"
         echo "3. Check logs: docker logs obp-keycloak"
         echo "4. Database ports: Keycloak DB (5433), User Storage DB (5434)"
+        echo "5. Verify provider filtering in logs: grep 'Auth User Provider' logs"
     else
         echo -e "\n${YELLOW}⚠️  Configuration has warnings but should work.${NC}"
         echo "Please review the warnings above, especially for production deployments."
         echo "Recent fixes are applied - warnings are likely non-critical."
+        echo ""
+        if [[ -z "${OBP_AUTHUSER_PROVIDER:-}" ]]; then
+            echo -e "${RED}CRITICAL: OBP_AUTHUSER_PROVIDER is not set - system will fail to start!${NC}"
+        fi
     fi
 else
     echo -e "\n${RED}❌ Configuration validation failed!${NC}"
     echo "Please fix the errors above before proceeding."
     echo ""
     echo "Common fixes:"
-    echo "1. Update KC_DB_URL to full JDBC URL format"
-    echo "2. Change USER_STORAGE_DB_PORT from 5432 to 5434"
-    echo "3. Ensure all required environment variables are set"
+    echo "1. Set OBP_AUTHUSER_PROVIDER (MANDATORY): export OBP_AUTHUSER_PROVIDER=your_provider_name"
+    echo "2. Update KC_DB_URL to full JDBC URL format"
+    echo "3. Change USER_STORAGE_DB_PORT from 5432 to 5434"
+    echo "4. Ensure all required environment variables are set"
     exit 1
 fi
 
@@ -364,5 +400,10 @@ echo "Recent fixes documentation:"
 echo "- Fixed JDBC URL configuration in docker-compose.runtime.yml"
 echo "- Resolved port conflicts by using port 5434 for user storage"
 echo "- Fixed SQL syntax errors in database initialization script"
+echo "- Added MANDATORY OBP_AUTHUSER_PROVIDER for security (BREAKING CHANGE)"
+echo ""
+echo "CRITICAL SECURITY NOTICE:"
+echo "OBP_AUTHUSER_PROVIDER is now MANDATORY - system will fail without it"
+echo "This ensures provider-based user filtering for security and multi-tenancy"
 
 exit 0

@@ -10,6 +10,11 @@ data:
   # Database Configuration
   DB_DRIVER: "org.postgresql.Driver"
   DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+  DB_AUTHUSER_TABLE: "v_oidc_users"
+
+  # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+  # This value MUST be overridden in environment-specific ConfigMaps or via env vars
+  OBP_AUTHUSER_PROVIDER: "REPLACE_WITH_ACTUAL_PROVIDER"
 
   # Hibernate Configuration
   HIBERNATE_DDL_AUTO: "validate"
@@ -51,6 +56,11 @@ data:
   # Database Configuration
   DB_DRIVER: "org.postgresql.Driver"
   DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+  DB_AUTHUSER_TABLE: "v_oidc_users"
+
+  # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+  # Development provider value
+  OBP_AUTHUSER_PROVIDER: "obp_development"
 
   # Hibernate Configuration (Development)
   HIBERNATE_DDL_AUTO: "update"
