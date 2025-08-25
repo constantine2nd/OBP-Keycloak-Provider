@@ -49,7 +49,7 @@ The script follows an 8-step pipeline:
 ### [1/8] Environment Validation
 - Checks Docker installation and daemon
 - Validates Maven installation
-- Loads and validates `.env.local` configuration
+- Loads and validates `.env` configuration
 - Verifies all required environment variables
 - **Themed deployments**: Validates theme files and structure
 
@@ -132,7 +132,7 @@ ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/pro
 # Theme structure validation
 validate_theme_files() {
     # Check Dockerfile exists
-    # Validate theme directory structure  
+    # Validate theme directory structure
     # Verify theme.properties content
     # Check required template files
     # Validate resources (CSS, images)
@@ -212,13 +212,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup PostgreSQL
         # ... database setup steps
-        
+
       - name: Deploy Keycloak
         run: ./sh/run-local-postgres-cicd.sh
-        
+
       - name: Run tests
         run: |
           # Wait for service
@@ -290,7 +290,7 @@ pipeline {
    ```bash
    # Old
    ./sh/run-local-postgres.sh --build --themed
-   
+
    # New
    ./sh/run-local-postgres-cicd.sh --themed
    ```

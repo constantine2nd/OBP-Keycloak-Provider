@@ -44,7 +44,7 @@ The project has been enhanced with a complete CI/CD-style deployment solution th
 - ✅ Build timestamp and checksum tracking
 
 **Pipeline Steps**:
-1. Environment Validation (Docker, Maven, .env.local)
+1. Environment Validation (Docker, Maven, .env)
 2. Database Connectivity Testing
 3. Maven Build (always clean package)
 4. Container Stop (if running)
@@ -188,7 +188,7 @@ jobs:
 5. **JAR Copy**: Subsequent layer rebuilds when cache invalidated
 
 ### Error Handling Strategy
-- **Environment Validation**: Check Docker, Maven, .env.local before starting
+- **Environment Validation**: Check Docker, Maven, .env before starting
 - **Database Testing**: Verify connectivity before building
 - **Build Validation**: Stop on Maven or Docker build failures
 - **Container Health**: Wait up to 2 minutes for service readiness
