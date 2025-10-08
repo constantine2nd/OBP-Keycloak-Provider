@@ -15,7 +15,6 @@ This directory contains shell scripts for **building, running, and managing** th
 
 ### Main Scripts
 
-- **`run-local-postgres.sh`** - Local PostgreSQL deployment with runtime configuration
 - **`validate-separated-db-config.sh`** - Comprehensive configuration validation  
 - **`manage-container.sh`** - Interactive container management
 - **`test-runtime-config.sh`** - Test cloud-native configuration
@@ -45,8 +44,8 @@ cp env.sample .env.local
 # 2. Validate configuration
 ./sh/validate-separated-db-config.sh
 
-# 3. Run with local PostgreSQL
-./sh/run-local-postgres.sh --themed --validate
+# 3. Run with CI/CD deployment
+./sh/run-local-postgres-cicd.sh --themed
 
 # 4. Manage containers (when needed)
 ./sh/manage-container.sh
@@ -108,16 +107,16 @@ USER_STORAGE_DB_PASSWORD=secure_user_password
 - Security analysis
 - Docker configuration
 
-### 2. Local PostgreSQL Runner (`run-local-postgres.sh`)
+### 2. CI/CD PostgreSQL Runner (`run-local-postgres-cicd.sh`)
 
 **Purpose**: Deploy with runtime configuration (recommended)
 
 ```bash
 # Standard deployment
-./sh/run-local-postgres.sh
+./sh/run-local-postgres-cicd.sh
 
-# With custom themes and validation
-./sh/run-local-postgres.sh --themed --validate
+# With custom themes
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 **What it does:**

@@ -17,7 +17,6 @@ This document summarizes the successful consolidation of environment configurati
 ### 2. Scripts Updated to Use `.env`
 Updated all scripts that previously referenced `.env.local`:
 
-- ✅ `sh/run-local-postgres.sh`
 - ✅ `sh/run-local-postgres-cicd.sh`
 - ✅ `sh/compare-deployment-scripts.sh`
 - ✅ `sh/test-local-postgres-setup.sh`
@@ -74,7 +73,6 @@ With `DB_AUTHUSER_TABLE=v_oidc_users1` (non-existent table):
 ### Updated Files
 - `.env` - Now contains all environment variables
 - `.gitignore` - Ensures `.env` is not committed
-- `sh/run-local-postgres.sh` - Updated to use `.env`
 - `sh/run-local-postgres-cicd.sh` - Updated to use `.env` and added missing variable
 - `sh/compare-deployment-scripts.sh` - Updated to use `.env`
 - `sh/test-local-postgres-setup.sh` - Updated to use `.env`
@@ -120,7 +118,7 @@ HIBERNATE_SHOW_SQL=true
 
 ### Standard Deployment
 ```bash
-./sh/run-local-postgres.sh --themed
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### CI/CD Style Deployment

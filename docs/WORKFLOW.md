@@ -22,8 +22,8 @@ nano .env  # Edit with your database credentials
 ### 2. Running the Application
 
 ```bash
-# Build and run with local PostgreSQL
-./sh/run-local-postgres.sh --themed --validate
+# Build and run with CI/CD deployment
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 This script will:
@@ -86,7 +86,7 @@ docker stop obp-keycloak && docker rm obp-keycloak
 nano src/main/java/io/tesobe/providers/KcUserStorageProvider.java
 
 # Rebuild and restart
-./sh/run-local-postgres.sh --themed --validate  # This automatically stops old container
+./sh/run-local-postgres-cicd.sh --themed  # This automatically stops old container
 
 # Press Ctrl+C when done viewing logs
 # Container continues running for testing
@@ -102,14 +102,14 @@ nano .env.local
 ./sh/validate-env.sh
 
 # Rebuild with new configuration
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### Scenario 3: Debugging
 
 ```bash
 # Start with logs
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 
 # Press Ctrl+C to stop log following
 # Use management script for specific log viewing
@@ -170,7 +170,6 @@ The container exposes these ports:
 
 | Script | Purpose | Container Impact |
 |--------|---------|------------------|
-| `./sh/run-local-postgres.sh` | Build and run container with local PostgreSQL | Stops old, starts new |
 | `./sh/run-local-postgres-cicd.sh` | CI/CD deployment (always build & replace) | Always stops old, starts new |
 | `./sh/manage-container.sh` | Interactive container management | Manages existing |
 | `./sh/validate-env.sh` | Validate environment configuration | No impact |

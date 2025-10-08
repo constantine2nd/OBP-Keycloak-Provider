@@ -326,7 +326,7 @@ test_running_container() {
         log_pass "Container $CONTAINER_NAME is running"
     else
         log_fail "Container $CONTAINER_NAME not running"
-        echo -e "${YELLOW}   Start with: ./sh/run-local-postgres.sh${NC}"
+        echo -e "${YELLOW}   Start with: ./sh/run-local-postgres-cicd.sh${NC}"
         return 1
     fi
 
@@ -428,7 +428,7 @@ test_cleanup() {
 
     log_info "Troubleshooting commands:"
     echo "  Test setup:   ./sh/test-local-postgres-setup.sh"
-    echo "  Run setup:    ./sh/run-local-postgres.sh --validate"
+    echo "  Run setup:    ./sh/run-local-postgres-cicd.sh"
     echo "  View docs:    cat docs/LOCAL_POSTGRESQL_SETUP.md"
 }
 
@@ -530,7 +530,7 @@ main() {
         fi
         echo ""
         echo "Next steps:"
-        echo "  1. Run: ./sh/run-local-postgres.sh --validate"
+        echo "  1. Run: ./sh/run-local-postgres-cicd.sh"
         echo "  2. Access: https://localhost:8443/admin"
         echo "  3. Test user federation in admin console"
         exit 0

@@ -55,10 +55,10 @@ cat .env
 
 ```bash
 # Standard deployment
-./sh/run-local-postgres.sh --test --validate
+./sh/run-local-postgres-cicd.sh --test
 
 # Themed deployment with custom UI
-./sh/run-local-postgres.sh --themed --test --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### 4. Access Application
@@ -202,19 +202,16 @@ KC_HOSTNAME_STRICT=false
 
 ```bash
 # Make script executable
-chmod +x sh/run-local-postgres.sh
+chmod +x sh/run-local-postgres-cicd.sh
 
-# Test database connections
-./sh/run-local-postgres.sh --test
+# Test database connections first (manual)
+./sh/test-local-postgres-setup.sh
 
 # Run with validation
-./sh/run-local-postgres.sh --validate
-
-# Force rebuild if needed
-./sh/run-local-postgres.sh --build
+./sh/run-local-postgres-cicd.sh
 
 # Themed deployment
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ## 🎨 Theme Configuration (Optional)
@@ -223,7 +220,7 @@ For custom OBP theme deployment:
 
 ### 1. Run Themed Deployment
 ```bash
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### 2. Activate Theme in Admin Console
@@ -244,33 +241,27 @@ For custom OBP theme deployment:
 
 ```bash
 # Basic usage
-./sh/run-local-postgres.sh [OPTIONS]
+./sh/run-local-postgres-cicd.sh [OPTIONS]
 
 # Options:
---themed, -t     # Build with custom themes
---build, -b      # Force rebuild of Docker image  
---test, -x       # Test database connections first
---validate, -v   # Validate configuration and setup
---help, -h       # Show help message
+--themed         # Build with custom themes
+--help           # Show help message
 ```
 
 ### Usage Examples
 
 ```bash
 # Standard deployment
-./sh/run-local-postgres.sh
+./sh/run-local-postgres-cicd.sh
 
 # Test connections before starting
-./sh/run-local-postgres.sh --test
+./sh/test-local-postgres-setup.sh
 
-# Themed deployment with validation
-./sh/run-local-postgres.sh --themed --validate
-
-# Force rebuild and start
-./sh/run-local-postgres.sh --build
+# Themed deployment
+./sh/run-local-postgres-cicd.sh --themed
 
 # Complete setup with all checks
-./sh/run-local-postgres.sh --themed --test --validate --build
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ## 🔍 Testing and Validation
@@ -402,8 +393,8 @@ GRANT ALL ON SCHEMA public TO obp;
 
 **Solutions**:
 ```bash
-# Run script with validation (creates table automatically)
-./sh/run-local-postgres.sh --validate
+# Run script (creates table automatically)
+./sh/run-local-postgres-cicd.sh
 
 # Or create manually
 PGPASSWORD=f psql -h localhost -p 5432 -U obp -d obp_mapped -f sql/script.sql
@@ -436,7 +427,7 @@ sudo lsof -i :8443
 docker stop $(docker ps -q --filter "publish=8000")
 
 # Use different ports
-KEYCLOAK_HTTP_PORT=8001 KEYCLOAK_HTTPS_PORT=8444 ./sh/run-local-postgres.sh
+KEYCLOAK_HTTP_PORT=8001 KEYCLOAK_HTTPS_PORT=8444 ./sh/run-local-postgres-cicd.sh
 ```
 
 ### Debugging Commands

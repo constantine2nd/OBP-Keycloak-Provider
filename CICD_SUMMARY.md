@@ -107,11 +107,11 @@ ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/pro
 
 ### Development Environment
 ```bash
-# Interactive development with caching
-./sh/run-local-postgres.sh --themed --validate
+# CI/CD deployment with themes
+./sh/run-local-postgres-cicd.sh --themed
 
-# Quick iteration without full validation
-./sh/run-local-postgres.sh --themed
+# Standard CI/CD deployment
+./sh/run-local-postgres-cicd.sh
 ```
 
 ### CI/CD Environment
@@ -209,8 +209,8 @@ docker exec obp-keycloak-local cat /opt/keycloak/build-info.txt
 ## Backward Compatibility
 
 ### Preserved Functionality
-- ✅ Original script (`run-local-postgres.sh`) unchanged and fully functional
-- ✅ All existing documentation remains valid
+- ✅ CI/CD script (`run-local-postgres-cicd.sh`) provides robust deployment
+- ✅ All existing documentation updated accordingly
 - ✅ Environment variables and Docker configuration unchanged
 - ✅ Monitoring and debugging tools preserved
 

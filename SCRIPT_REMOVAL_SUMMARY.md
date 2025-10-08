@@ -22,7 +22,6 @@ The remaining scripts provide clear, purpose-built deployment strategies:
 
 | **Remaining Script** | **Purpose** | **Use Case** |
 |---------------------|-------------|--------------|
-| `run-local-postgres.sh` | Local development with existing PostgreSQL | Daily development, testing |
 | `run-local-postgres-cicd.sh` | Automated deployment pipelines | CI/CD, production deployments |
 
 ### 3. Simplified Documentation
@@ -35,7 +34,7 @@ The remaining scripts provide clear, purpose-built deployment strategies:
 ### `sh/build_and_run.sh`
 - **Purpose**: Early build and deployment script
 - **Issues**: Limited configuration options, no environment variable support
-- **Replacement**: `sh/run-local-postgres.sh` provides same functionality with better configuration
+- **Replacement**: `sh/run-local-postgres-cicd.sh` provides same functionality with better configuration
 
 ### `sh/run-with-env.sh`
 - **Purpose**: Cloud-native deployment with runtime configuration
@@ -66,10 +65,7 @@ cp .env.example .env
 cp .env.example .env.local
 # Edit .env.local file with local PostgreSQL settings
 
-# Run with local PostgreSQL
-./sh/run-local-postgres.sh --themed --validate
-
-# OR for CI/CD environments
+# Run with CI/CD deployment
 ./sh/run-local-postgres-cicd.sh --themed
 ```
 
@@ -88,7 +84,7 @@ cp .env.example .env.local
 # Edit .env.local with your PostgreSQL details
 
 # Run deployment
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ## Updated Documentation
@@ -132,14 +128,14 @@ The following documentation files have been updated to remove references to dele
 ```bash
 # 1. Setup local PostgreSQL database
 # 2. Configure .env.local
-# 3. Run development deployment
-./sh/run-local-postgres.sh --themed --validate
+# 3. Run CI/CD deployment
+./sh/run-local-postgres-cicd.sh --themed
 
 # Features:
-# - Conditional rebuilds for faster iteration
-# - Comprehensive validation
-# - Interactive feedback
-# - Container management guidance
+# - Always builds from scratch
+# - Cache invalidation on code changes
+# - Fail-fast error handling
+# - Structured pipeline output
 ```
 
 ### CI/CD Workflow
@@ -206,7 +202,7 @@ With fewer deployment scripts, development effort can focus on:
 ### Common Transition Issues
 
 1. **"run-with-env.sh not found"**
-   - **Solution**: Use `./sh/run-local-postgres.sh --themed --validate`
+   - **Solution**: Use `./sh/run-local-postgres-cicd.sh --themed`
    - **Setup**: Configure `.env.local` with local PostgreSQL settings
 
 2. **"Docker compose deployment missing"**  
@@ -220,7 +216,7 @@ With fewer deployment scripts, development effort can focus on:
 ### Getting Help
 
 - **Documentation**: Check updated README.md and docs/ directory
-- **Script help**: Run `./sh/run-local-postgres.sh --help` for usage
+- **Script help**: Run `./sh/run-local-postgres-cicd.sh --help` for usage
 - **Validation**: Use `./sh/validate-env.sh` to check configuration
 - **Comparison**: Run `./sh/compare-deployment-scripts.sh` to understand options
 
@@ -228,8 +224,7 @@ With fewer deployment scripts, development effort can focus on:
 
 The script consolidation provides a clearer, more maintainable deployment architecture while preserving all essential functionality. Users now have two well-defined deployment paths:
 
-- **Development**: `run-local-postgres.sh` for interactive development
-- **Automation**: `run-local-postgres-cicd.sh` for CI/CD pipelines
+- **Automation**: `run-local-postgres-cicd.sh` for CI/CD pipelines and all deployments
 
 This simplification reduces complexity while improving reliability, documentation quality, and user experience. The remaining scripts are production-ready, well-tested, and designed for long-term maintainability.
 
@@ -241,7 +236,6 @@ This simplification reduces complexity while improving reliability, documentatio
 - ❌ `sh/run.sh` - Original deployment script
 
 ### Retained & Enhanced
-- ✅ `sh/run-local-postgres.sh` - Enhanced local development deployment
 - ✅ `sh/run-local-postgres-cicd.sh` - Purpose-built CI/CD deployment
 - ✅ All validation, testing, and utility scripts
 - ✅ Comprehensive documentation and examples

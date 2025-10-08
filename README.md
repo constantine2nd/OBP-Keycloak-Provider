@@ -104,16 +104,7 @@ The project includes a comprehensive **OBP Theme** that transforms Keycloak's lo
 
 The project supports two deployment modes:
 
-1. **Local PostgreSQL Deployment** (uses existing local PostgreSQL):
-   ```shell
-   # Standard deployment with local PostgreSQL
-   $ ./sh/run-local-postgres.sh
-
-   # Themed deployment with local PostgreSQL
-   $ ./sh/run-local-postgres.sh --themed --validate
-   ```
-
-2. **CI/CD Deployment** (always build & replace - automated environments):
+1. **CI/CD Deployment** (always build & replace - automated environments):
    ```shell
    # Standard CI/CD deployment
    $ ./sh/run-local-postgres-cicd.sh
@@ -183,10 +174,7 @@ The database connection and Keycloak settings are now configured using **runtime
 
 3. **Run the application:**
    ```shell
-   # Local PostgreSQL deployment (themed)
-   $ ./sh/run-local-postgres.sh --themed --validate
-
-   # OR CI/CD deployment (always build & replace)
+   # CI/CD deployment (always build & replace)
    $ ./sh/run-local-postgres-cicd.sh --themed
    ```
 
@@ -298,19 +286,12 @@ The project provides two focused deployment approaches:
 
 | Method | Use Case | Build Strategy | Best For |
 |--------|----------|---------------|-----------|
-| **Local PostgreSQL** (`run-local-postgres.sh`) | Development with existing PostgreSQL | Conditional rebuild | Daily development, testing |
 | **CI/CD** (`run-local-postgres-cicd.sh`) | Automated pipelines | Always rebuild | CI/CD, production deployments |
 
 ### Development Deployment
 ```bash
-# Interactive development with validation and caching
-./sh/run-local-postgres.sh --themed --validate
-
-# Quick iteration (skips some validation)
-./sh/run-local-postgres.sh --themed
-
 # Standard deployment without themes
-./sh/run-local-postgres.sh
+./sh/run-local-postgres-cicd.sh
 ```
 
 **Features:**
@@ -496,15 +477,15 @@ $ mvn clean package
 # Test runtime configuration
 $ ./sh/test-runtime-config.sh
 
-# Run with local PostgreSQL
-$ ./sh/run-local-postgres.sh --themed --validate
+# Run with CI/CD deployment
+$ ./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### Legacy Approach
 
 For compatibility, you can still use the legacy build script:
 ```shell
-$ ./sh/run-local-postgres.sh
+$ ./sh/run-local-postgres-cicd.sh
 ```
 
 > **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Kubernetes and Docker Hub deployments.

@@ -15,7 +15,7 @@ The `obp_mapped` database is **READ-ONLY** for the Keycloak application:
 ## Harmful Operations Removed
 
 ### 1. Table Creation Operations
-**Removed from `sh/run-local-postgres.sh`:**
+**Removed from `sh/run-local-postgres-cicd.sh`:**
 - Removed complete `CREATE TABLE` statement for `authuser` table
 - Removed `CREATE INDEX` statements
 - Removed table structure validation that attempted creation
@@ -45,7 +45,7 @@ exit 1
 
 ### 2. Script Behavior Changes
 
-#### `sh/run-local-postgres.sh`
+#### `sh/run-local-postgres-cicd.sh`
 - **Old**: Attempted to create table if missing
 - **New**: Exits with error message directing to database administrator
 - **Impact**: Prevents accidental write operations to read-only database

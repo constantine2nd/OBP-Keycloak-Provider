@@ -79,7 +79,7 @@ The migration-related code was completely removed rather than disabled to:
 - Removed `uniqueid varchar(32) NULL` field
 - Removed `CREATE INDEX authuser_uniqueid` statement
 
-**`sh/run-local-postgres.sh`:**
+**`sh/run-local-postgres-cicd.sh`:**
 - Removed uniqueid field from table creation
 - Removed uniqueid index creation
 

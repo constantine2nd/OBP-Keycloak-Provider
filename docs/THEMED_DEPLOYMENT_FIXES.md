@@ -15,7 +15,7 @@ The themed deployment was experiencing container startup failures when using the
 
 ### Primary Issues Identified
 
-1. **Script Timing Logic**: The `run-local-postgres.sh` script was checking container status too early and exiting before Keycloak fully started
+1. **Script Timing Logic**: The `run-local-postgres-cicd.sh` script was checking container status too early and exiting before Keycloak fully started
 2. **Health Check Endpoints**: Standard Keycloak health endpoints (`/health/ready`, `/q/health`) were not available or returning 404
 3. **Container Tool Dependencies**: Validation scripts assumed tools like `curl` and `ps` were available inside the container
 4. **Test Hanging**: Some validation tests were hanging due to improper timeout handling
@@ -32,7 +32,7 @@ The container was actually starting successfully:
 
 ### 1. Improved Container Startup Detection
 
-**File**: `sh/run-local-postgres.sh`
+**File**: `sh/run-local-postgres-cicd.sh`
 
 **Changes**:
 - Extended initial wait time from 5 to 10 seconds
@@ -169,8 +169,8 @@ Results:
 docker stop obp-keycloak-local
 docker rm obp-keycloak-local
 
-# Deploy with themed setup and validation
-./sh/run-local-postgres.sh --themed --validate
+# Deploy with themed setup
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### 2. Manual Validation

@@ -136,8 +136,8 @@ nano .env
 # Validate configuration
 ./sh/validate-separated-db-config.sh
 
-# Run with local PostgreSQL
-./sh/run-local-postgres.sh --themed --validate
+# Run with CI/CD deployment
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ## 🔍 Diagnostic Commands

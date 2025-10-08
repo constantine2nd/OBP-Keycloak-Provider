@@ -18,14 +18,8 @@ echo -e "${GREEN}  OBP Keycloak Deployment Scripts Comparison    ${NC}"
 echo -e "${CYAN}================================================${NC}"
 echo ""
 
-# Check if both scripts exist
-ORIGINAL_SCRIPT="sh/run-local-postgres.sh"
+# Check if CI/CD script exists
 CICD_SCRIPT="sh/run-local-postgres-cicd.sh"
-
-if [ ! -f "$ORIGINAL_SCRIPT" ]; then
-    echo -e "${RED}✗ Original script not found: $ORIGINAL_SCRIPT${NC}"
-    exit 1
-fi
 
 if [ ! -f "$CICD_SCRIPT" ]; then
     echo -e "${RED}✗ CI/CD script not found: $CICD_SCRIPT${NC}"
@@ -45,19 +39,9 @@ check_feature() {
     fi
 }
 
-echo -e "${BLUE}Script Feature Comparison:${NC}"
+echo -e "${BLUE}CI/CD Script Features:${NC}"
 echo ""
 
-echo -e "${YELLOW}Original Script (run-local-postgres.sh):${NC}"
-check_feature "$ORIGINAL_SCRIPT" "FORCE_BUILD=false" "Conditional building"
-check_feature "$ORIGINAL_SCRIPT" "--build" "Build flag support"
-check_feature "$ORIGINAL_SCRIPT" "cleanup_and_exit" "Interrupt handling"
-check_feature "$ORIGINAL_SCRIPT" "show_usage" "Usage documentation"
-check_feature "$ORIGINAL_SCRIPT" "TEST_CONNECTIONS" "Database testing"
-check_feature "$ORIGINAL_SCRIPT" "VALIDATE_SETUP" "Setup validation"
-check_feature "$ORIGINAL_SCRIPT" "docker images.*grep" "Image existence check"
-
-echo ""
 echo -e "${YELLOW}CI/CD Script (run-local-postgres-cicd.sh):${NC}"
 check_feature "$CICD_SCRIPT" "BUILD_TIMESTAMP" "Build timestamp tracking"
 check_feature "$CICD_SCRIPT" "JAR_CHECKSUM" "JAR checksum validation"
@@ -143,21 +127,13 @@ echo ""
 echo -e "${BLUE}Implementation Guide:${NC}"
 echo ""
 
-echo "To switch from Original to CI/CD:"
-echo "  1. Update your automation scripts:"
-echo "     OLD: ./sh/run-local-postgres.sh --build --themed"
-echo "     NEW: ./sh/run-local-postgres-cicd.sh --themed"
+echo "CI/CD Deployment Usage:"
+echo "  1. Standard deployment:"
+echo "     ./sh/run-local-postgres-cicd.sh --themed"
 echo ""
-echo "  2. Remove build flags (always builds now)"
-echo "  3. Update CI/CD pipelines"
-echo "  4. Test thoroughly in your environment"
-echo ""
-
-echo "To switch from CI/CD to Original:"
-echo "  1. Add appropriate flags:"
-echo "     ./sh/run-local-postgres.sh --build --themed"
-echo "  2. Consider using --validate for first run"
-echo "  3. Leverage caching for faster subsequent builds"
+echo "  2. Always builds fresh (no caching)"
+echo "  3. Ideal for automated environments"
+echo "  4. Consistent, reproducible deployments"
 echo ""
 
 # Environment analysis
@@ -232,5 +208,4 @@ echo "  Original: README.md"
 echo "  CI/CD:    docs/CICD_DEPLOYMENT.md"
 echo ""
 echo "Quick start:"
-echo "  Development: ./sh/run-local-postgres.sh --themed"
 echo "  CI/CD:       ./sh/run-local-postgres-cicd.sh --themed"

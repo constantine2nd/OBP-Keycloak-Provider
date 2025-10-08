@@ -30,7 +30,7 @@ The OBP Keycloak Provider has been migrated from hardcoded configuration values 
 
 4. **Run the application:**
    ```bash
-   ./sh/run-local-postgres.sh --themed --validate
+   ./sh/run-local-postgres-cicd.sh --themed
    ```
 
 ## Environment Variables Reference
@@ -183,7 +183,7 @@ nano .env
 
 # Validate and run
 ./sh/validate-env.sh
-./sh/run-local-postgres.sh --themed --validate
+./sh/run-local-postgres-cicd.sh --themed
 ```
 
 ### 2. Docker Run
@@ -380,7 +380,7 @@ DB_AUTHUSER_TABLE=v_oidc_users  # View-based access for security
 2. Create `.env` file: `cp .env.example .env`
 3. Update `.env` with your actual values
 4. Test with: `./sh/validate-env.sh`
-5. Deploy with: `./sh/run-local-postgres.sh --themed --validate`
+5. Deploy with: `./sh/run-local-postgres-cicd.sh --themed`
 
 ## Advanced Configuration
 
