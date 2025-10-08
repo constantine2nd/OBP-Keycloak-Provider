@@ -17,6 +17,12 @@ import org.keycloak.storage.adapter.AbstractUserAdapterFederatedStorage;
  * This adapter treats the database as the single source of truth.
  * The Keycloak GUI reflects the database data but cannot modify it.
  * All write operations are disabled to maintain read-only access.
+ *
+ * Database Structure:
+ * - Uses v_oidc_users view (JOIN of authuser and resourceuser tables)
+ * - user_id: UUID from resourceuser.userid_ (primary identifier)
+ * - Other fields: from authuser table (username, email, etc.)
+ * - Handles both numeric and UUID-based external IDs
  */
 public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
@@ -40,26 +46,26 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
             entity.getEmail()
         );
 
-        // Generate Keycloak ID using database primary key
-        if (entity.getId() == null) {
+        // Generate Keycloak ID using database primary key (UUID from resourceuser.userid_)
+        if (entity.getId() == null || entity.getId().trim().isEmpty()) {
             throw new IllegalStateException(
-                "Primary key id is null for user: " + entity.getUsername()
+                "Primary key user_id is null or empty for user: " +
+                    entity.getUsername()
             );
         }
 
-        this.keycloakId = StorageId.keycloakId(
-            model,
-            String.valueOf(entity.getId())
-        );
+        // entity.getId() is already a String (UUID), no conversion needed
+        this.keycloakId = StorageId.keycloakId(model, entity.getId());
 
         // Clear any existing federated storage data to ensure database is source of truth
         clearFederatedStorageAttributes();
 
         // Add timestamp to ensure fresh data retrieval
         log.infof(
-            "UserAdapter initialized at %d for user: %s",
+            "UserAdapter initialized at %d for user: %s (user_id: %s)",
             System.currentTimeMillis(),
-            getUsername()
+            getUsername(),
+            entity.getId()
         );
     }
 
@@ -139,7 +145,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setPassword(String password) {
         log.warnf(
             "OPERATION DISABLED: setPassword() called for user %s. " +
-            "Database is read-only. Use external tools to update passwords.",
+                "Database is read-only. Use external tools to update passwords.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -148,7 +154,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setSalt(String salt) {
         log.warnf(
             "OPERATION DISABLED: setSalt() called for user %s. " +
-            "Database is read-only. Use external tools to update passwords.",
+                "Database is read-only. Use external tools to update passwords.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -237,20 +243,8 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
             String.valueOf(entity.getValidated())
         );
 
-        if (entity.getCreatedAt() != null) {
-            addAttributeIfNotNull(
-                attributes,
-                "createdAt",
-                entity.getCreatedAt().toString()
-            );
-        }
-        if (entity.getUpdatedAt() != null) {
-            addAttributeIfNotNull(
-                attributes,
-                "updatedAt",
-                entity.getUpdatedAt().toString()
-            );
-        }
+        // Note: createdAt and updatedAt are excluded from attributes to prevent
+        // OIDC mapper parsing errors (timestamps cannot be parsed as Long)
 
         return attributes;
     }
@@ -306,7 +300,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setUsername(String username) {
         log.warnf(
             "OPERATION DISABLED: setUsername() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -316,7 +310,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setEmail(String email) {
         log.warnf(
             "OPERATION DISABLED: setEmail() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -326,7 +320,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setFirstName(String firstName) {
         log.warnf(
             "OPERATION DISABLED: setFirstName() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -336,7 +330,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setLastName(String lastName) {
         log.warnf(
             "OPERATION DISABLED: setLastName() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -346,7 +340,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setEmailVerified(boolean verified) {
         log.warnf(
             "OPERATION DISABLED: setEmailVerified() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -356,7 +350,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setEnabled(boolean enabled) {
         log.warnf(
             "OPERATION DISABLED: setEnabled() called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             getUsername()
         );
         // Do nothing - database is source of truth
@@ -366,7 +360,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setSingleAttribute(String name, String value) {
         log.warnf(
             "OPERATION DISABLED: setSingleAttribute(%s, %s) called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             name,
             value,
             getUsername()
@@ -378,7 +372,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void setAttribute(String name, List<String> values) {
         log.warnf(
             "OPERATION DISABLED: setAttribute(%s, %s) called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             name,
             values,
             getUsername()
@@ -390,7 +384,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void removeAttribute(String name) {
         log.warnf(
             "OPERATION DISABLED: removeAttribute(%s) called for user %s. " +
-            "Database is read-only. Use external tools to update user data.",
+                "Database is read-only. Use external tools to update user data.",
             name,
             getUsername()
         );
@@ -539,13 +533,16 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     /**
      * Forces a complete refresh of user data by clearing all federated attributes
-     * and ensuring database values are returned
+     * and ensuring database values are returned.
+     *
+     * This method ensures the JOIN-based view data (v_oidc_users) is the source of truth.
      */
     public void forceRefreshFromDatabase() {
         try {
             log.infof(
-                "🔄 FORCING REFRESH from database for user: %s",
-                getUsername()
+                "🔄 FORCING REFRESH from database for user: %s (user_id: %s)",
+                getUsername(),
+                entity.getId()
             );
 
             // Clear all possible federated storage attributes

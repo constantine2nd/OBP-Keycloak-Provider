@@ -22,39 +22,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # PostgreSQL database for OBP user federation
-  user-storage-postgres:
-    image: postgres:16-alpine
-    container_name: user-storage-postgres
-    environment:
-      POSTGRES_DB: ${USER_STORAGE_DB_NAME:-obp_mapped}
-      POSTGRES_USER: ${USER_STORAGE_DB_USER:-obp}
-      POSTGRES_PASSWORD: ${USER_STORAGE_DB_PASSWORD:-changeme}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
-    ports:
-      - "${USER_STORAGE_DB_PORT:-5434}:5432"
-    volumes:
-      - user_storage_postgres_data:/var/lib/postgresql/data
-    networks:
-      - obp-network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${USER_STORAGE_DB_USER:-obp} -d ${USER_STORAGE_DB_NAME:-obp_mapped}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Keycloak with OBP User Storage Provider (Runtime Configuration)
   keycloak:
     image: obp-keycloak-provider:latest
     container_name: obp-keycloak
     depends_on:
       keycloak-postgres:
-        condition: service_healthy
-      user-storage-postgres:
         condition: service_healthy
     environment:
       # Keycloak Admin Configuration
@@ -67,16 +40,16 @@ services:
       KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak_changeme}
 
-      # OBP User Storage database configuration (Cloud-Native)
-      DB_URL: jdbc:postgresql://user-storage-postgres:5432/${USER_STORAGE_DB_NAME:-obp_mapped}
-      DB_USER: ${USER_STORAGE_DB_USER:-obp}
-      DB_PASSWORD: ${USER_STORAGE_DB_PASSWORD:-changeme}
+      # OBP User Storage database configuration (External PostgreSQL)
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/${USER_STORAGE_DB_NAME:-obp_mapped}
+      DB_USER: oidc_user
+      DB_PASSWORD: ${DB_PASSWORD:-}
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_oidc_users}
 
       # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
-      OBP_AUTHUSER_PROVIDER: ${OBP_AUTHUSER_PROVIDER}
+      OBP_AUTHUSER_PROVIDER: ${OBP_AUTHUSER_PROVIDER:-}
 
       # Hibernate Configuration for User Storage
       HIBERNATE_DDL_AUTO: ${HIBERNATE_DDL_AUTO:-validate}
@@ -125,28 +98,8 @@ services:
     profiles:
       - tools
 
-  # Optional: Admin tool for User Storage PostgreSQL
-  user-storage-pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: user-storage-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${USER_STORAGE_PGADMIN_EMAIL:-user-storage-admin@obp.com}
-      PGADMIN_DEFAULT_PASSWORD: ${USER_STORAGE_PGADMIN_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "${USER_STORAGE_PGLADMIN_PORT:-5050}:80"
-    depends_on:
-      - user-storage-postgres
-    networks:
-      - obp-network
-    restart: unless-stopped
-    profiles:
-      - tools
-
 volumes:
   keycloak_postgres_data:
-    driver: local
-  user_storage_postgres_data:
     driver: local
 
 networks:
@@ -189,12 +142,10 @@ networks:
 #   KC_DB_PASSWORD=keycloak_changeme
 #   KC_DB_PORT=5433 (external port for Keycloak's internal database)
 #
-# User Storage Database:
-#   USER_STORAGE_DB_NAME=obp_mapped
-#   USER_STORAGE_DB_USER=obp
-#   USER_STORAGE_DB_PASSWORD=changeme
-#   USER_STORAGE_DB_PORT=5434 (changed from 5432 to avoid conflicts)
-#   OBP_AUTHUSER_PROVIDER=your_provider_name (MANDATORY - system fails if not set)
+# External User Storage Database:
+#   USER_STORAGE_DB_NAME=obp_mapped (database name on external PostgreSQL)
+#   DB_PASSWORD= (password for oidc_user on external PostgreSQL)
+#   OBP_AUTHUSER_PROVIDER= (provider name - can be empty for development)
 #
 # Keycloak Configuration:
 #   KEYCLOAK_ADMIN=admin
@@ -202,6 +153,8 @@ networks:
 #   KEYCLOAK_HTTP_PORT=8000
 #   KEYCLOAK_HTTPS_PORT=8443
 #
-# CRITICAL REQUIREMENT:
-#   OBP_AUTHUSER_PROVIDER must be set or system will fail to start
-#   Examples: obp_production, obp_development, tenant_a, etc.
+# External PostgreSQL Requirements:
+#   - PostgreSQL running on localhost:5432 (accessible via host.docker.internal)
+#   - Database 'obp_mapped' exists
+#   - User 'oidc_user' exists with SELECT permissions on v_oidc_users view
+#   - View 'v_oidc_users' exists with required structure

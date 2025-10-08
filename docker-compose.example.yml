@@ -21,26 +21,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # PostgreSQL database for OBP user storage
-  user-storage-postgres:
-    image: postgres:15
-    container_name: user-storage-postgres
-    environment:
-      POSTGRES_DB: obp_mapped
-      POSTGRES_USER: obp
-      POSTGRES_PASSWORD: user_storage_secure_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - user_storage_postgres_data:/var/lib/postgresql/data
-    networks:
-      - keycloak-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U obp -d obp_mapped"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   keycloak:
     build:
       context: .
@@ -48,8 +28,6 @@ services:
     container_name: obp-keycloak
     depends_on:
       keycloak-postgres:
-        condition: service_healthy
-      user-storage-postgres:
         condition: service_healthy
     environment:
       # Keycloak admin credentials
@@ -62,16 +40,16 @@ services:
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak_secure_password
 
-      # OBP User Storage database configuration
-      DB_URL: jdbc:postgresql://user-storage-postgres:5432/obp_mapped
-      DB_USER: obp
-      DB_PASSWORD: user_storage_secure_password
+      # OBP User Storage database configuration (external PostgreSQL)
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/obp_mapped
+      DB_USER: oidc_user
+      DB_PASSWORD:
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       DB_AUTHUSER_TABLE: v_oidc_users
 
       # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
-      OBP_AUTHUSER_PROVIDER: example_provider
+      OBP_AUTHUSER_PROVIDER:
 
       # Hibernate configuration for user storage
       HIBERNATE_DDL_AUTO: validate
@@ -106,7 +84,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: keycloak-admin@obp.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGLADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "5051:80"
     depends_on:
@@ -115,48 +93,30 @@ services:
       - keycloak-network
     restart: unless-stopped
 
-  # Optional: Admin tool for User Storage PostgreSQL
-  user-storage-pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: user-storage-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: user-storage-admin@obp.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "5050:80"
-    depends_on:
-      - user-storage-postgres
-    networks:
-      - keycloak-network
-    restart: unless-stopped
-
 volumes:
   keycloak_postgres_data:
-  user_storage_postgres_data:
   keycloak_data:
 
 networks:
   keycloak-network:
     driver: bridge
-# Usage:
-# 1. Start all services:
+# Usage with External OBP Database:
+# 1. Ensure external PostgreSQL has 'obp_mapped' database with 'oidc_user'
+# 2. Start services:
 #    docker-compose -f docker-compose.example.yml up
 #
-# 2. Access Keycloak admin console:
+# 3. Access Keycloak admin console:
 #    http://localhost:8000/admin (admin/admin_password)
 #
-# 3. Access Keycloak database via pgAdmin:
+# 4. Access Keycloak database via pgAdmin:
 #    http://localhost:5051 (keycloak-admin@obp.com/admin)
 #
-# 4. Access User Storage database via pgAdmin:
-#    http://localhost:5050 (user-storage-admin@obp.com/admin)
-#
-# 5. Direct database connections:
-#    Keycloak DB: localhost:5433 (keycloak/keycloak_secure_password/keycloak)
-#    User Storage DB: localhost:5432 (obp/user_storage_secure_password/obp_mapped)
+# External PostgreSQL Requirements for OBP User Federation:
+#   - Database 'obp_mapped' accessible on localhost:5432
+#   - User 'oidc_user' with SELECT permissions on v_oidc_users view
+#   - View 'v_oidc_users' must exist with proper structure
 #
 # CRITICAL REQUIREMENT:
-#   OBP_AUTHUSER_PROVIDER is mandatory and must be set to match your provider
+#   OBP_AUTHUSER_PROVIDER must be set to match your provider
 #   Edit the environment variable above or set it in your environment:
 #   export OBP_AUTHUSER_PROVIDER=your_provider_name

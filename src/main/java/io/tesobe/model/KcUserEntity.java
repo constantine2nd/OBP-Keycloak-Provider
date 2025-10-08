@@ -5,10 +5,16 @@ import java.time.LocalDateTime;
 /**
  * User entity for OBP Keycloak Provider
  * Uses JDBC for database operations instead of JPA to avoid conflicts with Keycloak's internal configuration
+ *
+ * Database Structure:
+ * - Represents data from v_oidc_users view (JOIN of authuser and resourceuser tables)
+ * - id field contains UUID from resourceuser.userid_ (primary identifier)
+ * - Other fields come from authuser table (username, email, passwords, etc.)
+ * - Designed to handle both legacy numeric IDs and modern UUID-based identifiers
  */
 public class KcUserEntity {
 
-    private String id;
+    private String id; // UUID from resourceuser.userid_ via v_oidc_users view
     private String firstName;
     private String lastName;
     private String email;
@@ -28,10 +34,18 @@ public class KcUserEntity {
 
     // Getters and setters
 
+    /**
+     * Gets the user ID (UUID from resourceuser.userid_)
+     * This is the primary identifier used by Keycloak for this user
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * Sets the user ID (UUID from resourceuser.userid_)
+     * @param id UUID string from the database view
+     */
     public void setId(String id) {
         this.id = id;
     }

@@ -249,27 +249,25 @@ The database connection and Keycloak settings are now configured using **runtime
 | `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
 | `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode for user storage |
 
-#### Docker Deployment
+#### Docker Deployment with External OBP Database
 
-When using Docker, you can:
+Docker setup uses Keycloak in container with external PostgreSQL for OBP user federation:
 
-1. Use a `.env` file with docker-compose:
+1. Use configuration with external PostgreSQL:
    ```shell
-   $ cp docker-compose.example.yml docker-compose.yml
+   $ cp .env.external-postgres .env
+   $ # Edit .env with your database settings
    $ docker-compose up
    ```
 
-2. Pass environment variables directly:
+2. Required setup:
    ```shell
-   $ docker run -e KC_DB_URL=jdbc:postgresql://keycloak-host:5432/keycloak \
-                 -e KC_DB_USERNAME=keycloak_user \
-                 -e KC_DB_PASSWORD=keycloak_pass \
-                 -e DB_URL=jdbc:postgresql://user-storage-host:5432/obp_mapped \
-                 -e DB_USER=obp_user \
-                 -e DB_PASSWORD=obp_pass \
-                 -e KEYCLOAK_ADMIN=admin \
-                 -e KEYCLOAK_ADMIN_PASSWORD=secure_password \
-                 your-keycloak-image
+   # External PostgreSQL must have:
+   DB_USER=oidc_user
+   DB_PASSWORD=your_password
+   DB_DRIVER=org.postgresql.Driver
+   DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+   OBP_AUTHUSER_PROVIDER=your_provider
    ```
 
 #### Configuration Tools
@@ -587,6 +585,7 @@ If you encounter connection issues:
 ## Documentation
 
 
+- **[Database Schema](docs/DATABASE_SCHEMA.md)** - Complete database structure and view requirements
 - **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
 - **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
 - **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines

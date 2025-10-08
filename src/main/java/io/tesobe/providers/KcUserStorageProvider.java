@@ -128,48 +128,39 @@ public class KcUserStorageProvider
                 externalId
             );
 
-            // STEP 1: Try to find user by id (primary key) first - optimal path
+            // STEP 1: Try to find user by user_id (primary key) first - optimal path
             String sql =
                 "SELECT " +
                 getFieldList() +
                 " FROM " +
                 dbConfig.getAuthUserTable() +
-                " WHERE id = ? AND provider = ?";
+                " WHERE user_id = ? AND provider = ?";
             try (
                 Connection conn = dbConfig.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)
             ) {
-                try {
-                    // Try parsing external ID as Long (database primary key id)
-                    Long userId = Long.parseLong(externalId);
-                    stmt.setLong(1, userId);
-                    stmt.setString(2, dbConfig.getAuthUserProvider());
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        if (rs.next()) {
-                            KcUserEntity entity = mapResultSetToEntity(rs);
-                            UserAdapter adapter = new UserAdapter(
-                                session,
-                                realm,
-                                model,
-                                entity
-                            );
-                            // Force refresh to ensure database is source of truth
-                            adapter.forceRefreshFromDatabase();
-                            log.infof(
-                                "✅ OPTIMAL: Found user %s by id %s with provider %s (fast integer lookup)",
-                                entity.getUsername(),
-                                entity.getId(),
-                                entity.getProvider()
-                            );
-                            return adapter;
-                        }
+                // Handle both numeric and string external IDs
+                stmt.setString(1, externalId);
+                stmt.setString(2, dbConfig.getAuthUserProvider());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        KcUserEntity entity = mapResultSetToEntity(rs);
+                        UserAdapter adapter = new UserAdapter(
+                            session,
+                            realm,
+                            model,
+                            entity
+                        );
+                        // Force refresh to ensure database is source of truth
+                        adapter.forceRefreshFromDatabase();
+                        log.infof(
+                            "✅ OPTIMAL: Found user %s by user_id %s with provider %s",
+                            entity.getUsername(),
+                            entity.getId(),
+                            entity.getProvider()
+                        );
+                        return adapter;
                     }
-                } catch (NumberFormatException e) {
-                    // External ID is not numeric - cannot be an id
-                    log.warnf(
-                        "Invalid external ID format: '%s' is not numeric",
-                        externalId
-                    );
                 }
             }
 
@@ -710,8 +701,11 @@ public class KcUserStorageProvider
 
     /**
      * Maps a ResultSet row to a KcUserEntity object
-     * Only accesses fields available in the limited view:
-     * id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat
+     * Fields from v_oidc_users view (JOIN of authuser and resourceuser):
+     * - user_id: UUID from resourceuser.userid_ (primary identifier)
+     * - username, firstname, lastname, email, validated, provider: from authuser
+     * - password_pw, password_slt: from authuser (for authentication)
+     * - createdat, updatedat: timestamps from authuser
      */
     private KcUserEntity mapResultSetToEntity(ResultSet rs)
         throws SQLException {
