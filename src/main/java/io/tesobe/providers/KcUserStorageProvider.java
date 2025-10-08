@@ -300,7 +300,7 @@ public class KcUserStorageProvider
         // This provider only supports reading existing users from the database.
         throw new UnsupportedOperationException(
             "User creation is not supported. The authuser table is read-only. " +
-            "Users must be created through other means outside of Keycloak."
+                "Users must be created through other means outside of Keycloak."
         );
     }
 
@@ -316,7 +316,7 @@ public class KcUserStorageProvider
         // This provider only supports reading existing users from the database.
         throw new UnsupportedOperationException(
             "User deletion is not supported. The authuser table is read-only. " +
-            "Users must be removed through other means outside of Keycloak."
+                "Users must be removed through other means outside of Keycloak."
         );
     }
 
@@ -486,7 +486,7 @@ public class KcUserStorageProvider
         // Password updates are disabled - database is read-only
         log.warnf(
             "OPERATION DISABLED: Password update attempted for user %s. " +
-            "Database is read-only. Use external tools to update passwords.",
+                "Database is read-only. Use external tools to update passwords.",
             user.getUsername()
         );
         return false;
@@ -500,7 +500,7 @@ public class KcUserStorageProvider
     ) {
         log.warnf(
             "OPERATION DISABLED: Credential disable attempted for user %s, type %s. " +
-            "Database is read-only. Use external tools to manage credentials.",
+                "Database is read-only. Use external tools to manage credentials.",
             user.getUsername(),
             credentialType
         );
@@ -705,7 +705,7 @@ public class KcUserStorageProvider
      * Only includes fields available in v_oidc_users1 and similar limited views
      */
     private String getFieldList() {
-        return "id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat";
+        return "user_id, username, firstname, lastname, email, validated, provider, password_pw, password_slt, createdat, updatedat";
     }
 
     /**
@@ -716,7 +716,7 @@ public class KcUserStorageProvider
     private KcUserEntity mapResultSetToEntity(ResultSet rs)
         throws SQLException {
         KcUserEntity entity = new KcUserEntity();
-        entity.setId(rs.getLong("id"));
+        entity.setId(rs.getString("user_id"));
         entity.setUsername(rs.getString("username"));
         entity.setFirstName(rs.getString("firstname"));
         entity.setLastName(rs.getString("lastname"));
