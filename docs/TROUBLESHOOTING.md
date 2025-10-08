@@ -79,29 +79,7 @@ export USER_STORAGE_DB_PORT=5434
 docker-compose -f docker-compose.runtime.yml up
 ```
 
-### 3. SQL Syntax Errors During Database Initialization
-
-**Error Message:**
-```
-psql:/docker-entrypoint-initdb.d/script.sql:27: ERROR: syntax error at or near "INSERT"
-```
-
-**Status:** ✅ **RESOLVED** in latest version
-
-**Root Cause:** Incomplete SQL statement in `sql/script.sql`
-
-**Solution:**
-```bash
-# Verify the fix is applied
-grep -n "insert into users" sql/script.sql
-# Should return nothing (line was removed)
-
-# Clean restart with fixed SQL
-docker-compose -f docker-compose.runtime.yml down -v
-docker-compose -f docker-compose.runtime.yml up
-```
-
-### 4. Container Name Conflicts
+### 3. Container Name Conflicts
 
 **Error Message:**
 ```
@@ -118,7 +96,7 @@ docker rm -f obp-keycloak keycloak-postgres user-storage-postgres
 # Select option to stop and remove containers
 ```
 
-### 5. Environment Variable Issues
+### 4. Environment Variable Issues
 
 **Error Message:**
 ```
@@ -335,7 +313,6 @@ Before reporting issues, verify:
 - [ ] **Latest Version**: `git pull origin main` completed
 - [ ] **Fixed Configuration**: `KC_DB_URL` contains full JDBC URL
 - [ ] **Correct Ports**: User storage on 5434, Keycloak DB on 5433
-- [ ] **Clean SQL**: No syntax errors in `sql/script.sql`
 - [ ] **Environment Setup**: `.env` file exists and configured
 - [ ] **Port Availability**: No conflicts on required ports
 - [ ] **Validation Passed**: `./sh/validate-separated-db-config.sh` succeeds

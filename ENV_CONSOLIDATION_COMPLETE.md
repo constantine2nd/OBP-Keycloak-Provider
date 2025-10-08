@@ -160,7 +160,7 @@ docker logs obp-keycloak-local | grep -E "(ERROR|relation.*does not exist)"
 ## Next Steps
 
 1. **Test with Valid Table**: Set `DB_AUTHUSER_TABLE=v_oidc_users` (or `authuser`) to test working configuration
-2. **Create Database View**: Use `sql/script.sql` to create the `v_oidc_users` view
+2. **Create Database View**: Create the `v_oidc_users` view using database administration tools
 3. **Remove Backup Files**: Clean up `.env.backup.*` files when satisfied with results
 4. **Update Documentation**: Update any remaining references to `.env.local` in documentation
 

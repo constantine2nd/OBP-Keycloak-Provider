@@ -55,12 +55,7 @@ This implementation enhances security by providing view-based access with minima
 
 ### 4. Database Setup
 
-#### sql/script.sql
-- **Added OIDC user creation**: Creates `oidc_user` with secure password
-- **Added view definition**: Creates `v_oidc_users` view with filtered columns and validated users only
-- **Added permissions**: Grants minimal SELECT permissions to `oidc_user` on the view
-- **Enhanced documentation**: Added configuration options and security notes
-- **Backward compatibility**: Maintains existing `obp` user permissions for legacy setups
+
 
 ### 5. Documentation
 
@@ -261,7 +256,7 @@ export DB_AUTHUSER_TABLE=v_oidc_users
 - `docker-compose.example.yml`
 
 ### Database
-- `sql/script.sql`
+
 
 ### Scripts
 - `sh/test-local-postgres-setup.sh`

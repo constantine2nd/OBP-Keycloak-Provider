@@ -75,10 +75,6 @@ The migration-related code was completely removed rather than disabled to:
 ### Database Schema Changes
 
 #### SQL Scripts
-**`sql/script.sql`:**
-- Removed `uniqueid varchar(32) NULL` field
-- Removed `CREATE INDEX authuser_uniqueid` statement
-
 **`sh/run-local-postgres-cicd.sh`:**
 - Removed uniqueid field from table creation
 - Removed uniqueid index creation

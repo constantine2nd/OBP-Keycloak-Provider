@@ -395,9 +395,6 @@ GRANT ALL ON SCHEMA public TO obp;
 ```bash
 # Run script (creates table automatically)
 ./sh/run-local-postgres-cicd.sh
-
-# Or create manually
-PGPASSWORD=f psql -h localhost -p 5432 -U obp -d obp_mapped -f sql/script.sql
 ```
 
 #### 4. Container Cannot Connect to Host

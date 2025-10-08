@@ -112,8 +112,7 @@ The Keycloak application user (`obp`) has:
 ### Files Modified
 1. **`README.md`** - Added database administrator setup requirements
 2. **`docs/LOCAL_POSTGRESQL_SETUP.md`** - Emphasized external setup requirement
-3. **`sql/script.sql`** - Added administrator-only execution warnings
-4. **`AUTHUSER_READ_ONLY_POLICY.md`** - Updated with administrator requirements
+3. **`AUTHUSER_READ_ONLY_POLICY.md`** - Updated with administrator requirements
 
 ### Key Messages Added
 - Database administrator setup is **CRITICAL** and **REQUIRED**
@@ -137,7 +136,6 @@ administrator with appropriate permissions.
 Required table structure documented in:
   - README.md
   - docs/LOCAL_POSTGRESQL_SETUP.md
-  - sql/script.sql
 ```
 
 ### Test Script Messages

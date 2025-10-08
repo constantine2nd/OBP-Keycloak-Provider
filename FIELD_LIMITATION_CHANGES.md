@@ -8,16 +8,9 @@ The system has been updated to expose only the minimum required fields for OIDC 
 
 ## Changes Made
 
-### 1. Database View Updates (`sql/script.sql`)
+### 1. Database View Updates
 
-#### Updated `v_oidc_users` View
-- **Removed fields**: `locale`, `timezone` (non-essential for OIDC)
-- **Reordered fields**: Organized fields logically with `username` first after `id`
-- **Maintained security**: Kept `WHERE validated = true` filter
-
-#### Added `v_oidc_users1` View
-- **Purpose**: Enhanced security view with minimal field exposure
-- **Fields exposed**: Only 11 essential fields
+Database views have been updated to remove non-essential fields and improve security.
 - **Ordering**: Includes `ORDER BY username` for consistent results
 - **Permissions**: Granted SELECT access to `oidc_user`
 
@@ -241,5 +234,5 @@ All changes have been tested and verified to work correctly without breaking exi
 ---
 
 **Implementation Date:** January 2025
-**Files Modified:** `sql/script.sql`, `KcUserStorageProvider.java`, `VIEW_BASED_ACCESS.md`
+**Files Modified:** `KcUserStorageProvider.java`, `VIEW_BASED_ACCESS.md`
 **Compatible With:** PostgreSQL 12+, Keycloak 26+, Java 11+

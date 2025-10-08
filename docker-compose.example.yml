@@ -33,7 +33,6 @@ services:
       - "5432:5432"
     volumes:
       - user_storage_postgres_data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
     networks:
       - keycloak-network
     healthcheck:
