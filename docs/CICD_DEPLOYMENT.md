@@ -1,10 +1,10 @@
-# sh/run-local-postgres-cicd.sh Deployment Guide
+# development/run-local-postgres-cicd.sh Deployment Guide
 
 This guide covers the CI/CD-style deployment script that provides predictable, automated deployment for local development environments.
 
 ## Overview
 
-The deployment script (`sh/run-local-postgres-cicd.sh`) is designed for local development environments where you want:
+The deployment script (`development/run-local-postgres-cicd.sh`) is designed for local development environments where you want:
 
 - **Always build**: No conditional logic - always rebuild everything
 - **Always replace**: Stop and remove existing containers every time
@@ -16,12 +16,12 @@ The deployment script (`sh/run-local-postgres-cicd.sh`) is designed for local de
 
 ### Basic Deployment
 ```bash
-./sh/run-local-postgres-cicd.sh
+./development/run-local-postgres-cicd.sh
 ```
 
 ### Themed Deployment
 ```bash
-./sh/run-local-postgres-cicd.sh --themed
+./development/run-local-postgres-cicd.sh --themed
 ```
 
 ## Prerequisites
@@ -228,7 +228,7 @@ find themes/obp -type f
 cat themes/obp/theme.properties | grep -E "(parent=|styles=)"
 
 # Test with standard deployment first
-./sh/run-local-postgres-cicd.sh
+./development/run-local-postgres-cicd.sh
 ```
 
 #### Security Validation Errors

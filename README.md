@@ -107,10 +107,10 @@ The project supports two deployment modes:
 1. **CI/CD Deployment** (always build & replace - automated environments):
    ```shell
    # Standard CI/CD deployment
-   $ ./sh/run-local-postgres-cicd.sh
+   $ ./development/run-local-postgres-cicd.sh
 
    # Themed CI/CD deployment
-   $ ./sh/run-local-postgres-cicd.sh --themed
+   $ ./development/run-local-postgres-cicd.sh --themed
    ```
 
 #### OBP Theme Structure
@@ -143,9 +143,9 @@ After deploying with `--themed`, activate the OBP theme:
 
 #### Testing Theme Deployment
 
-Validate your themed deployment setup:
+Validate your themed deployment setup by running the deployment script:
 ```shell
-$ ./sh/validate-themed-setup.sh
+$ ./development/run-local-postgres-cicd.sh --themed
 ```
 
 This script checks all prerequisites, validates theme files, and ensures proper configuration.
@@ -169,18 +169,18 @@ The database connection and Keycloak settings are now configured using **runtime
 
 2. **Validate your configuration:**
    ```shell
-   $ ./sh/validate-env.sh
+   $ ./development/run-local-postgres-cicd.sh
    ```
 
 3. **Run the application:**
    ```shell
    # CI/CD deployment (always build & replace)
-   $ ./sh/run-local-postgres-cicd.sh --themed
+   $ ./development/run-local-postgres-cicd.sh --themed
    ```
 
 4. **Test themed deployment (optional):**
    ```shell
-   $ ./sh/validate-themed-setup.sh
+   $ ./development/run-local-postgres-cicd.sh --themed
    ```
 
 > **Note**: For local PostgreSQL deployments, the `--validate` flag automatically runs validation checks during startup.
@@ -211,21 +211,21 @@ The database connection and Keycloak settings are now configured using **runtime
 
 3. **Validate your configuration (recommended):**
    ```shell
-   $ ./sh/validate-env.sh
+   $ ./development/run-local-postgres-cicd.sh
    ```
    This script will:
-   - Check all required variables are set
-   - Validate configuration format and values
-   - Warn about potential security issues
-   - Provide helpful troubleshooting information
+   - Validate all required variables are set
+   - Check database connectivity
+   - Build and deploy the application
+   - Provide clear success/failure feedback
 
 > **Documentation Resources**:
 > - **[.env.example](.env.example)**: Complete environment variable reference with examples and security notes
 > - **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**: Comprehensive configuration guide with troubleshooting and deployment examples
 > - **[docs/WORKFLOW.md](docs/WORKFLOW.md)**: Development workflow and container management guide
 > - **[docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md)**: CI/CD-style deployment guide for automated environments
-> - **Validation tools**: `./sh/validate-env.sh` and `./sh/compare-env.sh`
-> - **Comparison tools**: `./sh/compare-deployment-scripts.sh` and `./sh/test-cache-invalidation.sh`
+> - **[development/README.md](development/README.md)**: Development tools and scripts documentation
+> - **Available scripts**: Only 3 development scripts are included (see development directory)
 
 #### Key Environment Variables
 
@@ -270,11 +270,15 @@ Docker setup uses Keycloak in container with external PostgreSQL for OBP user fe
    OBP_AUTHUSER_PROVIDER=your_provider
    ```
 
-#### Configuration Tools
+#### Development Tools
 
-- **Validate configuration**: `./sh/validate-env.sh`
-- **Compare with example**: `./sh/compare-env.sh`
-- **Manage container**: `./sh/manage-container.sh`
+The `development/` directory contains local development scripts:
+
+- **Deployment**: `./development/run-local-postgres-cicd.sh` - Main deployment script (with --themed option)
+- **Management**: `./development/manage-container.sh` - Interactive container management
+- **PostgreSQL**: `./development/pg.sh` - Simple PostgreSQL container setup
+
+See [development/README.md](development/README.md) for complete documentation of all development tools.
 
 ## Deployment Strategies
 
@@ -289,7 +293,7 @@ The project provides two focused deployment approaches:
 ### Development Deployment
 ```bash
 # Standard deployment without themes
-./sh/run-local-postgres-cicd.sh
+./development/run-local-postgres-cicd.sh
 ```
 
 **Features:**
@@ -301,10 +305,10 @@ The project provides two focused deployment approaches:
 ### CI/CD Deployment
 ```bash
 # Automated, reproducible deployments (always fresh build)
-./sh/run-local-postgres-cicd.sh --themed
+./development/run-local-postgres-cicd.sh --themed
 
 # Standard CI/CD deployment
-./sh/run-local-postgres-cicd.sh
+./development/run-local-postgres-cicd.sh
 ```
 
 **Features:**
@@ -316,14 +320,11 @@ The project provides two focused deployment approaches:
 
 ### Analysis and Testing Tools
 ```bash
-# Compare deployment approaches
-./sh/compare-deployment-scripts.sh
+# Manage running containers interactively
+./development/manage-container.sh
 
-# Test Docker cache invalidation
-./sh/test-cache-invalidation.sh
-
-# Validate theme structure (for themed deployments)
-./sh/test-theme-validation.sh
+# Set up PostgreSQL container (if needed)
+./development/pg.sh
 ```
 
 📖 **Detailed Guides**:
@@ -373,7 +374,7 @@ When you run the deployment scripts, they start the Keycloak container and follo
 
 **After pressing Ctrl+C:**
 - The container remains accessible at http://localhost:8000 and https://localhost:8443
-- Use `./sh/manage-container.sh` for an interactive container management menu
+- Use `./development/manage-container.sh` for an interactive container management menu
 - Or use these direct commands:
   - View logs: `docker logs -f obp-keycloak`
   - Stop container: `docker stop obp-keycloak`
@@ -385,7 +386,7 @@ When you run the deployment scripts, they start the Keycloak container and follo
 
 To deploy the container use the script :
 ```shell
-$ sh/pg.sh
+$ development/pg.sh
 ```
 
 The script deploys the container locally.
@@ -472,18 +473,15 @@ Build once, deploy everywhere with runtime configuration:
 # Build the provider (no environment variables needed)
 $ mvn clean package
 
-# Test runtime configuration
-$ ./sh/test-runtime-config.sh
-
 # Run with CI/CD deployment
-$ ./sh/run-local-postgres-cicd.sh --themed
+$ ./development/run-local-postgres-cicd.sh --themed
 ```
 
 ### Legacy Approach
 
 For compatibility, you can still use the legacy build script:
 ```shell
-$ ./sh/run-local-postgres-cicd.sh
+$ ./development/run-local-postgres-cicd.sh
 ```
 
 > **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Kubernetes and Docker Hub deployments.
@@ -551,11 +549,8 @@ docker run -e KC_DB_URL="jdbc:postgresql://keycloak-prod-db:5432/keycloak" \
 
 ### Testing Runtime Configuration
 ```shell
-# Validate the cloud-native setup
-$ ./sh/test-runtime-config.sh
-
-# Compare with example configuration
-$ ./sh/compare-env.sh
+# Deploy and validate the setup
+./development/run-local-postgres-cicd.sh
 ```
 
 ## Recent Changes
@@ -578,7 +573,7 @@ The following critical issues have been resolved:
 
 ### Troubleshooting
 If you encounter connection issues:
-1. Run the validation script: `./sh/validate-separated-db-config.sh`
+1. Run the deployment script which validates configuration: `./development/run-local-postgres-cicd.sh`
 2. Check for port conflicts: `ss -tulpn | grep :5432` or `netstat -tulpn | grep :5432`
 3. Review the setup documentation in the `docs/` directory
 

@@ -8,7 +8,7 @@
 # - Database 'keycloakdb' with user 'keycloak' (password: 'f')
 # - Database 'obp_mapped' with user 'oidc_user' (restricted view-only access to v_oidc_users)
 #
-# Usage: ./sh/run-local-postgres-cicd.sh [--themed]
+# Usage: ./development/run-local-postgres-cicd.sh [--themed]
 
 set -e
 
@@ -215,7 +215,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
         echo -e "${BLUE}Quick fixes:${NC}"
         echo "1. Check if theme files exist: ls -la themes/obp/"
         echo "2. Verify theme structure: find themes/obp -type f"
-        echo "3. Try standard deployment instead: ./sh/run-local-postgres-cicd.sh"
+        echo "3. Try standard deployment instead: ./development/run-local-postgres-cicd.sh"
         echo ""
         exit 1
     fi
@@ -309,7 +309,7 @@ if [ $? -ne 0 ]; then
         echo ""
         echo -e "${BLUE}Recovery suggestions:${NC}"
         echo "1. Verify theme files: ls -la themes/obp/"
-        echo "2. Try standard deployment first: ./sh/run-local-postgres-cicd.sh"
+        echo "2. Try standard deployment first: ./development/run-local-postgres-cicd.sh"
         echo "3. Check theme directory permissions"
     fi
     exit 1
@@ -425,7 +425,7 @@ if [ "$READY" = false ]; then
         echo "1. Wait longer: The container may still be starting up"
         echo "2. Check theme syntax: Validate theme.properties file"
         echo "3. Restart container: docker restart $CONTAINER_NAME"
-        echo "4. Try standard deployment: ./sh/run-local-postgres-cicd.sh"
+        echo "4. Try standard deployment: ./development/run-local-postgres-cicd.sh"
     fi
     exit 1
 fi
