@@ -14,7 +14,7 @@
         <!--
         Note: Database configuration is now handled programmatically via
         io.tesobe.config.DatabaseConfig class which reads environment variables at runtime.
-        This makes the application cloud-native and Kubernetes-ready.
+        This makes the application cloud-native and deployment-ready.
         -->
 
     </persistence-unit>

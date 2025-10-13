@@ -14,7 +14,7 @@ This project demonstrates the ability to use Postgres as user storage provider o
 ## 🚀 Cloud-Native Features
 
 - ✅ **Runtime Configuration**: Environment variables read at runtime (no build-time injection)
-- ✅ **Kubernetes Ready**: Native support for ConfigMaps and Secrets
+- ✅ **Cloud Ready**: Native support for environment-based configuration
 - ✅ **Docker Hub Compatible**: Generic images that work across all environments
 - ✅ **12-Factor App Compliant**: Follows modern cloud-native principles
 - ✅ **CI/CD Friendly**: "Build once, deploy everywhere" approach
@@ -72,7 +72,7 @@ DB_PASSWORD=f
 DB_AUTHUSER_TABLE=authuser
 ```
 
-See [VIEW_BASED_ACCESS.md](VIEW_BASED_ACCESS.md) for detailed setup instructions.
+See the configuration examples below for detailed setup instructions.
 
 ## Usage
 ### Docker containers
@@ -139,7 +139,7 @@ After deploying with `--themed`, activate the OBP theme:
 3. Set Login Theme to "obp"
 4. Save changes
 
-> **Complete Documentation**: See [docs/OBP_THEME.md](docs/OBP_THEME.md) for comprehensive theming guide, customization options, and development workflow.
+> **Complete Documentation**: See the theme structure and activation sections below for comprehensive theming guide, customization options, and development workflow.
 
 #### Testing Theme Deployment
 
@@ -152,18 +152,17 @@ This script checks all prerequisites, validates theme files, and ensures proper 
 
 ### Environment Configuration
 
-The database connection and Keycloak settings are now configured using **runtime environment variables** instead of build-time configuration. This enables cloud-native deployments with Kubernetes, Docker Hub hosted images, and modern CI/CD pipelines.
+The database connection and Keycloak settings are now configured using **runtime environment variables** instead of build-time configuration. This enables cloud-native deployments with Docker Hub hosted images, and modern CI/CD pipelines.
 
 > **Complete Documentation**:
-> - [docs/CLOUD_NATIVE.md](docs/CLOUD_NATIVE.md) - Cloud-native deployment guide
-> - [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) - Environment configuration reference
-> - [k8s/](k8s/) - Kubernetes deployment examples
+> - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - CI/CD deployment guide
+> - [env.sample](env.sample) - Environment configuration reference
 
 #### Quick Start Guide
 
 1. **Copy and configure environment variables:**
    ```shell
-   $ cp .env.example .env
+   $ cp env.sample .env
    $ nano .env  # Edit with your actual configuration
    ```
 
@@ -189,7 +188,7 @@ The database connection and Keycloak settings are now configured using **runtime
 
 1. Copy the example environment file:
    ```shell
-   $ cp .env.example .env
+   $ cp env.sample .env
    ```
 
 2. Edit the `.env` file with your actual configuration values:
@@ -220,9 +219,7 @@ The database connection and Keycloak settings are now configured using **runtime
    - Provide clear success/failure feedback
 
 > **Documentation Resources**:
-> - **[.env.example](.env.example)**: Complete environment variable reference with examples and security notes
-> - **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**: Comprehensive configuration guide with troubleshooting and deployment examples
-> - **[docs/WORKFLOW.md](docs/WORKFLOW.md)**: Development workflow and container management guide
+> - **[env.sample](env.sample)**: Complete environment variable reference with examples and security notes
 > - **[docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md)**: CI/CD-style deployment guide for automated environments
 > - **[development/README.md](development/README.md)**: Development tools and scripts documentation
 > - **Available scripts**: Only 3 development scripts are included (see development directory)
@@ -329,7 +326,6 @@ The project provides two focused deployment approaches:
 
 📖 **Detailed Guides**:
 - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - Complete CI/CD documentation
-- [SCRIPT_REMOVAL_SUMMARY.md](SCRIPT_REMOVAL_SUMMARY.md) - Legacy script removal summary
 
 #### Build Options
 
@@ -351,11 +347,12 @@ The project supports **cloud-native deployment patterns**:
                  obp-keycloak-provider
    ```
 
-2. **Kubernetes Deployment**:
+2. **Environment Variables Deployment**:
    ```shell
-   $ kubectl apply -f k8s/configmap.yaml
-   $ kubectl apply -f k8s/secret.yaml
-   $ kubectl apply -f k8s/deployment.yaml
+   $ export DB_URL="jdbc:postgresql://localhost:5432/obp_mapped"
+   $ export DB_USER="obp"
+   $ export DB_PASSWORD="obp_password"
+   $ docker run --env-file .env obp-keycloak-provider
    ```
 
 3. **Docker Compose** (Runtime Config):
@@ -484,7 +481,7 @@ For compatibility, you can still use the legacy build script:
 $ ./development/run-local-postgres-cicd.sh
 ```
 
-> **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Kubernetes and Docker Hub deployments.
+> **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Docker Hub deployments.
 
 ## Login to KC
 
@@ -502,35 +499,6 @@ The provider ``obp-keycloak-provider`` is in list of providers.
 ![KC providers](/docs/images/providers.png?raw=true "KC providers")
 
 ## Cloud-Native Deployment Examples
-
-### Kubernetes
-```yaml
-# ConfigMap for non-sensitive config
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: obp-keycloak-config
-data:
-  DB_DRIVER: "org.postgresql.Driver"
-  HIBERNATE_DDL_AUTO: "validate"
-
----
-# Secret for sensitive data
-apiVersion: v1
-kind: Secret
-metadata:
-  name: obp-keycloak-secrets
-stringData:
-  # Keycloak's internal database
-  KC_DB_URL: "jdbc:postgresql://keycloak-postgres:5432/keycloak"
-  KC_DB_USERNAME: "keycloak"
-  KC_DB_PASSWORD: "secure_keycloak_password"
-
-  # User storage database
-  DB_URL: "jdbc:postgresql://user-storage-postgres:5432/obp_mapped"
-  DB_USER: "obp"
-  DB_PASSWORD: "secure_user_storage_password"
-```
 
 ### Docker Hub Deployment
 ```shell
@@ -580,10 +548,6 @@ If you encounter connection issues:
 ## Documentation
 
 
-- **[Database Schema](docs/DATABASE_SCHEMA.md)** - Complete database structure and view requirements
-- **[Cloud-Native Guide](docs/CLOUD_NATIVE.md)** - Complete guide for Kubernetes and Docker Hub deployments
-- **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variable reference
+- **[Environment Configuration](env.sample)** - Environment variable reference
 - **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines
-
-- **[Kubernetes Examples](k8s/)** - Production-ready Kubernetes manifests
 - **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example

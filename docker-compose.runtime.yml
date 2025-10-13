@@ -116,7 +116,7 @@ networks:
 # 3. With pgAdmin tools:
 #    docker-compose -f docker-compose.runtime.yml --profile tools up
 #
-# 4. Kubernetes-style with individual env vars:
+# 4. Cloud-native style with individual env vars:
 #    KC_DB_PASSWORD=secure_keycloak_pass \
 #    USER_STORAGE_DB_PASSWORD=secure_user_pass \
 #    KEYCLOAK_ADMIN_PASSWORD=secure_admin_pass \
