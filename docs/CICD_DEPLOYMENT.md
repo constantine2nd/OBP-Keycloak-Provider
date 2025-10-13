@@ -1,26 +1,16 @@
-# CI/CD-Style Deployment Guide
+# sh/run-local-postgres-cicd.sh Deployment Guide
 
-This guide covers the new CI/CD-style deployment script that provides predictable, automated deployment suitable for continuous integration environments.
+This guide covers the CI/CD-style deployment script that provides predictable, automated deployment for local development environments.
 
 ## Overview
 
-The CI/CD deployment script (`sh/run-local-postgres-cicd.sh`) is designed for automated environments where you want:
+The deployment script (`sh/run-local-postgres-cicd.sh`) is designed for local development environments where you want:
 
 - **Always build**: No conditional logic - always rebuild everything
 - **Always replace**: Stop and remove existing containers every time
 - **Cache invalidation**: Docker layers rebuild when JAR file changes
 - **Fast feedback**: Clear success/failure indicators
 - **Deterministic**: Same inputs always produce same outputs
-
-## Key Differences from Original Script
-
-| Aspect | Original Script | CI/CD Script |
-|--------|----------------|--------------|
-| Build Strategy | Conditional (--build flag) | Always build |
-| Container Handling | Optional replacement | Always stop & remove |
-| Cache Strategy | Docker cache reuse | Force rebuild with invalidation |
-| Output | Verbose, interactive | Streamlined, pipeline-friendly |
-| Error Handling | Continue on some errors | Fail fast on any error |
 
 ## Usage
 
@@ -42,7 +32,7 @@ The CI/CD deployment script (`sh/run-local-postgres-cicd.sh`) is designed for au
    - `obp_mapped` (user: oidc_user, restricted view-only access to v_oidc_users)
 3. **Environment file**: `.env` with proper configuration
 
-## Deployment Pipeline
+## Script Pipeline
 
 The script follows an 8-step pipeline:
 
@@ -51,6 +41,7 @@ The script follows an 8-step pipeline:
 - Validates Maven installation
 - Loads and validates `.env` configuration
 - Verifies all required environment variables (including DB_AUTHUSER_TABLE)
+- **Security validation**: Ensures `DB_AUTHUSER_TABLE=v_oidc_users`
 - **Themed deployments**: Validates theme files and structure
 
 ### [2/8] Database Connectivity
@@ -86,39 +77,7 @@ The script follows an 8-step pipeline:
 - Tests admin console accessibility
 - Provides clear success/failure indication
 
-## Cache Invalidation Strategy
-
-### Problem Solved
-Docker caches layers aggressively. Without proper invalidation:
-- JAR file changes don't trigger image rebuilds
-- Stale code runs in containers
-- Inconsistent behavior between deployments
-
-### Solution Implementation
-Both Dockerfiles now include:
-
-```dockerfile
-# Build arguments for cache invalidation
-ARG BUILD_TIMESTAMP
-ARG JAR_CHECKSUM
-
-# Cache invalidation layer - forces rebuild when JAR changes
-RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
-    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
-
-# Add JAR file - this layer rebuilds when cache is invalidated above
-ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
-```
-
-### How It Works
-**How It Works**:
-1. Script generates JAR checksum before build
-2. Checksum passed as Docker build argument
-3. Build argument change invalidates Docker cache
-4. All subsequent layers rebuild with new JAR
-5. Build info saved in container for debugging
-
-### Theme Validation Strategy
+## Theme Validation (--themed flag)
 
 **Themed Deployment Requirements**:
 - ✅ `themes/obp/theme.properties` with valid content
@@ -126,19 +85,6 @@ ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/pro
 - ✅ Required templates: `login.ftl`, `template.ftl`
 - ✅ `.github/Dockerfile_themed` exists
 - ✅ Optional: CSS files, images, message files
-
-**Validation Process**:
-```bash
-# Theme structure validation
-validate_theme_files() {
-    # Check Dockerfile exists
-    # Validate theme directory structure
-    # Verify theme.properties content
-    # Check required template files
-    # Validate resources (CSS, images)
-    # Check internationalization files
-}
-```
 
 ## Environment Configuration
 
@@ -164,20 +110,61 @@ DB_AUTHUSER_TABLE=v_oidc_users
 # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
 OBP_AUTHUSER_PROVIDER=your_provider_name
 
-# SECURITY NOTE: The above configuration uses view-based access for enhanced security:
-# - 'oidc_user' has SELECT-only permissions on 'v_oidc_users' view
-# - No direct access to 'authuser' table
-# - All write operations (INSERT, UPDATE, DELETE) are disabled
-
 # Configuration
 HIBERNATE_DDL_AUTO=validate
 KC_HTTP_ENABLED=true
 KC_HOSTNAME_STRICT=false
 ```
 
+### Optional .env Variables (with defaults)
+```bash
+# Hibernate Settings
+HIBERNATE_SHOW_SQL=true
+HIBERNATE_FORMAT_SQL=true
+
+# Keycloak Runtime
+KC_HEALTH_ENABLED=true
+KC_METRICS_ENABLED=true
+KC_FEATURES=token-exchange
+
+# Local Development Ports
+KEYCLOAK_HTTP_PORT=8000
+KEYCLOAK_HTTPS_PORT=8443
+```
+
+## Security Requirements
+
+The script enforces secure database access:
+
+### Database User Requirements
+- **User**: `oidc_user` (restricted permissions)
+- **Access**: SELECT-only on `v_oidc_users` view
+- **No access**: Direct `authuser` table access blocked
+
+### Required Database Setup
+```sql
+-- Create restricted user
+CREATE USER oidc_user WITH PASSWORD 'your_secure_password';
+
+-- Create secure view
+CREATE OR REPLACE VIEW v_oidc_users AS
+SELECT id, username, email, firstname, lastname, provider
+FROM authuser
+WHERE provider = 'your_provider_name';
+
+-- Grant minimal permissions
+GRANT SELECT ON v_oidc_users TO oidc_user;
+GRANT USAGE ON SCHEMA public TO oidc_user;
+
+-- Ensure no other permissions
+REVOKE ALL ON authuser FROM oidc_user;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM oidc_user;
+GRANT SELECT ON v_oidc_users TO oidc_user;
+```
+
 ## Monitoring and Troubleshooting
 
-### Deployment Status
+### Script Output
 The script provides clear status indicators:
 - ✓ Green checkmarks for successful steps
 - ✗ Red X marks for failures
@@ -195,168 +182,38 @@ docker ps --filter name=obp-keycloak-local
 docker stop obp-keycloak-local && docker rm obp-keycloak-local
 ```
 
-### Application Monitoring
-```bash
-# Monitor application logs
-docker logs obp-keycloak-local -f
-```
+### Common Issues
 
-### Build Information
-Check container for build details:
-```bash
-docker exec obp-keycloak-local cat /opt/keycloak/build-info.txt
-```
-
-## CI/CD Integration
-
-### GitHub Actions Example
-```yaml
-name: Deploy OBP Keycloak
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup PostgreSQL
-        # ... database setup steps
-
-      - name: Deploy Keycloak
-        run: ./sh/run-local-postgres-cicd.sh
-
-      - name: Run tests
-        run: |
-          # Wait for service
-          timeout 300 bash -c 'until curl -f http://localhost:8000/admin/; do sleep 5; done'
-          # Run integration tests
-```
-
-### Jenkins Pipeline Example
-```groovy
-pipeline {
-    agent any
-    stages {
-        stage('Build & Deploy') {
-            steps {
-                sh './sh/run-local-postgres-cicd.sh'
-            }
-        }
-        stage('Test') {
-            steps {
-                sh '''
-                    timeout 300 bash -c 'until curl -f http://localhost:8000/admin/; do sleep 5; done'
-                    # Add your tests here
-                '''
-            }
-        }
-    }
-    post {
-        always {
-            sh 'docker logs obp-keycloak-local || true'
-        }
-    }
-}
-```
-
-## Performance Considerations
-
-### Build Time
-- Initial build: ~2-3 minutes (downloads dependencies)
-- Subsequent builds: ~1-2 minutes (cached layers)
-- JAR change builds: ~1-2 minutes (invalidated layers)
-
-### Resource Usage
-- CPU: High during build, low during runtime
-- Memory: ~1GB for container
-- Disk: ~500MB per image version
-
-### Optimization Tips
-1. Use dedicated build agents with Docker layer caching
-2. Pre-pull base images in CI environment
-3. Consider multi-stage build optimizations for production
-
-## Comparison with Original Script
-
-### When to Use CI/CD Script
-- ✅ Automated deployment pipelines
-- ✅ Development environments requiring fresh builds
-- ✅ Testing scenarios needing clean state
-- ✅ When build consistency is critical
-
-### When to Use Original Script
-- ✅ Local development with frequent testing
-- ✅ When preserving running state is important
-- ✅ Manual debugging sessions
-- ✅ Resource-constrained environments
-
-## Transition from Original Script
-
-1. **Update automation**: Replace script calls
-   ```bash
-   # Old
-   ./sh/run-local-postgres.sh --build --themed
-
-   # New
-   ./sh/run-local-postgres-cicd.sh --themed
-   ```
-
-2. **Remove conditional logic**: No need for build flags
-3. **Update documentation**: Reference new script in README
-4. **Test thoroughly**: Verify CI/CD pipeline compatibility
-
-## Troubleshooting Common Issues
-
-### Database Connection Failures
+#### Database Connection Failures
 ```bash
 # Check PostgreSQL status
 sudo systemctl status postgresql
 
 # Test manual connection
 PGPASSWORD=f psql -h localhost -p 5432 -U keycloak -d keycloakdb
+PGPASSWORD=your_secure_password psql -h localhost -p 5432 -U oidc_user -d obp_mapped
 ```
 
-### Docker Build Failures
+#### Docker Build Failures
 ```bash
 # Check Docker space
 docker system df
 
 # Clean up if needed
 docker system prune -f
-
-# Check build logs
-docker build --no-cache -t debug-image -f docker/Dockerfile .
 ```
 
-### Container Start Issues
+#### Container Start Issues
 ```bash
 # Check port conflicts
 netstat -tulpn | grep -E ':(8000|8443)'
 
 # Review container logs
 docker logs obp-keycloak-local
-
-# Themed deployment specific
-docker exec obp-keycloak-local ls -la /opt/keycloak/themes/obp/
-docker logs obp-keycloak-local | grep -i theme
 ```
 
-### Cache Issues
-The script uses `--no-cache` to prevent cache issues, but if problems persist:
+#### Theme Issues (--themed deployment)
 ```bash
-# Full Docker cleanup
-docker system prune -a -f
-```
-
-### Theme Issues
-For themed deployment problems:
-```bash
-# Test theme validation
-./sh/test-theme-validation.sh
-
 # Check theme files
 find themes/obp -type f
 
@@ -367,26 +224,54 @@ cat themes/obp/theme.properties | grep -E "(parent=|styles=)"
 ./sh/run-local-postgres-cicd.sh
 ```
 
+#### Security Validation Errors
+```bash
+# If DB_AUTHUSER_TABLE validation fails:
+# Ensure in .env file:
+DB_AUTHUSER_TABLE=v_oidc_users
+
+# If OBP_AUTHUSER_PROVIDER validation fails:
+# Ensure in .env file:
+OBP_AUTHUSER_PROVIDER=your_provider_name
+```
+
+## Access Information
+
+After successful deployment:
+
+### Service URLs
+- **HTTP**: http://localhost:8000
+- **HTTPS**: https://localhost:8443
+- **Admin Console**: https://localhost:8443/admin
+
+### Default Credentials
+- **Username**: admin
+- **Password**: admin
+
+### Theme Configuration (--themed deployments)
+1. Access Admin Console: https://localhost:8443/admin
+2. Login with admin credentials
+3. Go to: Realm Settings > Themes
+4. Select "obp" theme for Login theme
+5. Save configuration
+
 ## Best Practices
 
-1. **Version your .env**: Include in version control as `.env.example`
-2. **Monitor build times**: Track performance degradation
-3. **Use health checks**: Verify deployment success programmatically
-4. **Log everything**: Capture build and deployment logs
-5. **Test rollback**: Ensure you can revert to previous versions
-6. **Document changes**: Update this file when modifying the script
-7. **Validate themes**: Run `./sh/test-theme-validation.sh` before themed deployments
-8. **Test incrementally**: Try standard deployment before themed if issues occur
-9. **Use restricted database access**: Always use `oidc_user` with view-only permissions, never `obp` user
+1. **Use secure passwords**: Never use default passwords in production
+2. **Validate configuration**: Run script to check all required variables
+3. **Monitor logs**: Check `docker logs obp-keycloak-local` for issues
+4. **Clean environment**: Script ensures clean state on each run
+5. **Theme testing**: Test standard deployment before themed if issues occur
+6. **Database security**: Always use `oidc_user` with view-only permissions
 
 ## Support
 
-For issues with the CI/CD deployment script:
+For issues with the deployment script:
 
 1. Check the troubleshooting section above
 2. Review container logs: `docker logs obp-keycloak-local`
 3. Verify database connectivity manually
-4. Test with original script to isolate issues
+4. Ensure `.env` file contains all required variables
 5. Check Docker system resources and cleanup if needed
 
-The CI/CD script is designed to fail fast and provide clear error messages to facilitate quick problem resolution in automated environments.
+The script is designed to fail fast and provide clear error messages to facilitate quick problem resolution in local development environments.
