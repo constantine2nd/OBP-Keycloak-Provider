@@ -26,10 +26,11 @@ The deployment script (`sh/run-local-postgres-cicd.sh`) is designed for local de
 
 ## Prerequisites
 
-1. **Local PostgreSQL** running on port 5432
+1. **PostgreSQL** accessible from Docker containers
 2. **Databases configured**:
-   - `keycloakdb` (user: keycloak, password: f)
-   - `obp_mapped` (user: oidc_user, restricted view-only access to v_oidc_users)
+   - Keycloak database (as specified in `KC_DB_URL`)
+   - User storage database (as specified in `DB_URL`)
+   - User `oidc_user` with restricted view-only access to `v_oidc_users`
 3. **Environment file**: `.env` with proper configuration
 
 ## Script Pipeline
@@ -69,7 +70,7 @@ The script follows an 8-step pipeline:
 
 ### [7/8] Container Start
 - Creates new container with fresh configuration
-- Uses host.docker.internal for database access
+- Uses database URLs from `.env` configuration
 - Maps standard ports (8000 HTTP, 8443 HTTPS)
 
 ### [8/8] Health Check
@@ -95,12 +96,12 @@ KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=admin
 
 # Keycloak Database
-KC_DB_URL=jdbc:postgresql://localhost:5432/keycloakdb
+KC_DB_URL=jdbc:postgresql://host.docker.internal:5432/keycloakdb
 KC_DB_USERNAME=keycloak
 KC_DB_PASSWORD=f
 
 # User Storage Database (secure view-based access)
-DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
+DB_URL=jdbc:postgresql://host.docker.internal:5432/obp_mapped
 DB_USER=oidc_user
 DB_PASSWORD=your_secure_password
 DB_DRIVER=org.postgresql.Driver
@@ -118,6 +119,10 @@ KC_HOSTNAME_STRICT=false
 
 ### Optional .env Variables (with defaults)
 ```bash
+# Database Configuration (has defaults if not specified)
+DB_DRIVER=org.postgresql.Driver
+DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
 # Hibernate Settings
 HIBERNATE_SHOW_SQL=true
 HIBERNATE_FORMAT_SQL=true
@@ -189,9 +194,11 @@ docker stop obp-keycloak-local && docker rm obp-keycloak-local
 # Check PostgreSQL status
 sudo systemctl status postgresql
 
-# Test manual connection
-PGPASSWORD=f psql -h localhost -p 5432 -U keycloak -d keycloakdb
-PGPASSWORD=your_secure_password psql -h localhost -p 5432 -U oidc_user -d obp_mapped
+# Test manual connection using URLs from your .env
+# Extract connection details from KC_DB_URL and DB_URL
+# Example for default configuration:
+PGPASSWORD=f psql -h host.docker.internal -p 5432 -U keycloak -d keycloakdb
+PGPASSWORD=your_secure_password psql -h host.docker.internal -p 5432 -U oidc_user -d obp_mapped
 ```
 
 #### Docker Build Failures
