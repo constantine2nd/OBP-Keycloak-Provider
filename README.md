@@ -1,6 +1,31 @@
 # Keycloak provider for user federation in Postgres
 
-This project demonstrates the ability to use Postgres as user storage provider of Keycloak.
+This project demonstrates the ability to use Postgres as user storage provider of Keycloak with **cloud-native runtime configuration** support and **separated database architecture**.
+
+## 🔄 Database Architecture
+
+**Important**: This project now uses **separated databases** for better security and maintainability:
+
+- **Keycloak Internal Database**: Stores realms, clients, tokens, sessions (Port 5433)
+- **User Storage Database**: Contains your external user data for federation (Port 5434)
+
+
+
+## 🚀 Cloud-Native Features
+
+- ✅ **Runtime Configuration**: Environment variables read at runtime (no build-time injection)
+- ✅ **Cloud Ready**: Native support for environment-based configuration
+- ✅ **Docker Hub Compatible**: Generic images that work across all environments
+- ✅ **12-Factor App Compliant**: Follows modern cloud-native principles
+- ✅ **CI/CD Friendly**: "Build once, deploy everywhere" approach
+
+## 🔒 Security Features
+
+- ✅ **View-Based Access**: Uses `v_oidc_users` view for secure, read-only data access
+- ✅ **Read-Only Operations**: All write operations (INSERT, UPDATE, DELETE) are disabled
+- ✅ **Minimal Permissions**: Dedicated `oidc_user` with SELECT-only database permissions
+- ✅ **Column Filtering**: Only OIDC-required fields exposed through database view
+- ✅ **User Validation**: Only validated users accessible through OIDC authentication
 
 ## Requirements
 
@@ -19,34 +44,373 @@ See the links above for installation instructions on your platform. You can veri
     $ docker --version
     $ java --version
 
+
+
+## 🔧 Quick Configuration
+
+### View-Based Access (Recommended for Production)
+
+```bash
+# Environment variables for secure view-based access
+DB_USER=oidc_user
+DB_PASSWORD=your_secure_password
+DB_AUTHUSER_TABLE=v_oidc_users
+```
+
+**Benefits:**
+- Enhanced security through PostgreSQL view filtering
+- Read-only access prevents accidental data modification
+- Only validated users are accessible through OIDC
+- Minimal database permissions for the application user
+
+### Direct Table Access (Development/Legacy)
+
+```bash
+# Environment variables for direct table access
+DB_USER=obp
+DB_PASSWORD=f
+DB_AUTHUSER_TABLE=authuser
+```
+
+See the configuration examples below for detailed setup instructions.
+
 ## Usage
 ### Docker containers
 [Postgres](https://www.postgresql.org/) - database for which we want to store User Federation.
 
 [Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/docker/Dockerfile).
 
-### Build SPI provider
+### CI/CD and Automation
 
-Before you build the SPI provider you must add the information about the database. 
-This information is specified in the file [persistence.xml](/src/main/resources/META-INF/persistence.xml#L15)
+The project includes GitHub Actions workflows for automated builds and deployments:
+- **Automated container builds** on pushes to main branch
+- **Multi-architecture support** with alternative Dockerfiles
+- **Dependency updates** via Dependabot
+- **Container signing** with Cosign for security
 
-> :warning: **Replace the URI** `jdbc:postgresql://localhost:5432/keycloak` **with your database address.**
+### Theming Support
+
+The project includes a comprehensive **OBP Theme** that transforms Keycloak's login experience to match the Open Bank Project Portal design system:
+
+- **Modern Dark Theme**: Elegant glassmorphism UI with backdrop blur effects
+- **OBP Branding**: Official logos, colors, and typography (Plus Jakarta Sans)
+- **Portal Design Consistency**: Matches OBP Portal's visual identity and user experience
+- **OKLCH Color System**: Modern color palette with primary (dark blue/gray) and secondary (teal/green) colors
+- **Responsive Design**: Mobile-first approach optimized for all devices
+- **Accessibility Features**: WCAG 2.1 compliance with high contrast support
+- **Internationalization**: Multi-language support with customizable messages
+
+#### Theme Deployment Options
+
+The project supports two deployment modes:
+
+1. **CI/CD Deployment** (always build & replace - automated environments):
+   ```shell
+   # Standard CI/CD deployment
+   $ ./development/run-local-postgres-cicd.sh
+
+   # Themed CI/CD deployment
+   $ ./development/run-local-postgres-cicd.sh --themed
+   ```
+
+#### OBP Theme Structure
+
+```
+themes/obp/
+├── theme.properties                    # Theme configuration
+├── login/                             # Login theme files
+│   ├── login.ftl                      # Custom login template
+│   ├── messages/                      # Internationalization
+│   │   └── messages_en.properties     # English messages
+│   └── resources/                     # Static resources
+│       ├── css/
+│       │   └── styles.css             # Main stylesheet
+│       └── img/                       # OBP logos and assets
+│           ├── obp_logo.png
+│           ├── logo2x-1.png
+│           └── favicon.png
+```
+
+#### Theme Activation
+
+After deploying with `--themed`, activate the OBP theme:
+1. Access Admin Console: https://localhost:8443/admin
+2. Go to Realm Settings > Themes
+3. Set Login Theme to "obp"
+4. Save changes
+
+> **Complete Documentation**: See the theme structure and activation sections below for comprehensive theming guide, customization options, and development workflow.
+
+#### Testing Theme Deployment
+
+Validate your themed deployment setup by running the deployment script:
+```shell
+$ ./development/run-local-postgres-cicd.sh --themed
+```
+
+This script checks all prerequisites, validates theme files, and ensures proper configuration.
+
+### Environment Configuration
+
+The database connection and Keycloak settings are now configured using **runtime environment variables** instead of build-time configuration. This enables cloud-native deployments with Docker Hub hosted images, and modern CI/CD pipelines.
+
+> **Complete Documentation**:
+> - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - CI/CD deployment guide
+> - [env.sample](env.sample) - Environment configuration reference
+
+#### Quick Start Guide
+
+1. **Copy and configure environment variables:**
+   ```shell
+   $ cp env.sample .env
+   $ nano .env  # Edit with your actual configuration
+   ```
+
+2. **Validate your configuration:**
+   ```shell
+   $ ./development/run-local-postgres-cicd.sh
+   ```
+
+3. **Run the application:**
+   ```shell
+   # CI/CD deployment (always build & replace)
+   $ ./development/run-local-postgres-cicd.sh --themed
+   ```
+
+4. **Test themed deployment (optional):**
+   ```shell
+   $ ./development/run-local-postgres-cicd.sh --themed
+   ```
+
+> **Note**: For local PostgreSQL deployments, the `--validate` flag automatically runs validation checks during startup.
+
+#### Setup Environment Variables
+
+1. Copy the example environment file:
+   ```shell
+   $ cp env.sample .env
+   ```
+
+2. Edit the `.env` file with your actual configuration values:
+   ```properties
+   # Keycloak Admin Configuration
+   KEYCLOAK_ADMIN=your-admin
+   KEYCLOAK_ADMIN_PASSWORD=your-admin-password
+
+   # Keycloak's Internal Database Configuration
+   KC_DB_USERNAME=keycloak
+   KC_DB_PASSWORD=secure-keycloak-password
+
+   # User Storage Database Configuration
+   USER_STORAGE_DB_USER=obp
+   USER_STORAGE_DB_PASSWORD=secure-user-storage-password
+   DB_USER=obp
+   DB_PASSWORD=secure-user-storage-password
+   ```
+
+3. **Validate your configuration (recommended):**
+   ```shell
+   $ ./development/run-local-postgres-cicd.sh
+   ```
+   This script will:
+   - Validate all required variables are set
+   - Check database connectivity
+   - Build and deploy the application
+   - Provide clear success/failure feedback
+
+> **Documentation Resources**:
+> - **[env.sample](env.sample)**: Complete environment variable reference with examples and security notes
+> - **[docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md)**: CI/CD-style deployment guide for automated environments
+> - **[development/README.md](development/README.md)**: Development tools and scripts documentation
+> - **Available scripts**: Only 3 development scripts are included (see development directory)
+
+#### Key Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| **Keycloak Admin** | | |
+| `KEYCLOAK_ADMIN` | `admin` | Keycloak admin username |
+| `KEYCLOAK_ADMIN_PASSWORD` | `admin` | Keycloak admin password |
+| **Keycloak Database** | | |
+| `KC_DB_USERNAME` | `keycloak` | Keycloak's internal database username |
+| `KC_DB_PASSWORD` | `keycloak_changeme` | Keycloak's internal database password |
+| `KC_DB_URL` | `jdbc:postgresql://keycloak-postgres:5432/keycloak` | Keycloak's internal database URL |
+| **User Storage Database** | | |
+| `DB_URL` | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database URL |
+| **Port Configuration** | | |
+| `KC_DB_PORT` | `5433` | Keycloak database external port |
+| `USER_STORAGE_DB_PORT` | `5434` | User storage database external port |
+| `DB_USER` | `obp` | User storage database username |
+| `DB_PASSWORD` | `changeme` | User storage database password |
+| **Configuration** | | |
+| `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
+| `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode for user storage |
+
+#### Docker Deployment with External OBP Database
+
+Docker setup uses Keycloak in container with external PostgreSQL for OBP user federation:
+
+1. Use configuration with external PostgreSQL:
+   ```shell
+   $ cp .env.external-postgres .env
+   $ # Edit .env with your database settings
+   $ docker-compose up
+   ```
+
+2. Required setup:
+   ```shell
+   # External PostgreSQL must have:
+   DB_USER=oidc_user
+   DB_PASSWORD=your_password
+   DB_DRIVER=org.postgresql.Driver
+   DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+   OBP_AUTHUSER_PROVIDER=your_provider
+   ```
+
+#### Development Tools
+
+The `development/` directory contains local development scripts:
+
+- **Deployment**: `./development/run-local-postgres-cicd.sh` - Main deployment script (with --themed option)
+- **Management**: `./development/manage-container.sh` - Interactive container management
+- **PostgreSQL**: `./development/pg.sh` - Simple PostgreSQL container setup
+
+See [development/README.md](development/README.md) for complete documentation of all development tools.
+
+## Deployment Strategies
+
+### Choosing the Right Deployment Method
+
+The project provides two focused deployment approaches:
+
+| Method | Use Case | Build Strategy | Best For |
+|--------|----------|---------------|-----------|
+| **CI/CD** (`run-local-postgres-cicd.sh`) | Automated pipelines | Always rebuild | CI/CD, production deployments |
+
+### Development Deployment
+```bash
+# Standard deployment without themes
+./development/run-local-postgres-cicd.sh
+```
+
+**Features:**
+- Conditional rebuilds for faster iteration
+- Comprehensive validation and testing
+- Interactive feedback and guidance
+- Container management helpers
+
+### CI/CD Deployment
+```bash
+# Automated, reproducible deployments (always fresh build)
+./development/run-local-postgres-cicd.sh --themed
+
+# Standard CI/CD deployment
+./development/run-local-postgres-cicd.sh
+```
+
+**Features:**
+- Always builds from scratch (no caching issues)
+- JAR checksum-based cache invalidation
+- Fail-fast error handling
+- Structured pipeline output
+- Health checks with timeout
+
+### Analysis and Testing Tools
+```bash
+# Manage running containers interactively
+./development/manage-container.sh
+
+# Set up PostgreSQL container (if needed)
+./development/pg.sh
+```
+
+📖 **Detailed Guides**:
+- [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) - Complete CI/CD documentation
+
+#### Build Options
+
+The project supports **cloud-native deployment patterns**:
+
+1. **Runtime Configuration** (Recommended - Cloud-Native):
+   ```shell
+   # Build once (no environment variables needed)
+   $ mvn clean package
+   $ docker build -t obp-keycloak-provider .
+
+   # Deploy anywhere with runtime config
+   $ docker run -e KC_DB_URL="jdbc:postgresql://keycloak-host:5432/keycloak" \
+                 -e KC_DB_USERNAME="keycloak_user" \
+                 -e KC_DB_PASSWORD="keycloak_password" \
+                 -e DB_URL="jdbc:postgresql://user-storage-host:5432/obp_mapped" \
+                 -e DB_USER="obp_user" \
+                 -e DB_PASSWORD="obp_password" \
+                 obp-keycloak-provider
+   ```
+
+2. **Environment Variables Deployment**:
+   ```shell
+   $ export DB_URL="jdbc:postgresql://localhost:5432/obp_mapped"
+   $ export DB_USER="obp"
+   $ export DB_PASSWORD="obp_password"
+   $ docker run --env-file .env obp-keycloak-provider
+   ```
+
+3. **Docker Compose** (Runtime Config):
+   ```shell
+   $ docker-compose -f docker-compose.runtime.yml up
+   ```
+
+4. **CI/CD builds** using GitHub Actions workflows:
+   - Single generic build for all environments
+   - Container signing and publishing to Docker Hub
+   - Multi-architecture support with runtime configuration
+
+#### Container Management
+
+When you run the deployment scripts, they start the Keycloak container and follow the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
+
+**After pressing Ctrl+C:**
+- The container remains accessible at http://localhost:8000 and https://localhost:8443
+- Use `./development/manage-container.sh` for an interactive container management menu
+- Or use these direct commands:
+  - View logs: `docker logs -f obp-keycloak`
+  - Stop container: `docker stop obp-keycloak`
+  - Remove container: `docker rm obp-keycloak`
+  - Stop and remove: `docker stop obp-keycloak && docker rm obp-keycloak`
 
 ### Using Postgres
-> :warning: **I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
+> **Warning: I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
 
 To deploy the container use the script :
 ```shell
-$ sh/pg.sh
+$ development/pg.sh
 ```
 
-The script deploys the container locally. 
+The script deploys the container locally.
 
-It uses port : 5432. 
+It uses port : 5434 (changed from 5432 to avoid conflicts with system PostgreSQL).
 
-The scripts in the container create a `keycloak` database. 
-In the database create a table `users` :
+The system now uses two separate databases:
+
+1. **Keycloak's Internal Database**: Stores realms, clients, tokens, and Keycloak's own data (accessible on localhost:5433)
+2. **User Storage Database**: Contains your external user data that Keycloak federates (accessible on localhost:5434)
+
+> **Important**: Due to recent fixes, the user storage database now runs on port 5434 instead of 5432 to avoid conflicts with system PostgreSQL installations.
+
+In the **User Storage Database**, the `authuser` table must be created by a database administrator:
+
+> **⚠️ CRITICAL**: The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider and **MUST** be created by a database administrator with appropriate permissions. Keycloak setup scripts cannot create this table due to read-only access restrictions.
+
+> **📋 SETUP REQUIREMENT**: The authuser table must exist before running Keycloak. INSERT, UPDATE, and DELETE operations are not supported through Keycloak. Users must be managed through other means outside of Keycloak.
+
 ```sql
+-- ===============================================
+-- DATABASE ADMINISTRATOR SETUP REQUIRED
+-- ===============================================
+-- This SQL must be executed by a database administrator
+-- with CREATE privileges on the obp_mapped database.
+-- The Keycloak application has READ-ONLY access only.
+
 CREATE TABLE public.authuser (
 	id bigserial NOT NULL,
 	firstname varchar(100) NULL,
@@ -59,7 +423,6 @@ CREATE TABLE public.authuser (
 	locale varchar(16) NULL,
 	validated bool NULL,
 	user_c int8 NULL,
-	uniqueid varchar(32) NULL,
 	createdat timestamp NULL,
 	updatedat timestamp NULL,
 	timezone varchar(32) NULL,
@@ -67,8 +430,27 @@ CREATE TABLE public.authuser (
 	passwordshouldbechanged bool NULL,
 	CONSTRAINT authuser_pk PRIMARY KEY (id)
 );
+
+-- Grant READ-ONLY access to Keycloak user
+GRANT SELECT ON public.authuser TO obp;
+GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
 ```
-Add mock user to the table.
+
+**Database Setup Requirements:**
+- 📋 Table must be created by database administrator BEFORE running Keycloak
+- 📋 Keycloak user (obp) needs only SELECT permissions on authuser table
+- 📋 Database administrator must create table structure and indexes
+
+**Keycloak Provider Limitations:**
+- ✅ User authentication and login
+- ✅ User profile viewing
+- ✅ Password validation
+- 🔴 User creation through Keycloak (disabled - read-only access)
+- 🔴 User profile updates through Keycloak (disabled - read-only access)
+- 🔴 User deletion through Keycloak (disabled - read-only access)
+- 🔴 Table creation through setup scripts (disabled - insufficient permissions)
+
+Users must be added to the `authuser` table using external database administration tools outside of Keycloak.
 
 ### Using Keycloak
 
@@ -80,13 +462,26 @@ To deploy the KC container, I created a [Dockerfile](/docker/Dockerfile) file in
 
 ## Build the project
 
-Run the script :
-```shell
-$ sh/run.sh
-```
-This script will build the SPI provider. 
+### Cloud-Native Approach (Recommended)
 
-Deploys the KC container, adds the SPI provider and restarts the container to apply the changes. 
+Build once, deploy everywhere with runtime configuration:
+
+```shell
+# Build the provider (no environment variables needed)
+$ mvn clean package
+
+# Run with CI/CD deployment
+$ ./development/run-local-postgres-cicd.sh --themed
+```
+
+### Legacy Approach
+
+For compatibility, you can still use the legacy build script:
+```shell
+$ ./development/run-local-postgres-cicd.sh
+```
+
+> **Note**: The legacy approach uses build-time configuration which is not recommended for production deployments. Use the cloud-native approach for Docker Hub deployments.
 
 ## Login to KC
 
@@ -103,3 +498,56 @@ The provider ``obp-keycloak-provider`` is in list of providers.
 
 ![KC providers](/docs/images/providers.png?raw=true "KC providers")
 
+## Cloud-Native Deployment Examples
+
+### Docker Hub Deployment
+```shell
+# Pull generic image
+docker pull your-org/obp-keycloak-provider:latest
+
+# Run with environment-specific configuration
+docker run -e KC_DB_URL="jdbc:postgresql://keycloak-prod-db:5432/keycloak" \
+           -e KC_DB_USERNAME="keycloak_prod_user" \
+           -e KC_DB_PASSWORD="secure_keycloak_password" \
+           -e DB_URL="jdbc:postgresql://user-storage-prod-db:5432/obp" \
+           -e DB_USER="obp_prod_user" \
+           -e DB_PASSWORD="secure_user_storage_password" \
+           your-org/obp-keycloak-provider:latest
+```
+
+### Testing Runtime Configuration
+```shell
+# Deploy and validate the setup
+./development/run-local-postgres-cicd.sh
+```
+
+## Recent Changes
+
+### Database Separation Fixes (Latest)
+
+The following critical issues have been resolved:
+
+1. **Fixed JDBC URL Configuration**: Corrected malformed `KC_DB_URL` default value in `docker-compose.runtime.yml`
+2. **Resolved Port Conflicts**: Changed user-storage-postgres to port 5434 to avoid conflicts with system PostgreSQL
+3. **Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
+4. **Updated Environment Variables**: All configuration now properly supports the separated database architecture
+
+
+
+### Port Changes
+- **Keycloak Internal Database**: `localhost:5433` (unchanged)
+- **User Storage Database**: `localhost:5434` (changed from 5432)
+- **Keycloak Application**: `localhost:8000` (HTTP) and `localhost:8443` (HTTPS)
+
+### Troubleshooting
+If you encounter connection issues:
+1. Run the deployment script which validates configuration: `./development/run-local-postgres-cicd.sh`
+2. Check for port conflicts: `ss -tulpn | grep :5432` or `netstat -tulpn | grep :5432`
+3. Review the setup documentation in the `docs/` directory
+
+## Documentation
+
+
+- **[Environment Configuration](env.sample)** - Environment variable reference
+- **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines
+- **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example

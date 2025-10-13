@@ -1,0 +1,160 @@
+version: "3.8"
+
+services:
+  # PostgreSQL database for Keycloak's internal data
+  keycloak-postgres:
+    image: postgres:16-alpine
+    container_name: keycloak-postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak_changeme}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "${KC_DB_PORT:-5433}:5432"
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - obp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak with OBP User Storage Provider (Runtime Configuration)
+  keycloak:
+    image: obp-keycloak-provider:latest
+    container_name: obp-keycloak
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    environment:
+      # Keycloak Admin Configuration
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+
+      # Keycloak's internal database configuration
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL:-jdbc:postgresql://keycloak-postgres:5432/keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak_changeme}
+
+      # OBP User Storage database configuration (External PostgreSQL)
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/${USER_STORAGE_DB_NAME:-obp_mapped}
+      DB_USER: oidc_user
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_DRIVER: org.postgresql.Driver
+      DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      DB_AUTHUSER_TABLE: ${DB_AUTHUSER_TABLE:-v_oidc_users}
+
+      # MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+      OBP_AUTHUSER_PROVIDER: ${OBP_AUTHUSER_PROVIDER:-}
+
+      # Hibernate Configuration for User Storage
+      HIBERNATE_DDL_AUTO: ${HIBERNATE_DDL_AUTO:-validate}
+      HIBERNATE_SHOW_SQL: "${HIBERNATE_SHOW_SQL:-true}"
+      HIBERNATE_FORMAT_SQL: "${HIBERNATE_FORMAT_SQL:-true}"
+
+      # Keycloak Configuration
+      KC_HOSTNAME_STRICT: "${KC_HOSTNAME_STRICT:-false}"
+      KC_HOSTNAME_STRICT_HTTPS: "${KC_HOSTNAME_STRICT_HTTPS:-false}"
+      KC_HTTP_ENABLED: "${KC_HTTP_ENABLED:-true}"
+      KC_HEALTH_ENABLED: "${KC_HEALTH_ENABLED:-true}"
+      KC_METRICS_ENABLED: "${KC_METRICS_ENABLED:-true}"
+      KC_FEATURES: "${KC_FEATURES:-token-exchange}"
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8000}:8080"
+      - "${KEYCLOAK_HTTPS_PORT:-8443}:8443"
+    networks:
+      - obp-network
+    volumes:
+      # Optional: Custom themes (if using themed build)
+      - ./themes:/opt/keycloak/themes
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # Optional: Admin tool for Keycloak PostgreSQL
+  keycloak-pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: keycloak-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${KEYCLOAK_PGADMIN_EMAIL:-keycloak-admin@obp.com}
+      PGADMIN_DEFAULT_PASSWORD: ${KEYCLOAK_PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "${KEYCLOAK_PGADMIN_PORT:-5051}:80"
+    depends_on:
+      - keycloak-postgres
+    networks:
+      - obp-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+volumes:
+  keycloak_postgres_data:
+    driver: local
+
+networks:
+  obp-network:
+    driver: bridge
+# Example usage:
+#
+# 1. Development with default values:
+#    docker-compose -f docker-compose.runtime.yml up
+#
+# 2. Production with environment file:
+#    docker-compose -f docker-compose.runtime.yml --env-file .env.prod up
+#
+# 3. With pgAdmin tools:
+#    docker-compose -f docker-compose.runtime.yml --profile tools up
+#
+# 4. Cloud-native style with individual env vars:
+#    KC_DB_PASSWORD=secure_keycloak_pass \
+#    USER_STORAGE_DB_PASSWORD=secure_user_pass \
+#    KEYCLOAK_ADMIN_PASSWORD=secure_admin_pass \
+#    OBP_AUTHUSER_PROVIDER=production_provider \
+#    docker-compose -f docker-compose.runtime.yml up
+#
+# 5. With custom database hosts (external databases):
+#    KC_DB_URL=jdbc:postgresql://external-keycloak-db:5432/keycloak \
+#    DB_URL=jdbc:postgresql://external-user-db:5432/obp_mapped \
+#    OBP_AUTHUSER_PROVIDER=your_provider_name \
+#    docker-compose -f docker-compose.runtime.yml up keycloak
+#
+# 6. Production deployment with separate database hosts:
+#    docker-compose -f docker-compose.runtime.yml up keycloak \
+#      -e KC_DB_URL="jdbc:postgresql://keycloak-prod-db:5432/keycloak" \
+#      -e DB_URL="jdbc:postgresql://user-storage-prod-db:5432/obp_mapped" \
+#      -e OBP_AUTHUSER_PROVIDER="production_provider"
+#
+# Environment Variables:
+# Keycloak Database:
+#   KC_DB_NAME=keycloak
+#   KC_DB_USERNAME=keycloak
+#   KC_DB_PASSWORD=keycloak_changeme
+#   KC_DB_PORT=5433 (external port for Keycloak's internal database)
+#
+# External User Storage Database:
+#   USER_STORAGE_DB_NAME=obp_mapped (database name on external PostgreSQL)
+#   DB_PASSWORD= (password for oidc_user on external PostgreSQL)
+#   OBP_AUTHUSER_PROVIDER= (provider name - can be empty for development)
+#
+# Keycloak Configuration:
+#   KEYCLOAK_ADMIN=admin
+#   KEYCLOAK_ADMIN_PASSWORD=admin
+#   KEYCLOAK_HTTP_PORT=8000
+#   KEYCLOAK_HTTPS_PORT=8443
+#
+# External PostgreSQL Requirements:
+#   - PostgreSQL running on localhost:5432 (accessible via host.docker.internal)
+#   - Database 'obp_mapped' exists
+#   - User 'oidc_user' exists with SELECT permissions on v_oidc_users view
+#   - View 'v_oidc_users' exists with required structure
