@@ -8,8 +8,8 @@ ARG JAR_CHECKSUM
 
 # Define build arguments for User Storage database environment variables
 ARG DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
-ARG DB_USER=obp
-ARG DB_PASSWORD=changeme
+ARG DB_USER=oidc_user
+ARG DB_PASSWORD=your_secure_password
 ARG DB_DRIVER=org.postgresql.Driver
 ARG DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
 
@@ -111,10 +111,11 @@ ENV KC_DB_PASSWORD=keycloak_changeme
 
 # Set default environment variables for User Storage database configuration
 ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
-ENV DB_USER=obp
-ENV DB_PASSWORD=changeme
+ENV DB_USER=oidc_user
+ENV DB_PASSWORD=your_secure_password
 ENV DB_DRIVER=org.postgresql.Driver
 ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+ENV DB_AUTHUSER_TABLE=v_oidc_users
 
 # Default Hibernate configuration for User Storage
 ENV HIBERNATE_DDL_AUTO=validate
