@@ -6,7 +6,7 @@
 # Requirements:
 # - PostgreSQL running locally on port 5432
 # - Database 'keycloakdb' with user 'keycloak' (password: 'f')
-# - Database 'obp_mapped' with user 'obp' (password: 'f')
+# - Database 'obp_mapped' with user 'oidc_user' (restricted view-only access to v_oidc_users)
 #
 # Usage: ./sh/run-local-postgres-cicd.sh [--themed]
 
@@ -75,24 +75,36 @@ fi
 # Load environment variables
 if [ ! -f ".env" ]; then
     echo -e "${RED}✗ .env file not found${NC}"
-    echo "Create .env with database configuration"
+    echo "Create .env with database configuration (see .env.docker.example)"
     exit 1
 fi
 
 source .env
 
 # Validate required vars
-required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "OBP_AUTHUSER_PROVIDER")
+required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "DB_AUTHUSER_TABLE" "OBP_AUTHUSER_PROVIDER")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo -e "${RED}✗ Missing environment variable: $var${NC}"
         if [ "$var" = "OBP_AUTHUSER_PROVIDER" ]; then
             echo -e "${RED}CRITICAL: OBP_AUTHUSER_PROVIDER is MANDATORY for security${NC}"
             echo "Add to .env file: OBP_AUTHUSER_PROVIDER=your_provider_name"
+        elif [ "$var" = "DB_AUTHUSER_TABLE" ]; then
+            echo -e "${RED}CRITICAL: DB_AUTHUSER_TABLE is MANDATORY for security${NC}"
+            echo "Add to .env file: DB_AUTHUSER_TABLE=v_oidc_users"
         fi
         exit 1
     fi
 done
+
+# Validate DB_AUTHUSER_TABLE is set to secure view
+if [ "$DB_AUTHUSER_TABLE" != "v_oidc_users" ]; then
+    echo -e "${RED}✗ Security validation failed: DB_AUTHUSER_TABLE must be 'v_oidc_users' for secure access${NC}"
+    echo "Current value: $DB_AUTHUSER_TABLE"
+    echo "Required value: v_oidc_users"
+    echo "Update .env file: DB_AUTHUSER_TABLE=v_oidc_users"
+    exit 1
+fi
 
 # Validate themed deployment requirements
 validate_theme_files() {
@@ -209,7 +221,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     fi
 fi
 
-echo -e "${GREEN}✓ Environment validated (including mandatory OBP_AUTHUSER_PROVIDER)${NC}"
+echo -e "${GREEN}✓ Environment validated (including mandatory security variables)${NC}"
 
 # Step 2: Database connectivity test
 echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"

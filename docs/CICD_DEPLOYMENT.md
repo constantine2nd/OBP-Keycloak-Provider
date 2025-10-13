@@ -39,8 +39,8 @@ The CI/CD deployment script (`sh/run-local-postgres-cicd.sh`) is designed for au
 1. **Local PostgreSQL** running on port 5432
 2. **Databases configured**:
    - `keycloakdb` (user: keycloak, password: f)
-   - `obp_mapped` (user: obp, password: f)
-3. **Environment file**: `.env.local` with proper configuration
+   - `obp_mapped` (user: oidc_user, restricted view-only access to v_oidc_users)
+3. **Environment file**: `.env` with proper configuration
 
 ## Deployment Pipeline
 
@@ -50,7 +50,7 @@ The script follows an 8-step pipeline:
 - Checks Docker installation and daemon
 - Validates Maven installation
 - Loads and validates `.env` configuration
-- Verifies all required environment variables
+- Verifies all required environment variables (including DB_AUTHUSER_TABLE)
 - **Themed deployments**: Validates theme files and structure
 
 ### [2/8] Database Connectivity
@@ -142,7 +142,7 @@ validate_theme_files() {
 
 ## Environment Configuration
 
-### Required .env.local Variables
+### Required .env Variables
 ```bash
 # Keycloak Admin
 KEYCLOAK_ADMIN=admin
@@ -153,12 +153,21 @@ KC_DB_URL=jdbc:postgresql://localhost:5432/keycloakdb
 KC_DB_USERNAME=keycloak
 KC_DB_PASSWORD=f
 
-# User Storage Database
+# User Storage Database (secure view-based access)
 DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
-DB_USER=obp
-DB_PASSWORD=f
+DB_USER=oidc_user
+DB_PASSWORD=your_secure_password
 DB_DRIVER=org.postgresql.Driver
 DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+DB_AUTHUSER_TABLE=v_oidc_users
+
+# MANDATORY: Provider filtering for user authentication (REQUIRED for security)
+OBP_AUTHUSER_PROVIDER=your_provider_name
+
+# SECURITY NOTE: The above configuration uses view-based access for enhanced security:
+# - 'oidc_user' has SELECT-only permissions on 'v_oidc_users' view
+# - No direct access to 'authuser' table
+# - All write operations (INSERT, UPDATE, DELETE) are disabled
 
 # Configuration
 HIBERNATE_DDL_AUTO=validate
@@ -360,7 +369,7 @@ cat themes/obp/theme.properties | grep -E "(parent=|styles=)"
 
 ## Best Practices
 
-1. **Version your .env.local**: Include in version control as `.env.example`
+1. **Version your .env**: Include in version control as `.env.example`
 2. **Monitor build times**: Track performance degradation
 3. **Use health checks**: Verify deployment success programmatically
 4. **Log everything**: Capture build and deployment logs
@@ -368,6 +377,7 @@ cat themes/obp/theme.properties | grep -E "(parent=|styles=)"
 6. **Document changes**: Update this file when modifying the script
 7. **Validate themes**: Run `./sh/test-theme-validation.sh` before themed deployments
 8. **Test incrementally**: Try standard deployment before themed if issues occur
+9. **Use restricted database access**: Always use `oidc_user` with view-only permissions, never `obp` user
 
 ## Support
 
