@@ -273,7 +273,7 @@ The `development/` directory contains local development scripts:
 
 - **Deployment**: `./development/run-local-postgres-cicd.sh` - Main deployment script (with --themed option)
 - **Management**: `./development/manage-container.sh` - Interactive container management
-- **PostgreSQL**: `./development/pg.sh` - Simple PostgreSQL container setup
+
 
 See [development/README.md](development/README.md) for complete documentation of all development tools.
 
@@ -319,9 +319,6 @@ The project provides two focused deployment approaches:
 ```bash
 # Manage running containers interactively
 ./development/manage-container.sh
-
-# Set up PostgreSQL container (if needed)
-./development/pg.sh
 ```
 
 📖 **Detailed Guides**:
@@ -381,14 +378,7 @@ When you run the deployment scripts, they start the Keycloak container and follo
 ### Using Postgres
 > **Warning: I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
 
-To deploy the container use the script :
-```shell
-$ development/pg.sh
-```
-
-The script deploys the container locally.
-
-It uses port : 5434 (changed from 5432 to avoid conflicts with system PostgreSQL).
+For PostgreSQL setup, please refer to the main deployment scripts or set up your own database instance.
 
 The system now uses two separate databases:
 

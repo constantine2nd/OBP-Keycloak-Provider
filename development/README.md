@@ -12,7 +12,7 @@ This directory contains development tools and scripts for **building, running, a
 
 ## Available Scripts
 
-The `development/` directory contains exactly **3 shell scripts**:
+The `development/` directory contains exactly **2 shell scripts**:
 
 ### 1. Main Deployment Script (`run-local-postgres-cicd.sh`)
 
@@ -61,22 +61,6 @@ The `development/` directory contains exactly **3 shell scripts**:
 - 🗑️ Container removal
 - 🌐 URL and credential display
 - 🔍 Automatic container detection
-
-### 3. PostgreSQL Setup (`pg.sh`)
-
-**Purpose**: Quick PostgreSQL container setup for development
-
-```bash
-./development/pg.sh
-```
-
-**What it does:**
-- Stops and removes existing PostgreSQL container
-- Creates new PostgreSQL container with:
-  - User: `admin`
-  - Password: `admin`
-  - Database: `keycloak`
-  - Port: `5432`
 
 ---
 
