@@ -1,9 +1,9 @@
-FROM maven:3-eclipse-temurin-17 as maven
+FROM maven:3-eclipse-temurin-17 AS maven
 COPY . /app
 WORKDIR /app
 RUN mvn clean install -DskipTests=true
 
-FROM quay.io/keycloak/keycloak:latest as builder
+FROM quay.io/keycloak/keycloak:latest AS builder
 
 # Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
