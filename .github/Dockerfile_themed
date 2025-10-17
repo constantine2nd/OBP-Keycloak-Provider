@@ -100,9 +100,10 @@ USER root
 
 # Copy the entire theme directory structure
 COPY themes/obp/ /opt/keycloak/themes/obp/
+COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
 
 # Set proper ownership for theme files
-RUN chown -R keycloak:keycloak /opt/keycloak/themes/obp
+RUN chown -R keycloak:keycloak /opt/keycloak/themes/
 
 # Switch back to keycloak user for security
 USER keycloak
