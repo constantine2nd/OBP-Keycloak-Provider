@@ -1,6 +1,6 @@
 # === Build Stage ===
 # Use Maven to build the project
-FROM maven:3-eclipse-temurin-17 as maven
+FROM maven:3-eclipse-temurin-17 AS maven
 
 # Build arguments for cache invalidation
 ARG BUILD_TIMESTAMP
@@ -21,6 +21,7 @@ ARG HIBERNATE_DDL_AUTO=validate
 ARG HIBERNATE_SHOW_SQL=true
 ARG HIBERNATE_FORMAT_SQL=true
 
+FROM maven:3-eclipse-temurin-17 AS maven
 COPY . /app
 WORKDIR /app
 
@@ -42,12 +43,15 @@ RUN mvn clean install -DskipTests=true \
     -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
     -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
 
-# Use official Keycloak image (26.0.5) as a base for building
-FROM quay.io/keycloak/keycloak:26.0.5 as builder
+# Use official Keycloak image (26.0) as a base for building
+FROM quay.io/keycloak/keycloak:26.0 as builder
 
 # Build arguments for cache invalidation
 ARG BUILD_TIMESTAMP
 ARG JAR_CHECKSUM
+RUN mvn clean install -DskipTests=true
+
+FROM quay.io/keycloak/keycloak:latest AS builder
 
 # Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
@@ -96,9 +100,10 @@ USER root
 
 # Copy the entire theme directory structure
 COPY themes/obp/ /opt/keycloak/themes/obp/
+COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
 
 # Set proper ownership for theme files
-RUN chown -R keycloak:keycloak /opt/keycloak/themes/obp
+RUN chown -R keycloak:keycloak /opt/keycloak/themes/
 
 # Switch back to keycloak user for security
 USER keycloak
