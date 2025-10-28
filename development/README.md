@@ -105,7 +105,7 @@ cp env.sample .env
 ### Optional Variables
 - `KEYCLOAK_ADMIN` - Admin username (default: admin)
 - `KEYCLOAK_ADMIN_PASSWORD` - Admin password (default: admin)
-- `KEYCLOAK_HTTP_PORT` - HTTP port (default: 8000)
+- `KEYCLOAK_HTTP_PORT` - HTTP port (default: 7787)
 - `KEYCLOAK_HTTPS_PORT` - HTTPS port (default: 8443)
 
 ---

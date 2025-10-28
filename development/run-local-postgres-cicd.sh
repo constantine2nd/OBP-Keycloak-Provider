@@ -348,7 +348,7 @@ CONTAINER_ENV_VARS=(
 # Start container
 docker run -d \
     --name "$CONTAINER_NAME" \
-    -p "${KEYCLOAK_HTTP_PORT:-8000}:8080" \
+    -p "${KEYCLOAK_HTTP_PORT:-7787}:8080" \
     -p "${KEYCLOAK_HTTPS_PORT:-8443}:8443" \
     --add-host=host.docker.internal:host-gateway \
     "${CONTAINER_ENV_VARS[@]}" \
@@ -380,7 +380,7 @@ WAIT_COUNT=0
 MAX_WAIT=120
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
-    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/admin/" > /dev/null 2>&1; then
+    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/admin/" > /dev/null 2>&1; then
         READY=true
         echo -e "${GREEN}✓ Service is ready${NC}"
 
@@ -388,7 +388,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
         if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
             echo -n "Testing theme accessibility... "
             # Check if theme resources are accessible
-            if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/resources/obp/" > /dev/null 2>&1; then
+            if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/" > /dev/null 2>&1; then
                 echo -e "${GREEN}✓ Theme resources accessible${NC}"
             else
                 echo -e "${YELLOW}~ Theme resources may load after realm configuration${NC}"
@@ -447,7 +447,7 @@ echo "  Provider: $OBP_AUTHUSER_PROVIDER"
 echo ""
 
 echo "Service Access:"
-echo "  HTTP:  http://localhost:${KEYCLOAK_HTTP_PORT:-8000}"
+echo "  HTTP:  http://localhost:${KEYCLOAK_HTTP_PORT:-7787}"
 echo "  HTTPS: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}"
 echo "  Admin: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
 echo "         (${KEYCLOAK_ADMIN:-admin} / ${KEYCLOAK_ADMIN_PASSWORD:-admin})"
@@ -473,7 +473,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo "  Theme config:    docker exec $CONTAINER_NAME cat /opt/keycloak/themes/obp/theme.properties"
     echo ""
     echo -e "${BLUE}Theme Resources:${NC}"
-    echo "  URL: http://localhost:${KEYCLOAK_HTTP_PORT:-8000}/resources/obp/"
+    echo "  URL: http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/"
     echo "  Note: Theme resources load after realm configuration"
     echo ""
 fi
