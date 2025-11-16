@@ -154,7 +154,7 @@ public class KcUserStorageProvider
                         // Force refresh to ensure database is source of truth
                         adapter.forceRefreshFromDatabase();
                         log.infof(
-                            "✅ OPTIMAL: Found user %s by user_id %s with provider %s",
+                            "OPTIMAL: Found user %s by user_id %s with provider %s",
                             entity.getUsername(),
                             entity.getId(),
                             entity.getProvider()
@@ -194,6 +194,21 @@ public class KcUserStorageProvider
             stmt.setString(1, username);
             stmt.setString(2, dbConfig.getAuthUserProvider());
 
+            // Log the SQL query with actual parameter values for debugging
+            String executableSql = sql
+                .replaceFirst("\\?", "'" + username + "'")
+                .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+            log.infof(
+                "Executing SQL: %s",
+                executableSql
+            );
+            log.infof(
+                "Query parameters: [username='%s', provider='%s', table='%s']",
+                username,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable()
+            );
+
             try (ResultSet rs = stmt.executeQuery()) {
                 KcUserEntity entity = null;
                 int rowCount = 0;
@@ -204,6 +219,14 @@ public class KcUserStorageProvider
                         entity = mapResultSetToEntity(rs);
                     }
                 }
+
+                // Log the query result
+                log.infof(
+                    "Query result: found %d row(s) for username='%s' with provider='%s'",
+                    rowCount,
+                    username,
+                    dbConfig.getAuthUserProvider()
+                );
 
                 if (rowCount > 1) {
                     log.errorf(
@@ -233,7 +256,14 @@ public class KcUserStorageProvider
                 }
             }
         } catch (SQLException e) {
-            log.error("Error in getUserByUsername", e);
+            log.errorf(
+                "SQL Error in getUserByUsername for username='%s', provider='%s', table='%s': %s",
+                username,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable(),
+                e.getMessage()
+            );
+            log.error("Full SQL exception details:", e);
         }
         return null;
     }
@@ -256,8 +286,28 @@ public class KcUserStorageProvider
             stmt.setString(1, email);
             stmt.setString(2, dbConfig.getAuthUserProvider());
 
+            // Log the SQL query with actual parameter values for debugging
+            String executableSql = sql
+                .replaceFirst("\\?", "'" + email + "'")
+                .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+            log.infof(
+                "Executing SQL: %s",
+                executableSql
+            );
+            log.infof(
+                "Query parameters: [email='%s', provider='%s', table='%s']",
+                email,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable()
+            );
+
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
+                    log.infof(
+                        "Query result: found 1 row for email='%s' with provider='%s'",
+                        email,
+                        dbConfig.getAuthUserProvider()
+                    );
                     KcUserEntity entity = mapResultSetToEntity(rs);
                     UserAdapter adapter = new UserAdapter(
                         session,
@@ -271,10 +321,23 @@ public class KcUserStorageProvider
                         entity.getProvider()
                     );
                     return adapter;
+                } else {
+                    log.infof(
+                        "Query result: found 0 rows for email='%s' with provider='%s'",
+                        email,
+                        dbConfig.getAuthUserProvider()
+                    );
                 }
             }
         } catch (SQLException e) {
-            log.error("Error in getUserByEmail", e);
+            log.errorf(
+                "SQL Error in getUserByEmail for email='%s', provider='%s', table='%s': %s",
+                email,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable(),
+                e.getMessage()
+            );
+            log.error("Full SQL exception details:", e);
         }
         return null;
     }
@@ -577,7 +640,7 @@ public class KcUserStorageProvider
         Integer max
     ) {
         log.infof(
-            "🔍 searchForUserStream() called: search='%s', first=%d, max=%d",
+            "searchForUserStream() called: search='%s', first=%d, max=%d",
             search,
             first,
             max
@@ -625,7 +688,7 @@ public class KcUserStorageProvider
                 }
             }
             log.infof(
-                "🔍 Found %d users matching search '%s'",
+                "Found %d users matching search '%s'",
                 users.size(),
                 search
             );
@@ -789,7 +852,7 @@ public class KcUserStorageProvider
             }
             log.infof("Retrieved %d users for synchronization", users.size());
         } catch (SQLException e) {
-            log.errorf("❌ Error in getAllUsers: %s", e.getMessage());
+            log.errorf("Error in getAllUsers: %s", e.getMessage());
         }
 
         return users.stream();

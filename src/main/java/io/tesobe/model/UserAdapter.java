@@ -82,7 +82,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getUsername() {
         String value = entity.getUsername();
         log.infof(
-            "🔍 getUsername() for user %s returning DATABASE value: '%s'",
+            "getUsername() for user %s returning DATABASE value: '%s'",
             value,
             value
         );
@@ -93,7 +93,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getEmail() {
         String value = entity.getEmail();
         log.infof(
-            "🔍 getEmail() for user %s returning DATABASE value: '%s'",
+            "getEmail() for user %s returning DATABASE value: '%s'",
             getUsername(),
             value
         );
@@ -104,7 +104,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getFirstName() {
         String value = entity.getFirstName();
         log.infof(
-            "🔍 getFirstName() for user %s returning DATABASE value: '%s'",
+            "getFirstName() for user %s returning DATABASE value: '%s'",
             getUsername(),
             value
         );
@@ -115,7 +115,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getLastName() {
         String value = entity.getLastName();
         log.infof(
-            "🔍 getLastName() for user %s returning DATABASE value: '%s'",
+            "getLastName() for user %s returning DATABASE value: '%s'",
             getUsername(),
             value
         );
@@ -196,7 +196,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
                 String federatedValue = super.getFirstAttribute(name);
                 if (federatedValue != null) {
                     log.warnf(
-                        "⚠️ FEDERATED STORAGE LEAK: Attribute %s='%s' found in federated storage for user %s but not in database. Returning null to enforce database-only policy.",
+                        "FEDERATED STORAGE LEAK: Attribute %s='%s' found in federated storage for user %s but not in database. Returning null to enforce database-only policy.",
                         name,
                         federatedValue,
                         getUsername()
@@ -215,13 +215,13 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public Map<String, List<String>> getAttributes() {
-        log.infof("🔍 getAttributes() called for user: %s", getUsername());
+        log.infof("getAttributes() called for user: %s", getUsername());
 
         // Check what federated storage contains before we return database-only values
         Map<String, List<String>> federatedAttributes = super.getAttributes();
         if (!federatedAttributes.isEmpty()) {
             log.warnf(
-                "⚠️ FEDERATED STORAGE DETECTED: Found %d federated attributes for user %s: %s",
+                "FEDERATED STORAGE DETECTED: Found %d federated attributes for user %s: %s",
                 federatedAttributes.size(),
                 getUsername(),
                 federatedAttributes.keySet()
@@ -481,7 +481,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     private void clearFederatedStorageAttributes() {
         try {
             log.infof(
-                "🧹 CLEARING FEDERATED STORAGE for user: %s - Database values: firstName='%s', lastName='%s', email='%s'",
+                "CLEARING FEDERATED STORAGE for user: %s - Database values: firstName='%s', lastName='%s', email='%s'",
                 getUsername(),
                 entity.getFirstName(),
                 entity.getLastName(),
@@ -501,7 +501,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
                 // Check what's currently in federated storage before clearing
                 String federatedValue = super.getFirstAttribute(attrName);
                 log.infof(
-                    "🔍 Attribute %s: federated='%s', database='%s' for user %s",
+                    "Attribute %s: federated='%s', database='%s' for user %s",
                     attrName,
                     federatedValue,
                     getFirstAttribute(attrName),
@@ -511,19 +511,19 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
                 // Remove from federated storage - this calls the parent's method to actually clear it
                 super.removeAttribute(attrName);
                 log.infof(
-                    "🗑️ Removed %s from federated storage for user %s",
+                    "Removed %s from federated storage for user %s",
                     attrName,
                     getUsername()
                 );
             }
 
             log.infof(
-                "✅ FEDERATED STORAGE CLEARED for user: %s - Database is now source of truth",
+                "FEDERATED STORAGE CLEARED for user: %s - Database is now source of truth",
                 getUsername()
             );
         } catch (Exception e) {
             log.errorf(
-                "❌ Failed to clear federated storage attributes for user %s: %s",
+                "Failed to clear federated storage attributes for user %s: %s",
                 getUsername(),
                 e.getMessage()
             );
@@ -540,7 +540,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public void forceRefreshFromDatabase() {
         try {
             log.infof(
-                "🔄 FORCING REFRESH from database for user: %s (user_id: %s)",
+                "FORCING REFRESH from database for user: %s (user_id: %s)",
                 getUsername(),
                 entity.getId()
             );
@@ -565,7 +565,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
                 super.removeAttribute(attr);
             }
 
-            log.infof("✅ Force refresh completed for user: %s", getUsername());
+            log.infof("Force refresh completed for user: %s", getUsername());
         } catch (Exception e) {
             log.errorf(
                 "Failed to force refresh for user %s: %s",
