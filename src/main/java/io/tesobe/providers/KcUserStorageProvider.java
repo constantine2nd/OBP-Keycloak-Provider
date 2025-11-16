@@ -179,7 +179,16 @@ public class KcUserStorageProvider
     @Override
     public UserModel getUserByUsername(RealmModel realm, String username) {
         log.infof("getUserByUsername() called with: %s", username);
+        log.infof("Username details: length=%d, exact='%s', chars=%s", 
+            username.length(), 
+            username,
+            username.chars().mapToObj(c -> String.format("%c(%d)", (char)c, c)).toArray());
+        log.infof("NOTE: If Keycloak realm has 'User Profile' > 'Attributes' > username set to lowercase, " +
+                  "username will be automatically converted to lowercase before reaching this method. " +
+                  "Check realm settings if case sensitivity is an issue.");
 
+        // Note: This query is CASE-SENSITIVE by default
+        // If Keycloak is lowercasing usernames, they won't match mixed-case database values
         String sql =
             "SELECT " +
             getFieldList() +
