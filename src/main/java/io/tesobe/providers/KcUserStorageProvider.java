@@ -151,8 +151,6 @@ public class KcUserStorageProvider
                             model,
                             entity
                         );
-                        // Force refresh to ensure database is source of truth
-                        adapter.forceRefreshFromDatabase();
                         log.infof(
                             "OPTIMAL: Found user %s by user_id %s with provider %s",
                             entity.getUsername(),
@@ -239,7 +237,7 @@ public class KcUserStorageProvider
 
                 if (rowCount > 1) {
                     log.errorf(
-                        "Ambiguous login attempt: getUserByUsername found %d rows for username '%s' with provider '%s'. Login denied for security.",
+                        "Ambiguous login attempt: getUserByUsername found %d rows for username='%s' with provider='%s'. Login denied for security.",
                         rowCount,
                         username,
                         dbConfig.getAuthUserProvider()
@@ -254,14 +252,91 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
                     log.infof(
                         "Created UserAdapter for user: %s with provider: %s",
                         entity.getUsername(),
                         entity.getProvider()
                     );
                     return adapter;
+                }
+
+                // If no rows found, try case-insensitive fallback query
+                if (rowCount == 0) {
+                    log.warnf(
+                        "Case-sensitive query found no results. Trying case-insensitive fallback for username='%s'",
+                        username
+                    );
+
+                    String sqlLower =
+                        "SELECT " +
+                        getFieldList() +
+                        " FROM " +
+                        dbConfig.getAuthUserTable() +
+                        " WHERE LOWER(username) = LOWER(?) AND provider = ?";
+
+                    try (
+                        PreparedStatement stmtLower = conn.prepareStatement(sqlLower)
+                    ) {
+                        stmtLower.setString(1, username);
+                        stmtLower.setString(2, dbConfig.getAuthUserProvider());
+
+                        // Log the fallback SQL query
+                        String executableSqlLower = sqlLower
+                            .replaceFirst("LOWER\\(\\?\\)", "LOWER('" + username + "')")
+                            .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+                        log.infof(
+                            "Executing fallback SQL (case-insensitive): %s",
+                            executableSqlLower
+                        );
+
+                        try (ResultSet rsLower = stmtLower.executeQuery()) {
+                            int rowCountLower = 0;
+
+                            while (rsLower.next()) {
+                                rowCountLower++;
+                                if (rowCountLower == 1) {
+                                    entity = mapResultSetToEntity(rsLower);
+                                }
+                            }
+
+                            log.infof(
+                                "Fallback query result: found %d row(s) for username='%s' (case-insensitive) with provider='%s'",
+                                rowCountLower,
+                                username,
+                                dbConfig.getAuthUserProvider()
+                            );
+
+                            if (rowCountLower > 1) {
+                                log.errorf(
+                                    "Ambiguous login attempt: Fallback query found %d rows for username '%s' with provider '%s'. Login denied for security.",
+                                    rowCountLower,
+                                    username,
+                                    dbConfig.getAuthUserProvider()
+                                );
+                                return null;
+                            }
+
+                            if (entity != null) {
+                                log.infof(
+                                    "User found via case-insensitive fallback. Database username: '%s', Keycloak provided: '%s'",
+                                    entity.getUsername(),
+                                    username
+                                );
+                                UserAdapter adapter = new UserAdapter(
+                                    session,
+                                    realm,
+                                    model,
+                                    entity
+                                );
+                                log.infof(
+                                    "Created UserAdapter for user: %s with provider: %s (via fallback)",
+                                    entity.getUsername(),
+                                    entity.getProvider()
+                                );
+                                return adapter;
+                            }
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -691,8 +766,6 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
                     users.add(adapter);
                 }
             }
@@ -854,8 +927,6 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
                     users.add(adapter);
                 }
             }
