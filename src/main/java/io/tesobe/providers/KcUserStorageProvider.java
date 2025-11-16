@@ -429,16 +429,32 @@ public class KcUserStorageProvider
     // Registration
     @Override
     public UserModel addUser(RealmModel realm, String username) {
-        log.warnf(
-            "addUser() called with username: %s - OPERATION DISABLED: authuser table is read-only",
+        log.errorf(
+            "==================== CRITICAL WARNING ====================");
+        log.errorf(
+            "addUser() called with username: %s - This indicates Keycloak is trying to CREATE a new user",
             username
+        );
+        log.errorf(
+            "This usually means:");
+        log.errorf(
+            "  1. OIDC Identity Provider is NOT configured to use this federation provider");
+        log.errorf(
+            "  2. First Broker Login flow is set to 'Create User' instead of 'Lookup User'");
+        log.errorf(
+            "  3. Identity Provider Mappers are missing or misconfigured");
+        log.errorf(
+            "OPERATION DISABLED: authuser table is read-only. User creation blocked.");
+        log.errorf(
+            "=========================================================="
         );
 
         // The authuser table is read-only. Write operations are not supported.
         // This provider only supports reading existing users from the database.
         throw new UnsupportedOperationException(
             "User creation is not supported. The authuser table is read-only. " +
-                "Users must be created through other means outside of Keycloak."
+                "Users must be created through other means outside of Keycloak. " +
+                "Configure Keycloak Identity Provider to lookup existing federated users instead of creating new ones."
         );
     }
 
@@ -927,6 +943,8 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
+                    // Force refresh to ensure database is source of truth
+                    adapter.forceRefreshFromDatabase();
                     users.add(adapter);
                 }
             }
