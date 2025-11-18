@@ -82,26 +82,26 @@ public class DatabaseConfig {
         String envValue = System.getenv(DB_AUTHUSER_TABLE);
         if (envValue != null && !envValue.trim().isEmpty()) {
             log.infof(
-                "🔍 DEBUGGING: System.getenv('%s') = '%s'",
+                "DEBUGGING: System.getenv('%s') = '%s'",
                 DB_AUTHUSER_TABLE,
                 envValue
             );
             if (!envValue.equals(this.authUserTable)) {
                 log.errorf(
-                    "❌ MISMATCH: Expected '%s' but got '%s'",
+                    "MISMATCH: Expected '%s' but got '%s'",
                     envValue,
                     this.authUserTable
                 );
             }
         } else {
             log.warnf(
-                "🔍 DEBUGGING: System.getenv('%s') returned null or empty",
+                "DEBUGGING: System.getenv('%s') returned null or empty",
                 DB_AUTHUSER_TABLE
             );
         }
 
         // Log all environment variables containing 'DB_' for debugging
-        log.infof("🔍 All DB_* environment variables:");
+        log.infof("All DB_* environment variables:");
         System.getenv()
             .entrySet()
             .stream()
@@ -208,14 +208,14 @@ public class DatabaseConfig {
         String value = System.getenv(envName);
         if (value == null || value.trim().isEmpty()) {
             log.warnf(
-                "⚠️  Environment variable %s not set, using default: %s",
+                "Environment variable %s not set, using default: %s",
                 envName,
                 defaultValue
             );
             return defaultValue;
         }
         log.infof(
-            "✅ Environment variable %s loaded: %s",
+            "Environment variable %s loaded: %s",
             envName,
             value.trim()
         );
@@ -239,7 +239,7 @@ public class DatabaseConfig {
             throw new RuntimeException(error);
         }
         log.infof(
-            "✅ Mandatory environment variable %s loaded: %s",
+            "Mandatory environment variable %s loaded: %s",
             envName,
             value.trim()
         );

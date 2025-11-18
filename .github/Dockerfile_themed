@@ -43,8 +43,8 @@ RUN mvn clean install -DskipTests=true \
     -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
     -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
 
-# Use official Keycloak image (26.0) as a base for building
-FROM quay.io/keycloak/keycloak:26.0 as builder
+# Use official Keycloak image as a base for building
+FROM quay.io/keycloak/keycloak:latest as builder
 
 # Build arguments for cache invalidation
 ARG BUILD_TIMESTAMP

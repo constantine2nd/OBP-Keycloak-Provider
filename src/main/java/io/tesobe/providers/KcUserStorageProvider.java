@@ -151,10 +151,8 @@ public class KcUserStorageProvider
                             model,
                             entity
                         );
-                        // Force refresh to ensure database is source of truth
-                        adapter.forceRefreshFromDatabase();
                         log.infof(
-                            "✅ OPTIMAL: Found user %s by user_id %s with provider %s",
+                            "OPTIMAL: Found user %s by user_id %s with provider %s",
                             entity.getUsername(),
                             entity.getId(),
                             entity.getProvider()
@@ -179,7 +177,16 @@ public class KcUserStorageProvider
     @Override
     public UserModel getUserByUsername(RealmModel realm, String username) {
         log.infof("getUserByUsername() called with: %s", username);
+        log.infof("Username details: length=%d, exact='%s', chars=%s", 
+            username.length(), 
+            username,
+            username.chars().mapToObj(c -> String.format("%c(%d)", (char)c, c)).toArray());
+        log.infof("NOTE: If Keycloak realm has 'User Profile' > 'Attributes' > username set to lowercase, " +
+                  "username will be automatically converted to lowercase before reaching this method. " +
+                  "Check realm settings if case sensitivity is an issue.");
 
+        // Note: This query is CASE-SENSITIVE by default
+        // If Keycloak is lowercasing usernames, they won't match mixed-case database values
         String sql =
             "SELECT " +
             getFieldList() +
@@ -194,6 +201,21 @@ public class KcUserStorageProvider
             stmt.setString(1, username);
             stmt.setString(2, dbConfig.getAuthUserProvider());
 
+            // Log the SQL query with actual parameter values for debugging
+            String executableSql = sql
+                .replaceFirst("\\?", "'" + username + "'")
+                .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+            log.infof(
+                "Executing SQL: %s",
+                executableSql
+            );
+            log.infof(
+                "Query parameters: [username='%s', provider='%s', table='%s']",
+                username,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable()
+            );
+
             try (ResultSet rs = stmt.executeQuery()) {
                 KcUserEntity entity = null;
                 int rowCount = 0;
@@ -205,9 +227,17 @@ public class KcUserStorageProvider
                     }
                 }
 
+                // Log the query result
+                log.infof(
+                    "Query result: found %d row(s) for username='%s' with provider='%s'",
+                    rowCount,
+                    username,
+                    dbConfig.getAuthUserProvider()
+                );
+
                 if (rowCount > 1) {
                     log.errorf(
-                        "Ambiguous login attempt: getUserByUsername found %d rows for username '%s' with provider '%s'. Login denied for security.",
+                        "Ambiguous login attempt: getUserByUsername found %d rows for username='%s' with provider='%s'. Login denied for security.",
                         rowCount,
                         username,
                         dbConfig.getAuthUserProvider()
@@ -222,8 +252,6 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
                     log.infof(
                         "Created UserAdapter for user: %s with provider: %s",
                         entity.getUsername(),
@@ -231,9 +259,95 @@ public class KcUserStorageProvider
                     );
                     return adapter;
                 }
+
+                // If no rows found, try case-insensitive fallback query
+                if (rowCount == 0) {
+                    log.warnf(
+                        "Case-sensitive query found no results. Trying case-insensitive fallback for username='%s'",
+                        username
+                    );
+
+                    String sqlLower =
+                        "SELECT " +
+                        getFieldList() +
+                        " FROM " +
+                        dbConfig.getAuthUserTable() +
+                        " WHERE LOWER(username) = LOWER(?) AND provider = ?";
+
+                    try (
+                        PreparedStatement stmtLower = conn.prepareStatement(sqlLower)
+                    ) {
+                        stmtLower.setString(1, username);
+                        stmtLower.setString(2, dbConfig.getAuthUserProvider());
+
+                        // Log the fallback SQL query
+                        String executableSqlLower = sqlLower
+                            .replaceFirst("LOWER\\(\\?\\)", "LOWER('" + username + "')")
+                            .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+                        log.infof(
+                            "Executing fallback SQL (case-insensitive): %s",
+                            executableSqlLower
+                        );
+
+                        try (ResultSet rsLower = stmtLower.executeQuery()) {
+                            int rowCountLower = 0;
+
+                            while (rsLower.next()) {
+                                rowCountLower++;
+                                if (rowCountLower == 1) {
+                                    entity = mapResultSetToEntity(rsLower);
+                                }
+                            }
+
+                            log.infof(
+                                "Fallback query result: found %d row(s) for username='%s' (case-insensitive) with provider='%s'",
+                                rowCountLower,
+                                username,
+                                dbConfig.getAuthUserProvider()
+                            );
+
+                            if (rowCountLower > 1) {
+                                log.errorf(
+                                    "Ambiguous login attempt: Fallback query found %d rows for username '%s' with provider '%s'. Login denied for security.",
+                                    rowCountLower,
+                                    username,
+                                    dbConfig.getAuthUserProvider()
+                                );
+                                return null;
+                            }
+
+                            if (entity != null) {
+                                log.infof(
+                                    "User found via case-insensitive fallback. Database username: '%s', Keycloak provided: '%s'",
+                                    entity.getUsername(),
+                                    username
+                                );
+                                UserAdapter adapter = new UserAdapter(
+                                    session,
+                                    realm,
+                                    model,
+                                    entity
+                                );
+                                log.infof(
+                                    "Created UserAdapter for user: %s with provider: %s (via fallback)",
+                                    entity.getUsername(),
+                                    entity.getProvider()
+                                );
+                                return adapter;
+                            }
+                        }
+                    }
+                }
             }
         } catch (SQLException e) {
-            log.error("Error in getUserByUsername", e);
+            log.errorf(
+                "SQL Error in getUserByUsername for username='%s', provider='%s', table='%s': %s",
+                username,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable(),
+                e.getMessage()
+            );
+            log.error("Full SQL exception details:", e);
         }
         return null;
     }
@@ -256,8 +370,28 @@ public class KcUserStorageProvider
             stmt.setString(1, email);
             stmt.setString(2, dbConfig.getAuthUserProvider());
 
+            // Log the SQL query with actual parameter values for debugging
+            String executableSql = sql
+                .replaceFirst("\\?", "'" + email + "'")
+                .replaceFirst("\\?", "'" + dbConfig.getAuthUserProvider() + "'");
+            log.infof(
+                "Executing SQL: %s",
+                executableSql
+            );
+            log.infof(
+                "Query parameters: [email='%s', provider='%s', table='%s']",
+                email,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable()
+            );
+
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
+                    log.infof(
+                        "Query result: found 1 row for email='%s' with provider='%s'",
+                        email,
+                        dbConfig.getAuthUserProvider()
+                    );
                     KcUserEntity entity = mapResultSetToEntity(rs);
                     UserAdapter adapter = new UserAdapter(
                         session,
@@ -271,10 +405,23 @@ public class KcUserStorageProvider
                         entity.getProvider()
                     );
                     return adapter;
+                } else {
+                    log.infof(
+                        "Query result: found 0 rows for email='%s' with provider='%s'",
+                        email,
+                        dbConfig.getAuthUserProvider()
+                    );
                 }
             }
         } catch (SQLException e) {
-            log.error("Error in getUserByEmail", e);
+            log.errorf(
+                "SQL Error in getUserByEmail for email='%s', provider='%s', table='%s': %s",
+                email,
+                dbConfig.getAuthUserProvider(),
+                dbConfig.getAuthUserTable(),
+                e.getMessage()
+            );
+            log.error("Full SQL exception details:", e);
         }
         return null;
     }
@@ -282,16 +429,32 @@ public class KcUserStorageProvider
     // Registration
     @Override
     public UserModel addUser(RealmModel realm, String username) {
-        log.warnf(
-            "addUser() called with username: %s - OPERATION DISABLED: authuser table is read-only",
+        log.errorf(
+            "==================== CRITICAL WARNING ====================");
+        log.errorf(
+            "addUser() called with username: %s - This indicates Keycloak is trying to CREATE a new user",
             username
+        );
+        log.errorf(
+            "This usually means:");
+        log.errorf(
+            "  1. OIDC Identity Provider is NOT configured to use this federation provider");
+        log.errorf(
+            "  2. First Broker Login flow is set to 'Create User' instead of 'Lookup User'");
+        log.errorf(
+            "  3. Identity Provider Mappers are missing or misconfigured");
+        log.errorf(
+            "OPERATION DISABLED: authuser table is read-only. User creation blocked.");
+        log.errorf(
+            "=========================================================="
         );
 
         // The authuser table is read-only. Write operations are not supported.
         // This provider only supports reading existing users from the database.
         throw new UnsupportedOperationException(
             "User creation is not supported. The authuser table is read-only. " +
-                "Users must be created through other means outside of Keycloak."
+                "Users must be created through other means outside of Keycloak. " +
+                "Configure Keycloak Identity Provider to lookup existing federated users instead of creating new ones."
         );
     }
 
@@ -577,7 +740,7 @@ public class KcUserStorageProvider
         Integer max
     ) {
         log.infof(
-            "🔍 searchForUserStream() called: search='%s', first=%d, max=%d",
+            "searchForUserStream() called: search='%s', first=%d, max=%d",
             search,
             first,
             max
@@ -619,13 +782,11 @@ public class KcUserStorageProvider
                         model,
                         entity
                     );
-                    // Force refresh to ensure database is source of truth
-                    adapter.forceRefreshFromDatabase();
                     users.add(adapter);
                 }
             }
             log.infof(
-                "🔍 Found %d users matching search '%s'",
+                "Found %d users matching search '%s'",
                 users.size(),
                 search
             );
@@ -789,7 +950,7 @@ public class KcUserStorageProvider
             }
             log.infof("Retrieved %d users for synchronization", users.size());
         } catch (SQLException e) {
-            log.errorf("❌ Error in getAllUsers: %s", e.getMessage());
+            log.errorf("Error in getAllUsers: %s", e.getMessage());
         }
 
         return users.stream();
