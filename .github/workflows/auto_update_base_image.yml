@@ -25,34 +25,37 @@ jobs:
         run: |
           set -e
 
-          echo "Pulling images to compare layers..."
+          echo "Checking if base image has been updated..."
 
           # Pull both images
           docker pull quay.io/keycloak/keycloak:latest
           docker pull ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest
 
-          # Get the layer information from both images
-          BASE_LAYERS=$(docker image inspect quay.io/keycloak/keycloak:latest | jq -r '.[0].RootFS.Layers | join("\n")')
-          OUR_LAYERS=$(docker image inspect ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest | jq -r '.[0].RootFS.Layers | join("\n")')
-
+          # Get the base image layers
+          BASE_LAYERS=$(docker image inspect quay.io/keycloak/keycloak:latest | jq -r '.[0].RootFS.Layers[]')
           echo "Base image layers:"
           echo "$BASE_LAYERS"
           echo ""
+
+          # Get our image layers
+          OUR_LAYERS=$(docker image inspect ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest | jq -r '.[0].RootFS.Layers[]')
           echo "Our image layers:"
           echo "$OUR_LAYERS"
           echo ""
 
-          # Check if our image starts with all the base image layers
+          # Check if our image contains all the base image layers at the beginning
+          # Our image should have base layers + our additional layers
           NEEDS_UPDATE="false"
+          BASE_LAYER_COUNT=$(echo "$BASE_LAYERS" | wc -l)
+          OUR_FIRST_LAYERS=$(echo "$OUR_LAYERS" | head -n "$BASE_LAYER_COUNT")
 
-          # Simple approach: check if the base layers are a prefix of our layers
-          while IFS= read -r base_layer; do
-            if ! echo "$OUR_LAYERS" | grep -q "$base_layer"; then
-              echo "Base layer $base_layer not found in our image"
-              NEEDS_UPDATE="true"
-              break
-            fi
-          done <<< "$BASE_LAYERS"
+          if [ "$BASE_LAYERS" != "$OUR_FIRST_LAYERS" ]; then
+            echo "Base image layers have changed!"
+            echo "Our image needs to be rebuilt."
+            NEEDS_UPDATE="true"
+          else
+            echo "Our image is up to date with the base image."
+          fi
 
           echo "needs-updating=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
           echo "Update needed: $NEEDS_UPDATE"
