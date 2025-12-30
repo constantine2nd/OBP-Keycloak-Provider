@@ -5,7 +5,6 @@ on:
   workflow_dispatch:
 
 env:
-  ## Sets environment variable
   DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
 
 jobs:
