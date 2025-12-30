@@ -12,18 +12,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
       - name: Check if update available
         id: check
-        uses: giggio/docker-image-update-checker@v2
-        with:
-          base-image: quay.io/keycloak/keycloak:latest
-          image: ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest
+        run: |
+          set -e
+
+          echo "Pulling images to compare layers..."
+
+          # Pull both images
+          docker pull quay.io/keycloak/keycloak:latest
+          docker pull ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest
+
+          # Get the layer information from both images
+          BASE_LAYERS=$(docker image inspect quay.io/keycloak/keycloak:latest | jq -r '.[0].RootFS.Layers | join("\n")')
+          OUR_LAYERS=$(docker image inspect ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest | jq -r '.[0].RootFS.Layers | join("\n")')
+
+          echo "Base image layers:"
+          echo "$BASE_LAYERS"
+          echo ""
+          echo "Our image layers:"
+          echo "$OUR_LAYERS"
+          echo ""
+
+          # Check if our image starts with all the base image layers
+          NEEDS_UPDATE="false"
+
+          # Simple approach: check if the base layers are a prefix of our layers
+          while IFS= read -r base_layer; do
+            if ! echo "$OUR_LAYERS" | grep -q "$base_layer"; then
+              echo "Base layer $base_layer not found in our image"
+              NEEDS_UPDATE="true"
+              break
+            fi
+          done <<< "$BASE_LAYERS"
+
+          echo "needs-updating=$NEEDS_UPDATE" >> $GITHUB_OUTPUT
+          echo "Update needed: $NEEDS_UPDATE"
+
       - name: Trigger build workflow
         uses: actions/github-script@v7
         with:
