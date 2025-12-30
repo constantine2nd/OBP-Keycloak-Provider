@@ -9,21 +9,19 @@ env:
   DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
 
 jobs:
-  build:
+  docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Docker Image Update Checker
-        id: baseupdatecheck
-        uses: lucacome/docker-image-update-checker@v2.0.0
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Check if update available
+        id: check
+        uses: giggio/docker-image-update-checker@v2
         with:
-          base-image: quay.io/keycloak/keycloak:26.0.5
+          base-image: quay.io/keycloak/keycloak:latest
           image: ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest
-
-      - name: Trigger build_container_develop_branch workflow
-        uses: actions/github-script@v6
+      - name: Build and push
+        uses: docker/build-push-action@v2
         with:
           script: |
             await github.rest.actions.createWorkflowDispatch({
@@ -32,4 +30,5 @@ jobs:
               workflow_id: 'build_container_develop_branch.yml',
               ref: 'refs/heads/develop'
             });
-        if: steps.baseupdatecheck.outputs.needs-updating == 'true'
+        if: steps.check.outputs.needs-updating == 'true'
+
