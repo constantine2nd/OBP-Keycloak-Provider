@@ -65,14 +65,57 @@ DB_AUTHUSER_TABLE=v_oidc_users
 
 ### Direct Table Access (Development/Legacy)
 
+For development or legacy systems, you can access the `authuser` table directly instead of using the recommended `v_oidc_users` view:
+
 ```bash
-# Environment variables for direct table access
+# Environment variables for direct table access (not recommended for production)
 DB_USER=obp
 DB_PASSWORD=f
-DB_AUTHUSER_TABLE=authuser
+DB_AUTHUSER_TABLE=authuser  # Direct table access instead of v_oidc_users view
 ```
 
+**Note**: The recommended approach is to use `DB_AUTHUSER_TABLE=v_oidc_users` with the view created by `database/setup-user-storage.sql`, which provides better security by only exposing validated users and proper field mapping.
+
 See the configuration examples below for detailed setup instructions.
+
+## Prerequisites
+
+Before running the OBP Keycloak Provider, ensure you have the following set up:
+
+### Database Setup
+
+The application requires two PostgreSQL databases with properly configured users:
+
+1. **Keycloak Internal Database** - Run the setup script to create the keycloak user:
+   ```bash
+   # See database/setup-keycloak-user.sql for the complete setup script
+   psql -U postgres -h localhost -f database/setup-keycloak-user.sql
+   ```
+
+2. **User Storage Database** - Run the setup script on your existing OBP database:
+   ```bash
+   # Creates v_oidc_users view and oidc_user role with proper permissions
+   psql -U postgres -h localhost -d obp_mapped -f database/setup-user-storage.sql
+   ```
+
+   This creates the OIDC users view that joins your `authuser` and `resourceuser` tables:
+   ```sql
+   CREATE OR REPLACE VIEW public.v_oidc_users
+   AS SELECT ru.userid_ AS user_id, au.username, au.firstname, au.lastname, 
+             au.email, au.validated, au.provider, au.password_pw, au.password_slt,
+             au.createdat, au.updatedat
+      FROM authuser au JOIN resourceuser ru ON au.user_c = ru.id
+     WHERE au.validated = true ORDER BY au.username;
+   ```
+
+> **📁 Complete database setup scripts and documentation**: [database/README.md](database/README.md)
+
+### Software Requirements
+
+- PostgreSQL 12+ running and accessible
+- Docker and Docker Compose (for containerized deployment)
+- Maven 3.6+ (for building from source)
+- Java 11+ (for building from source)
 
 ## Usage
 ### Docker containers
@@ -242,6 +285,7 @@ The database connection and Keycloak settings are now configured using **runtime
 | `DB_PORT` | `5432` | User storage database external port |
 | `DB_USER` | `oidc_user` | User storage database username |
 | `DB_PASSWORD` | `changeme` | User storage database password |
+| `DB_AUTHUSER_TABLE` | `v_oidc_users` | View/table name for user authentication data |
 | **Configuration** | | |
 | `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
 | `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode for user storage |
