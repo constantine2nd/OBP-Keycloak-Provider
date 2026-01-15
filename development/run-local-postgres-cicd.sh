@@ -4,9 +4,9 @@
 # This script always builds, always replaces containers - designed for automated environments
 #
 # Requirements:
-# - PostgreSQL running locally on port 5432
-# - Database 'keycloakdb' with user 'keycloak' (password: 'f')
-# - Database 'obp_mapped' with user 'oidc_user' (restricted view-only access to v_oidc_users)
+# - PostgreSQL running (configurable host/port via environment variables)
+# - Keycloak database (configurable name via KC_DB_NAME)
+# - User storage database (configurable name via DB_NAME)
 #
 # Usage: ./development/run-local-postgres-cicd.sh [--themed]
 
@@ -80,6 +80,15 @@ if [ ! -f ".env" ]; then
 fi
 
 source .env
+
+# Set default values for database connection parameters
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+KC_DB_NAME="${KC_DB_NAME:-keycloakdb}"
+DB_NAME="${DB_NAME:-obp_mapped}"
+
+# Set default values for Keycloak service connection
+KEYCLOAK_HOST="${KEYCLOAK_HOST:-localhost}"
 
 # Validate required vars
 required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "DB_AUTHUSER_TABLE" "OBP_AUTHUSER_PROVIDER")
@@ -227,16 +236,16 @@ echo -e "${GREEN}✓ Environment validated (including mandatory security variabl
 echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"
 
 # Test Keycloak database
-if ! PGPASSWORD="$KC_DB_PASSWORD" psql -h localhost -p 5432 -U "$KC_DB_USERNAME" -d keycloakdb -c "SELECT 1;" > /dev/null 2>&1; then
+if ! PGPASSWORD="$KC_DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$KC_DB_USERNAME" -d "$KC_DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
     echo -e "${RED}✗ Keycloak database connection failed${NC}"
-    echo "Connection: postgresql://localhost:5432/keycloakdb (user: $KC_DB_USERNAME)"
+    echo "Connection: postgresql://$DB_HOST:$DB_PORT/$KC_DB_NAME (user: $KC_DB_USERNAME)"
     exit 1
 fi
 
 # Test User Storage database
-if ! PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U "$DB_USER" -d obp_mapped -c "SELECT 1;" > /dev/null 2>&1; then
+if ! PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
     echo -e "${RED}✗ User Storage database connection failed${NC}"
-    echo "Connection: postgresql://localhost:5432/obp_mapped (user: $DB_USER)"
+    echo "Connection: postgresql://$DB_HOST:$DB_PORT/$DB_NAME (user: $DB_USER)"
     exit 1
 fi
 
@@ -380,7 +389,7 @@ WAIT_COUNT=0
 MAX_WAIT=120
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
-    if curl -s -f -m 5 "http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/admin/" > /dev/null 2>&1; then
+    if curl -s -f -m 5 "http://$KEYCLOAK_HOST:${KEYCLOAK_HTTP_PORT:-7787}/admin/" > /dev/null 2>&1; then
         READY=true
         echo -e "${GREEN}✓ Service is ready${NC}"
 
@@ -388,7 +397,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
         if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
             echo -n "Testing theme accessibility... "
             # Check if theme resources are accessible
-            if curl -s -f -m 10 "http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/" > /dev/null 2>&1; then
+            if curl -s -f -m 10 "http://$KEYCLOAK_HOST:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/" > /dev/null 2>&1; then
                 echo -e "${GREEN}✓ Theme resources accessible${NC}"
             else
                 echo -e "${YELLOW}~ Theme resources may load after realm configuration${NC}"
@@ -447,9 +456,9 @@ echo "  Provider: $OBP_AUTHUSER_PROVIDER"
 echo ""
 
 echo "Service Access:"
-echo "  HTTP:  http://localhost:${KEYCLOAK_HTTP_PORT:-7787}"
-echo "  HTTPS: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}"
-echo "  Admin: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
+echo "  HTTP:  http://$KEYCLOAK_HOST:${KEYCLOAK_HTTP_PORT:-7787}"
+echo "  HTTPS: https://$KEYCLOAK_HOST:${KEYCLOAK_HTTPS_PORT:-8443}"
+echo "  Admin: https://$KEYCLOAK_HOST:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
 echo "         (${KEYCLOAK_ADMIN:-admin} / ${KEYCLOAK_ADMIN_PASSWORD:-admin})"
 echo ""
 
@@ -461,7 +470,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo "  Theme Location: /opt/keycloak/themes/obp/"
     echo ""
     echo -e "${BLUE}Theme Activation Instructions:${NC}"
-    echo "  1. Access Admin Console: https://localhost:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
+    echo "  1. Access Admin Console: https://$KEYCLOAK_HOST:${KEYCLOAK_HTTPS_PORT:-8443}/admin"
     echo "  2. Login with admin credentials (${KEYCLOAK_ADMIN:-admin})"
     echo "  3. Go to: Realm Settings > Themes"
     echo "  4. Set Login Theme: obp"
@@ -473,7 +482,7 @@ if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
     echo "  Theme config:    docker exec $CONTAINER_NAME cat /opt/keycloak/themes/obp/theme.properties"
     echo ""
     echo -e "${BLUE}Theme Resources:${NC}"
-    echo "  URL: http://localhost:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/"
+    echo "  URL: http://$KEYCLOAK_HOST:${KEYCLOAK_HTTP_PORT:-7787}/resources/obp/"
     echo "  Note: Theme resources load after realm configuration"
     echo ""
 fi
