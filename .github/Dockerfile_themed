@@ -72,7 +72,7 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
     -keystore conf/server.keystore
 
 # Add the PostgreSQL JDBC driver to the providers directory for database connectivity
-ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
+ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.8.jar /opt/keycloak/providers/
 
 # Copy build info and cache invalidation layer
 COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
@@ -87,7 +87,7 @@ RUN /opt/keycloak/bin/kc.sh build
 
 # === Final Runtime Image ===
 # Use the same Keycloak base image for the final runtime image
-FROM quay.io/keycloak/keycloak:26.0.5
+FROM quay.io/keycloak/keycloak:latest
 
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
