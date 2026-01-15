@@ -202,10 +202,10 @@ The database connection and Keycloak settings are now configured using **runtime
    KC_DB_PASSWORD=secure-keycloak-password
 
    # User Storage Database Configuration
-   USER_STORAGE_DB_USER=obp
-   USER_STORAGE_DB_PASSWORD=secure-user-storage-password
-   DB_USER=obp
+   DB_NAME=obp_mapped
+   DB_USER=oidc_user
    DB_PASSWORD=secure-user-storage-password
+   DB_PORT=5432
    ```
 
 3. **Validate your configuration (recommended):**
@@ -239,8 +239,8 @@ The database connection and Keycloak settings are now configured using **runtime
 | `DB_URL` | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database URL |
 | **Port Configuration** | | |
 | `KC_DB_PORT` | `5433` | Keycloak database external port |
-| `USER_STORAGE_DB_PORT` | `5434` | User storage database external port |
-| `DB_USER` | `obp` | User storage database username |
+| `DB_PORT` | `5432` | User storage database external port |
+| `DB_USER` | `oidc_user` | User storage database username |
 | `DB_PASSWORD` | `changeme` | User storage database password |
 | **Configuration** | | |
 | `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
