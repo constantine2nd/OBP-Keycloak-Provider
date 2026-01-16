@@ -46,18 +46,20 @@ psql -U postgres -h localhost -f database/setup-keycloak-user.sql
 
 ### setup-user-storage.sql
 
-Creates the OIDC user view and database user for user storage federation.
+**IMPORTANT:** This file now references the official OBP-API SQL scripts as the source of truth to avoid code duplication.
 
-**What it does:**
-- Creates the `v_oidc_users` view that joins `authuser` and `resourceuser` tables
-- Creates the `oidc_user` PostgreSQL role with read-only permissions
-- Grants SELECT access to the OIDC users view
-- Includes security verification and sample data display
+**What you need to do:**
+1. Use the official OBP-API repository scripts instead of the local setup-user-storage.sql
+2. Navigate to the OBP-API repository: https://github.com/OpenBankProject/OBP-API/tree/develop/obp-api/src/main/scripts/sql/OIDC
+3. Follow the instructions in the README.md file in that directory
 
-**Usage:**
+**Official Usage:**
 ```bash
-# Run on your existing OBP database
-psql -U postgres -h localhost -d obp_mapped -f database/setup-user-storage.sql
+# Clone or download the OBP-API repository
+# Navigate to: obp-api/src/main/scripts/sql/OIDC/
+# Run the official setup script:
+psql -d your_obp_database
+\i give_read_access_to_users.sql
 ```
 
 **Environment Variables:**
@@ -84,37 +86,26 @@ The `v_oidc_users` view provides the following columns:
 
 For the user storage database (`obp_mapped`), you should use your existing OBP PostgreSQL database. The `setup-user-storage.sql` script will create the necessary view and user.
 
-**Automated setup:**
+**Official Setup (recommended):**
 ```bash
-# Run the complete setup script on your OBP database
-psql -U postgres -h localhost -d obp_mapped -f database/setup-user-storage.sql
+# Use the official OBP-API repository scripts
+# Navigate to: https://github.com/OpenBankProject/OBP-API/tree/develop/obp-api/src/main/scripts/sql/OIDC
+cd obp-api/src/main/scripts/sql/OIDC/
+psql -d your_obp_database
+\i give_read_access_to_users.sql
 ```
 
-**Manual setup (if you prefer step-by-step):**
-```sql
--- 1. Create the OIDC users view
-CREATE OR REPLACE VIEW public.v_oidc_users
-AS SELECT ru.userid_ AS user_id,
-    au.username, au.firstname, au.lastname, au.email,
-    au.validated, au.provider,
-    au.password_pw, au.password_slt,
-    au.createdat, au.updatedat
-   FROM authuser au
-     JOIN resourceuser ru ON au.user_c = ru.id
-  WHERE au.validated = true
-  ORDER BY au.username;
+**What the official scripts do:**
+- **set_and_connect.sql**: Defines variables and database connection
+- **cre_OIDC_USER.sql**: Creates the oidc_user role with appropriate permissions
+- **cre_v_oidc_users.sql**: Creates the v_oidc_users view joining authuser and resourceuser
+- **give_read_access_to_users.sql**: Main script that orchestrates the setup
 
--- 2. Create read-only user for Keycloak
-CREATE ROLE oidc_user WITH
-    NOSUPERUSER NOCREATEDB NOCREATEROLE
-    INHERIT LOGIN NOREPLICATION NOBYPASSRLS
-    CONNECTION LIMIT 10
-    PASSWORD 'your_db_password_from_env_file';
-
--- 3. Grant permissions
-GRANT USAGE ON SCHEMA public TO oidc_user;
-GRANT SELECT ON public.v_oidc_users TO oidc_user;
-```
+**Why use the official scripts:**
+- Always up-to-date with the latest OBP-API changes
+- Maintained by the OBP team
+- Includes proper security settings and error handling
+- Avoids code duplication and version drift
 
 ## Quick Setup Guide
 
@@ -126,8 +117,10 @@ GRANT SELECT ON public.v_oidc_users TO oidc_user;
 
 2. **Set up User Storage database:**
    ```bash
-   # Run on your existing OBP database
-   psql -U postgres -h localhost -d obp_mapped -f database/setup-user-storage.sql
+   # Use the official OBP-API scripts
+   # Navigate to the OBP-API repository: obp-api/src/main/scripts/sql/OIDC/
+   psql -d obp_mapped
+   \i give_read_access_to_users.sql
    ```
 
 3. **Configure your `.env` file:**

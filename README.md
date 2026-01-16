@@ -431,60 +431,44 @@ The system now uses two separate databases:
 
 > **Important**: Due to recent fixes, the user storage database now runs on port 5434 instead of 5432 to avoid conflicts with system PostgreSQL installations.
 
-In the **User Storage Database**, the `authuser` table must be created by a database administrator:
+For the **User Storage Database** setup, use the official OBP-API SQL scripts:
 
-> **⚠️ CRITICAL**: The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider and **MUST** be created by a database administrator with appropriate permissions. Keycloak setup scripts cannot create this table due to read-only access restrictions.
+> **📋 IMPORTANT**: Use the official OBP-API repository scripts as the source of truth. This avoids code duplication and ensures you have the latest, maintained SQL scripts.
 
-> **📋 SETUP REQUIREMENT**: The authuser table must exist before running Keycloak. INSERT, UPDATE, and DELETE operations are not supported through Keycloak. Users must be managed through other means outside of Keycloak.
+**Official Setup Process:**
 
-```sql
--- ===============================================
--- DATABASE ADMINISTRATOR SETUP REQUIRED
--- ===============================================
--- This SQL must be executed by a database administrator
--- with CREATE privileges on the obp_mapped database.
--- The Keycloak application has READ-ONLY access only.
+1. **Clone/Download OBP-API Repository:**
+   - Repository: https://github.com/OpenBankProject/OBP-API
+   - Navigate to: `obp-api/src/main/scripts/sql/OIDC/`
 
-CREATE TABLE public.authuser (
-	id bigserial NOT NULL,
-	firstname varchar(100) NULL,
-	lastname varchar(100) NULL,
-	email varchar(100) NULL,
-	username varchar(100) NULL,
-	password_pw varchar(48) NULL,
-	password_slt varchar(20) NULL,
-	provider varchar(100) NULL,
-	locale varchar(16) NULL,
-	validated bool NULL,
-	user_c int8 NULL,
-	createdat timestamp NULL,
-	updatedat timestamp NULL,
-	timezone varchar(32) NULL,
-	superuser bool NULL,
-	passwordshouldbechanged bool NULL,
-	CONSTRAINT authuser_pk PRIMARY KEY (id)
-);
+2. **Run Official Setup Script:**
+   ```bash
+   cd obp-api/src/main/scripts/sql/OIDC/
+   psql -d your_obp_database
+   \i give_read_access_to_users.sql
+   ```
 
--- Grant READ-ONLY access to Keycloak user
-GRANT SELECT ON public.authuser TO obp;
-GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
-```
+**What the Official Scripts Do:**
+- ✅ Create `v_oidc_users` view joining `authuser` and `resourceuser` tables
+- ✅ Create `oidc_user` role with read-only permissions
+- ✅ Grant appropriate SELECT permissions on the view
+- ✅ Include security settings and error handling
+- ✅ Only expose validated users for security
 
-**Database Setup Requirements:**
-- 📋 Table must be created by database administrator BEFORE running Keycloak
-- 📋 Keycloak user (obp) needs only SELECT permissions on authuser table
-- 📋 Database administrator must create table structure and indexes
-
-**Keycloak Provider Limitations:**
-- ✅ User authentication and login
-- ✅ User profile viewing
+**Keycloak Provider Features:**
+- ✅ User authentication and login via the `v_oidc_users` view
+- ✅ User profile viewing (read-only access)
 - ✅ Password validation
-- 🔴 User creation through Keycloak (disabled - read-only access)
-- 🔴 User profile updates through Keycloak (disabled - read-only access)
-- 🔴 User deletion through Keycloak (disabled - read-only access)
-- 🔴 Table creation through setup scripts (disabled - insufficient permissions)
+- ✅ Secure federation with existing OBP user data
+- 🔴 User creation/updates/deletion (read-only by design)
 
-Users must be added to the `authuser` table using external database administration tools outside of Keycloak.
+**Why Use Official Scripts:**
+- Always up-to-date with OBP-API changes
+- Maintained by the OBP development team
+- Proper security configurations included
+- Avoids documentation drift and code duplication
+
+For detailed setup instructions, see the [database/README.md](database/README.md) file and the official OBP-API repository.
 
 ### Using Keycloak
 
