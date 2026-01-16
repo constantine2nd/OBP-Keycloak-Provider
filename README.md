@@ -63,7 +63,20 @@ DB_AUTHUSER_TABLE=v_oidc_users
 - Only validated users are accessible through OIDC
 - Minimal database permissions for the application user
 
+### Direct Table Access (Development/Legacy)
 
+For development or legacy systems, you can access the `authuser` table directly instead of using the recommended `v_oidc_users` view:
+
+```bash
+# Environment variables for direct table access (not recommended for production)
+DB_USER=obp
+DB_PASSWORD=f
+DB_AUTHUSER_TABLE=authuser  # Direct table access instead of v_oidc_users view
+```
+
+**Note**: The recommended approach is to use `DB_AUTHUSER_TABLE=v_oidc_users` with the view created by `database/setup-user-storage.sql`, which provides better security by only exposing validated users and proper field mapping.
+
+See the configuration examples below for detailed setup instructions.
 
 ## Prerequisites
 
@@ -85,15 +98,7 @@ The application requires two PostgreSQL databases with properly configured users
    psql -U postgres -h localhost -d obp_mapped -f database/setup-user-storage.sql
    ```
 
-   This creates the OIDC users view that joins your `authuser` and `resourceuser` tables:
-   ```sql
-   CREATE OR REPLACE VIEW public.v_oidc_users
-   AS SELECT ru.userid_ AS user_id, au.username, au.firstname, au.lastname, 
-             au.email, au.validated, au.provider, au.password_pw, au.password_slt,
-             au.createdat, au.updatedat
-      FROM authuser au JOIN resourceuser ru ON au.user_c = ru.id
-     WHERE au.validated = true ORDER BY au.username;
-   ```
+   This creates the OIDC users view that joins your `authuser` and `resourceuser` tables. For the complete view definition, see the [OBP-API database schema](https://github.com/OpenBankProject/OBP-API).
 
 > **📁 Complete database setup scripts and documentation**: [database/README.md](database/README.md)
 
