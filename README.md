@@ -63,20 +63,7 @@ DB_AUTHUSER_TABLE=v_oidc_users
 - Only validated users are accessible through OIDC
 - Minimal database permissions for the application user
 
-### Direct Table Access (Development/Legacy)
 
-For development or legacy systems, you can access the `authuser` table directly instead of using the recommended `v_oidc_users` view:
-
-```bash
-# Environment variables for direct table access (not recommended for production)
-DB_USER=obp
-DB_PASSWORD=f
-DB_AUTHUSER_TABLE=authuser  # Direct table access instead of v_oidc_users view
-```
-
-**Note**: The recommended approach is to use `DB_AUTHUSER_TABLE=v_oidc_users` with the view created by `database/setup-user-storage.sql`, which provides better security by only exposing validated users and proper field mapping.
-
-See the configuration examples below for detailed setup instructions.
 
 ## Prerequisites
 
