@@ -32,6 +32,11 @@
       <version>42.6.0</version>
     </dependency>
     <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>12.4.2.jre11</version>
+    </dependency>
+    <dependency>
       <groupId>org.keycloak</groupId>
       <artifactId>keycloak-core</artifactId>
       <version>${version.keycloak}</version>
@@ -139,6 +144,7 @@
                   <include>com.maxmind.db:*</include>
                   <include>com.maxmind.geoip2:*</include>
                   <include>org.mindrot:jbcrypt</include>
+                  <include>com.microsoft.sqlserver:mssql-jdbc</include>
                 </includes>
               </artifactSet>
             </configuration>
