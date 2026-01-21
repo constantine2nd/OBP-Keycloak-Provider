@@ -28,6 +28,9 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 # Add the PostgreSQL JDBC driver to the providers directory for database connectivity
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 
+# Add the Microsoft SQL Server JDBC driver to the providers directory
+ADD --chown=keycloak:keycloak https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar /opt/keycloak/providers/
+
 # Cache invalidation layer - forces rebuild when JAR changes
 RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
     echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
@@ -37,7 +40,7 @@ RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
 ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
 # Prebuild the Keycloak server (e.g., compile extensions, optimize image)
-RUN /opt/keycloak/bin/kc.sh build
+RUN /opt/keycloak/bin/kc.sh build --verbose
 
 
 # === Final Runtime Image ===
