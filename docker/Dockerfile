@@ -1,6 +1,6 @@
 # === Build Stage ===
-# Use official Keycloak image (26.0.5) as a base for building
-FROM quay.io/keycloak/keycloak:26.0.5 as builder
+# Use official Keycloak image (26.5.1) as a base for building
+FROM quay.io/keycloak/keycloak:26.5.1 as builder
 
 # Build arguments for cache invalidation
 ARG BUILD_TIMESTAMP
@@ -45,7 +45,7 @@ RUN /opt/keycloak/bin/kc.sh build --verbose
 
 # === Final Runtime Image ===
 # Use the same Keycloak base image for the final runtime image
-FROM quay.io/keycloak/keycloak:26.0.5
+FROM quay.io/keycloak/keycloak:26.5.1
 
 # Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
