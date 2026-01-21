@@ -177,8 +177,8 @@ public class KcUserStorageProvider
     @Override
     public UserModel getUserByUsername(RealmModel realm, String username) {
         log.infof("getUserByUsername() called with: %s", username);
-        log.infof("Username details: length=%d, exact='%s', chars=%s", 
-            username.length(), 
+        log.infof("Username details: length=%d, exact='%s', chars=%s",
+            username.length(),
             username,
             username.chars().mapToObj(c -> String.format("%c(%d)", (char)c, c)).toArray());
         log.infof("NOTE: If Keycloak realm has 'User Profile' > 'Attributes' > username set to lowercase, " +
@@ -756,10 +756,23 @@ public class KcUserStorageProvider
 
         // Add pagination if specified
         if (max != null && max >= 0) {
-            sql += " LIMIT " + max;
+            if (dbConfig.getDbDriver().contains("sqlserver")) {
+                // SQL Server uses TOP instead of LIMIT
+                sql = sql.replace("SELECT ", "SELECT TOP " + max + " ");
+            } else {
+                sql += " LIMIT " + max;
+            }
         }
         if (first != null && first >= 0) {
-            sql += " OFFSET " + first;
+            if (dbConfig.getDbDriver().contains("sqlserver")) {
+                // SQL Server uses OFFSET ROWS FETCH NEXT for pagination
+                sql += " OFFSET " + first + " ROWS";
+                if (max != null && max >= 0) {
+                    sql += " FETCH NEXT " + max + " ROWS ONLY";
+                }
+            } else {
+                sql += " OFFSET " + first;
+            }
         }
 
         try (
@@ -923,10 +936,23 @@ public class KcUserStorageProvider
 
         // Add pagination if specified
         if (max != null && max >= 0) {
-            sql += " LIMIT " + max;
+            if (dbConfig.getDbDriver().contains("sqlserver")) {
+                // SQL Server uses TOP instead of LIMIT
+                sql = sql.replace("SELECT ", "SELECT TOP " + max + " ");
+            } else {
+                sql += " LIMIT " + max;
+            }
         }
         if (first != null && first >= 0) {
-            sql += " OFFSET " + first;
+            if (dbConfig.getDbDriver().contains("sqlserver")) {
+                // SQL Server uses OFFSET ROWS FETCH NEXT for pagination
+                sql += " OFFSET " + first + " ROWS";
+                if (max != null && max >= 0) {
+                    sql += " FETCH NEXT " + max + " ROWS ONLY";
+                }
+            } else {
+                sql += " OFFSET " + first;
+            }
         }
 
         try (

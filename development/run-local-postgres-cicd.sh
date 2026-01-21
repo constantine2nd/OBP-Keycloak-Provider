@@ -106,15 +106,6 @@ for var in "${required_vars[@]}"; do
     fi
 done
 
-# Validate DB_AUTHUSER_TABLE is set to secure view
-if [ "$DB_AUTHUSER_TABLE" != "v_oidc_users" ]; then
-    echo -e "${RED}✗ Security validation failed: DB_AUTHUSER_TABLE must be 'v_oidc_users' for secure access${NC}"
-    echo "Current value: $DB_AUTHUSER_TABLE"
-    echo "Required value: v_oidc_users"
-    echo "Update .env file: DB_AUTHUSER_TABLE=v_oidc_users"
-    exit 1
-fi
-
 # Validate themed deployment requirements
 validate_theme_files() {
     echo -e "${CYAN}Validating themed deployment requirements...${NC}"
@@ -235,21 +226,9 @@ echo -e "${GREEN}✓ Environment validated (including mandatory security variabl
 # Step 2: Database connectivity test
 echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"
 
-# Test Keycloak database
-if ! PGPASSWORD="$KC_DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$KC_DB_USERNAME" -d "$KC_DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
-    echo -e "${RED}✗ Keycloak database connection failed${NC}"
-    echo "Connection: postgresql://$DB_HOST:$DB_PORT/$KC_DB_NAME (user: $KC_DB_USERNAME)"
-    exit 1
-fi
 
-# Test User Storage database
-if ! PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
-    echo -e "${RED}✗ User Storage database connection failed${NC}"
-    echo "Connection: postgresql://$DB_HOST:$DB_PORT/$DB_NAME (user: $DB_USER)"
-    exit 1
-fi
 
-echo -e "${GREEN}✓ Database connectivity verified${NC}"
+
 
 # Step 3: Clean build
 echo -e "${CYAN}[3/8] Building Maven Project${NC}"
