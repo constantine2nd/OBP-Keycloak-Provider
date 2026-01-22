@@ -936,8 +936,8 @@ public class KcUserStorageProvider
     }
 
     /**
-     * Get all users for synchronization
-     */
+    * Get all users for synchronization
+    */
     private Stream<UserModel> getAllUsers(
         RealmModel realm,
         Integer first,
@@ -948,41 +948,66 @@ public class KcUserStorageProvider
             first,
             max
         );
+
         List<UserModel> users = new ArrayList<>();
+        boolean isSqlServer = dbConfig.getDbDriver().contains("sqlserver");
 
-        String sql =
-            "SELECT " +
-            getFieldList() +
-            " FROM " +
-            dbConfig.getAuthUserTable() +
-            " WHERE provider = ? ORDER BY username";
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ")
+        .append(getFieldList())
+        .append(" FROM ")
+        .append(dbConfig.getAuthUserTable())
+        .append(" WHERE provider = ? ")
+        .append("ORDER BY username ");
 
-        // Add pagination if specified
-        if (max != null && max >= 0) {
-            if (dbConfig.getDbDriver().contains("sqlserver")) {
-                // SQL Server uses TOP instead of LIMIT
-                sql = sql.replace("SELECT ", "SELECT TOP " + max + " ");
-            } else {
-                sql += " LIMIT " + max;
-            }
-        }
-        if (first != null && first >= 0) {
-            if (dbConfig.getDbDriver().contains("sqlserver")) {
-                // SQL Server uses OFFSET ROWS FETCH NEXT for pagination
-                sql += " OFFSET " + first + " ROWS";
+        /*
+        * Pagination
+        *
+        * SQL Server requires OFFSET ... FETCH
+        * Other DBs use LIMIT ... OFFSET
+        */
+        if (isSqlServer) {
+            if (first != null && first >= 0) {
+                sql.append(" OFFSET ? ROWS");
                 if (max != null && max >= 0) {
-                    sql += " FETCH NEXT " + max + " ROWS ONLY";
+                    sql.append(" FETCH NEXT ? ROWS ONLY");
                 }
-            } else {
-                sql += " OFFSET " + first;
+            }
+        } else {
+            if (max != null && max >= 0) {
+                sql.append(" LIMIT ?");
+            }
+            if (first != null && first >= 0) {
+                sql.append(" OFFSET ?");
             }
         }
 
         try (
             Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
+            PreparedStatement stmt = conn.prepareStatement(sql.toString())
         ) {
-            stmt.setString(1, dbConfig.getAuthUserProvider());
+            int paramIndex = 1;
+
+            // Provider filter
+            stmt.setString(paramIndex++, dbConfig.getAuthUserProvider());
+
+            // Pagination parameters
+            if (isSqlServer) {
+                if (first != null && first >= 0) {
+                    stmt.setInt(paramIndex++, first);
+                    if (max != null && max >= 0) {
+                        stmt.setInt(paramIndex++, max);
+                    }
+                }
+            } else {
+                if (max != null && max >= 0) {
+                    stmt.setInt(paramIndex++, max);
+                }
+                if (first != null && first >= 0) {
+                    stmt.setInt(paramIndex++, first);
+                }
+            }
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);
@@ -997,9 +1022,14 @@ public class KcUserStorageProvider
                     users.add(adapter);
                 }
             }
-            log.infof("Retrieved %d users for synchronization", users.size());
+
+            log.infof(
+                "Retrieved %d users for synchronization",
+                users.size()
+            );
+
         } catch (SQLException e) {
-            log.errorf("Error in getAllUsers: %s", e.getMessage());
+            log.error("Error in getAllUsers", e);
         }
 
         return users.stream();
