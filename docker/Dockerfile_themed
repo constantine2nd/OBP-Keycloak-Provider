@@ -71,6 +71,9 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 # Add the PostgreSQL JDBC driver to the providers directory for database connectivity
 ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
 
+# Add the Microsoft SQL Server JDBC driver to the providers directory
+ADD --chown=keycloak:keycloak https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar /opt/keycloak/providers/
+
 # Copy build info and cache invalidation layer
 COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
 

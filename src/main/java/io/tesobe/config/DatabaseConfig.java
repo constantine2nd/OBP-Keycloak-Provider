@@ -140,13 +140,6 @@ public class DatabaseConfig {
             props.setProperty("socketTimeout", "30");
             props.setProperty("loginTimeout", "10");
 
-            // SQL Server specific SSL/TLS properties
-            if (dbDriver.contains("sqlserver")) {
-                props.setProperty("encrypt", "false");
-                props.setProperty("trustServerCertificate", "true");
-                props.setProperty("integratedSecurity", "false");
-            }
-
             Connection connection = DriverManager.getConnection(dbUrl, props);
             connection.setAutoCommit(false); // Use transactions
 
