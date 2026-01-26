@@ -90,7 +90,7 @@ The application requires two PostgreSQL databases with properly configured users
 ### Docker containers
 [Postgres](https://www.postgresql.org/) - database for which we want to store User Federation.
 
-[Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/docker/Dockerfile).
+[Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/development/docker/Dockerfile).
 
 ### CI/CD and Automation
 
@@ -443,7 +443,7 @@ For detailed setup instructions, see the [database/README.md](database/README.md
 
 KC is deployed in a custom container.
 
-To deploy the KC container, I created a [Dockerfile](/docker/Dockerfile) file in which :
+To deploy the KC container, I created a [Dockerfile](/development/docker/Dockerfile) file in which :
 - I create a certificate for `https` access
 - I add a provider `obp-keycloak-provider`
 

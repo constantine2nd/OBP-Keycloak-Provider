@@ -33,14 +33,14 @@ NC='\033[0m' # No Color
 
 # Configuration
 DEPLOYMENT_TYPE="standard"
-DOCKERFILE_PATH="docker/Dockerfile"
+DOCKERFILE_PATH="development/docker/Dockerfile"
 IMAGE_TAG="obp-keycloak-provider-local"
 CONTAINER_NAME="obp-keycloak-local"
 
 # Parse command line arguments
 if [[ "$1" == "--themed" || "$1" == "-t" ]]; then
     DEPLOYMENT_TYPE="themed"
-    DOCKERFILE_PATH="docker/Dockerfile_themed"
+    DOCKERFILE_PATH="development/docker/Dockerfile_themed"
     IMAGE_TAG="obp-keycloak-provider-local-themed"
 fi
 
@@ -113,7 +113,7 @@ validate_theme_files() {
     # Check if themed Dockerfile exists
     if [ ! -f "$DOCKERFILE_PATH" ]; then
         echo -e "${RED}✗ Themed Dockerfile not found: $DOCKERFILE_PATH${NC}"
-        echo "Expected location: docker/Dockerfile_themed"
+        echo "Expected location: $DOCKERFILE_PATH"
         return 1
     fi
 
