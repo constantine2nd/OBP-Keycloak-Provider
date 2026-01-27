@@ -1,79 +1,165 @@
-# === Build Stage ===
-# Use official Keycloak image (26.5.1) as a base for building
-FROM quay.io/keycloak/keycloak:26.5.1 as builder
-
-# Build arguments for cache invalidation
+# Unified development Dockerfile for themed and standard builds
+#
+# Usage:
+#  - Build a themed image:
+#      docker build --build-arg KEYCLOAK_VERSION=26.5.1 --build-arg THEMED=true -t obp-keycloak:themed .
+#  - Build a standard image (themes will be removed at the end):
+#      docker build --build-arg KEYCLOAK_VERSION=26.5.1 --build-arg THEMED=false -t obp-keycloak:standard .
+#
+# Notes:
+#  - This Dockerfile performs a Maven build inside the image (multi-stage). It mirrors the
+#    pattern used by the previous themed Dockerfile to produce a self-contained image.
+#  - Keycloak and JDBC driver versions are parameterized with build args.
+#  - THEMED controls whether theme files are retained in the final image. The Docker build
+#    context must contain the `themes/` directories (the repository includes them).
+#
+# Build arguments (defaults chosen to match development state):
+ARG KEYCLOAK_VERSION=26.5.1
+ARG POSTGRES_JDBC_URL=https://jdbc.postgresql.org/download/postgresql-42.7.2.jar
+ARG MSSQL_JDBC_URL=https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar
 ARG BUILD_TIMESTAMP
 ARG JAR_CHECKSUM
 
-# Enable Keycloak health and metrics endpoints
+# === Build Stage: Maven ===
+FROM maven:3-eclipse-temurin-17 AS maven
+
+# Provide cache invalidation args (passed from CI/local scripts)
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
+
+# Optional: application / database build-time parameters (kept for resource filtering if needed)
+ARG DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
+ARG DB_USER=oidc_user
+ARG DB_PASSWORD=your_secure_password
+ARG DB_DRIVER=org.postgresql.Driver
+ARG DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+
+ARG KC_DB_URL=jdbc:postgresql://localhost:5433/keycloak
+ARG KC_DB_USERNAME=keycloak
+ARG KC_DB_PASSWORD=keycloak_changeme
+ARG HIBERNATE_DDL_AUTO=validate
+ARG HIBERNATE_SHOW_SQL=true
+ARG HIBERNATE_FORMAT_SQL=true
+
+# Copy project into build image and build the jar
+COPY . /app
+WORKDIR /app
+
+# Cache invalidation marker
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
+    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
+
+# Build the project. Resource filtering can use the ARGs above.
+RUN mvn clean install -DskipTests=true \
+    -DDB_URL="${DB_URL}" \
+    -DDB_USER="${DB_USER}" \
+    -DDB_PASSWORD="${DB_PASSWORD}" \
+    -DDB_DRIVER="${DB_DRIVER}" \
+    -DDB_DIALECT="${DB_DIALECT}" \
+    -DKC_DB_URL="${KC_DB_URL}" \
+    -DKC_DB_USERNAME="${KC_DB_USERNAME}" \
+    -DKC_DB_PASSWORD="${KC_DB_PASSWORD}" \
+    -DHIBERNATE_DDL_AUTO="${HIBERNATE_DDL_AUTO}" \
+    -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
+    -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
+
+# === Keycloak Builder Stage ===
+# Download JDBC drivers reliably in a small helper stage to avoid using remote ADD
+FROM alpine:3.19 AS curler
+RUN apk add --no-cache curl ca-certificates
+
+# Re-declare the JDBC URL args for use in this stage
+ARG POSTGRES_JDBC_URL
+ARG MSSQL_JDBC_URL
+
+# Fetch the JDBC driver artifacts into /tmp
+RUN curl -fSL "${POSTGRES_JDBC_URL}" -o /tmp/postgresql.jar && \
+    curl -fSL "${MSSQL_JDBC_URL}" -o /tmp/mssql.jar
+
+FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} as builder
+
+# Bring build args into this stage if needed for cache invalidation metadata
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
+
+# Enable useful Keycloak features
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
-
-# Configure Keycloak to use PostgreSQL as its database
+ENV KC_FEATURES=token-exchange
 ENV KC_DB=postgres
 
-# Set working directory inside the container
 WORKDIR /opt/keycloak
 
-# Switch to root user to perform privileged operations (e.g., keystore generation)
+# Need root temporarily for keystore generation and provider additions
 USER root
 
-# Generate a self-signed SSL certificate for development/testing purposes
+# Generate a self-signed SSL certificate for development/testing (keystore path consistent with older Dockerfiles)
 RUN keytool -genkeypair -storepass password -storetype PKCS12 \
     -keyalg RSA -keysize 2048 -dname "CN=server" -alias server \
     -ext "SAN:c=DNS:localhost,IP:127.0.0.1" \
     -keystore conf/server.keystore
 
-# Add the PostgreSQL JDBC driver to the providers directory for database connectivity
-ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.2.jar /opt/keycloak/providers/
+# Add JDBC drivers for Postgres and MSSQL to providers dir (copied from the curler stage)
+COPY --from=curler --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/providers/postgresql.jar
+COPY --from=curler --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/providers/mssql.jar
+# Also place stable-named copies into the Keycloak lib directory so the JDBC drivers are
+# guaranteed to be on the application classpath (prevents ClassNotFound for driver classes)
+COPY --from=curler --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/lib/postgresql-42.7.2.jar
+COPY --from=curler --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/lib/mssql-jdbc-12.4.2.jre11.jar
 
-# Add the Microsoft SQL Server JDBC driver to the providers directory
-ADD --chown=keycloak:keycloak https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar /opt/keycloak/providers/
+# Copy build metadata and the compiled provider jar from the maven stage
+COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
+COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
-# Cache invalidation layer - forces rebuild when JAR changes
-RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
-    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
-
-# Add your custom User Storage Provider (or other extensions) JAR
-# This layer will be invalidated when the JAR changes due to the cache invalidation above
-ADD --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
-
-# Prebuild the Keycloak server (e.g., compile extensions, optimize image)
-RUN /opt/keycloak/bin/kc.sh build --verbose
-
+# Prebuild Keycloak (compile extensions, optimize)
+RUN /opt/keycloak/bin/kc.sh build
 
 # === Final Runtime Image ===
-# Use the same Keycloak base image for the final runtime image
-FROM quay.io/keycloak/keycloak:26.5.1
+FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 
-# Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
+# Bring the prebuilt Keycloak server into the final image
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
-
-# Copy build info for debugging
 COPY --from=builder /tmp/build-info.txt /opt/keycloak/
 
-# Set default Keycloak database configuration
-# These will be overridden at runtime with proper values
+# Copy theme files (repository contains themes/obp and themes/obp-dark)
+# The THEMED build arg controls whether themes are kept in the final image. Default is false.
+USER root
+ARG THEMED=false
+
+# Copy themes if present in build context; repository provides these directories.
+# If you want a build without themes, set --build-arg THEMED=false (themes will be removed later).
+COPY themes/obp/ /opt/keycloak/themes/obp/
+COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
+
+# Ensure correct owner for theme files
+RUN chown -R keycloak:keycloak /opt/keycloak/themes/ || true
+
+# If THEMED is false, remove theme files to produce a smaller standard image.
+# Using a shell conditional ensures the build doesn't fail; presence of themes is expected in this repo.
+RUN if [ "${THEMED}" = "false" ]; then rm -rf /opt/keycloak/themes/* || true; fi
+
+# Drop privileges for runtime
+USER keycloak
+
+# Default Keycloak DB and User Storage DB environment variables (can be overridden at runtime)
 ENV KC_DB=postgres
 ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
 ENV KC_DB_USERNAME=keycloak
 ENV KC_DB_PASSWORD=keycloak_changeme
 
-# Set default User Storage database configuration
-# These are used by the OBP User Storage Provider
 ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
-ENV DB_USER=obp
-ENV DB_PASSWORD=changeme
+ENV DB_USER=oidc_user
+ENV DB_PASSWORD=your_secure_password
 ENV DB_DRIVER=org.postgresql.Driver
 ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+ENV DB_AUTHUSER_TABLE=v_oidc_users
 
-# Default Hibernate configuration for User Storage
+# Default Hibernate behavior
 ENV HIBERNATE_DDL_AUTO=validate
 ENV HIBERNATE_SHOW_SQL=true
 ENV HIBERNATE_FORMAT_SQL=true
 
-# Default Keycloak runtime configuration
+# Default Keycloak runtime configuration (development-friendly)
 ENV KC_HOSTNAME_STRICT=false
 ENV KC_HOSTNAME_STRICT_HTTPS=false
 ENV KC_HTTP_ENABLED=true
@@ -81,6 +167,5 @@ ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
 
-# Start Keycloak in development mode (enables features like auto-reload, less strict config)
-# Note: For production, use "start" instead of "start-dev"
+# Start Keycloak in development mode by default (matches prior development Dockerfiles).
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]

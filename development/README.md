@@ -19,11 +19,18 @@ The `development/` directory contains exactly **2 shell scripts**:
 **Purpose**: Primary deployment script for local development with CI/CD-style approach
 
 ```bash
-# Standard deployment
+# Standard deployment (uses the unified Dockerfile at development/docker/Dockerfile)
 ./development/run-local-postgres-cicd.sh
 
-# With custom themes
+# With custom themes (script will pass THEMED build-arg)
 ./development/run-local-postgres-cicd.sh --themed
+
+# Alternatively: build directly with Docker using the single unified Dockerfile.
+# Standard (no themes):
+docker build --no-cache --build-arg THEMED=false -t obp-keycloak:standard -f development/docker/Dockerfile .
+
+# Themed build (includes themes/obp and themes/obp-dark from repo context):
+docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f development/docker/Dockerfile .
 ```
 
 **What it does:**
@@ -75,12 +82,57 @@ cp env.sample .env
 
 ### 2. Deploy Application
 ```bash
-# Standard deployment
+# Standard deployment (recommended: use the script which builds + deploys)
 ./development/run-local-postgres-cicd.sh
 
-# Themed deployment (requires themes/obp/ directory)
+# Themed deployment (requires themes/obp/ directory; the script will validate and include themes)
 ./development/run-local-postgres-cicd.sh --themed
+
+# Direct Docker build options using the single development Dockerfile:
+# Build standard image (no themes):
+docker build --no-cache --build-arg THEMED=false -t obp-keycloak:standard -f development/docker/Dockerfile .
+
+# Build themed image (ensure themes/obp exists in repository root):
+docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f development/docker/Dockerfile .
 ```
+
+### Build arguments
+
+The unified Dockerfile accepts several build-time arguments (passed with `--build-arg`) so you can customize the base Keycloak version and which JDBC drivers are bundled. Use these to pin versions and to point the build helper stage at mirrored or internal driver locations.
+
+- `KEYCLOAK_VERSION` (default: `26.5.1`) — the Keycloak base image tag used in the builder and final images. Example:
+```bash
+--build-arg KEYCLOAK_VERSION=26.5.1
+```
+
+- `POSTGRES_JDBC_URL` (default: `https://jdbc.postgresql.org/download/postgresql-42.7.2.jar`) — URL used by the build helper stage to download the Postgres JDBC driver. Override to use a different driver version or an internal mirror:
+```bash
+--build-arg POSTGRES_JDBC_URL=https://jdbc.postgresql.org/download/postgresql-42.7.2.jar
+```
+
+- `MSSQL_JDBC_URL` (default: `https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar`) — URL for the Microsoft SQL Server JDBC driver. Override to a different driver version or mirror if needed:
+```bash
+--build-arg MSSQL_JDBC_URL=https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar
+```
+
+- `THEMED` (default: `false`) — controls whether the Dockerfile retains the `themes/obp` and `themes/obp-dark` directories in the final image. Set to `true` to keep themes in the image (the deployment script passes this when `--themed` is used):
+```bash
+--build-arg THEMED=true
+```
+
+- `BUILD_TIMESTAMP` and `JAR_CHECKSUM` — used to invalidate build cache and force rebuild when sources or built artifacts change. The deployment script computes and passes these automatically. If building manually, compute and pass them to ensure cache invalidation:
+```bash
+BUILD_TIMESTAMP=$(date +%s)
+JAR_CHECKSUM=$(sha256sum target/obp-keycloak-provider.jar | cut -d' ' -f1)
+
+docker build --no-cache \
+  --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+  --build-arg JAR_CHECKSUM="$JAR_CHECKSUM" \
+  --build-arg THEMED=true \
+  -f development/docker/Dockerfile -t obp-keycloak:themed .
+```
+
+> Note: In CI you should pin `KEYCLOAK_VERSION` and JDBC URLs to specific versions for reproducible builds. Avoid `latest` in CI.
 
 ### 3. Manage Container
 ```bash

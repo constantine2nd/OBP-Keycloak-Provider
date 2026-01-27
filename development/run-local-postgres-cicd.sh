@@ -36,12 +36,14 @@ DEPLOYMENT_TYPE="standard"
 DOCKERFILE_PATH="development/docker/Dockerfile"
 IMAGE_TAG="obp-keycloak-provider-local"
 CONTAINER_NAME="obp-keycloak-local"
+THEMED_BUILD_ARG=""
 
 # Parse command line arguments
 if [[ "$1" == "--themed" || "$1" == "-t" ]]; then
     DEPLOYMENT_TYPE="themed"
-    DOCKERFILE_PATH="development/docker/Dockerfile_themed"
     IMAGE_TAG="obp-keycloak-provider-local-themed"
+    # Use unified Dockerfile and instruct it to include themes via build-arg
+    THEMED_BUILD_ARG="--build-arg THEMED=true"
 fi
 
 echo -e "${CYAN}================================================${NC}"
@@ -110,12 +112,7 @@ done
 validate_theme_files() {
     echo -e "${CYAN}Validating themed deployment requirements...${NC}"
 
-    # Check if themed Dockerfile exists
-    if [ ! -f "$DOCKERFILE_PATH" ]; then
-        echo -e "${RED}✗ Themed Dockerfile not found: $DOCKERFILE_PATH${NC}"
-        echo "Expected location: $DOCKERFILE_PATH"
-        return 1
-    fi
+    # Using unified Dockerfile at $DOCKERFILE_PATH; no separate themed Dockerfile required
 
     # Check if theme directory exists
     if [ ! -d "themes/obp" ]; then
@@ -280,6 +277,7 @@ docker build \
     --no-cache \
     --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
     --build-arg JAR_CHECKSUM="$JAR_CHECKSUM" \
+    $THEMED_BUILD_ARG \
     -t "$IMAGE_TAG" \
     -f "$DOCKERFILE_PATH" \
     . > /dev/null 2>&1
