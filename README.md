@@ -63,22 +63,34 @@ DB_AUTHUSER_TABLE=v_oidc_users
 - Only validated users are accessible through OIDC
 - Minimal database permissions for the application user
 
-### Direct Table Access (Development/Legacy)
+## Prerequisites
 
-```bash
-# Environment variables for direct table access
-DB_USER=obp
-DB_PASSWORD=f
-DB_AUTHUSER_TABLE=authuser
-```
+Before running the OBP Keycloak Provider, ensure you have the following set up:
 
-See the configuration examples below for detailed setup instructions.
+### Database Setup
+
+The application requires two PostgreSQL databases with properly configured users:
+
+1. **Keycloak Internal Database** - Run the setup script to create the keycloak user:
+   ```bash
+   # See database/setup-keycloak-user.sql for the complete setup script
+   psql -U postgres -h localhost -f database/setup-keycloak-user.sql
+   ```
+
+2. **User Storage Database** - [OBP-API database schema](https://github.com/OpenBankProject/OBP-API/tree/develop/obp-api/src/main/scripts/sql/OIDC)
+
+### Software Requirements
+
+- PostgreSQL 12+ running and accessible
+- Docker and Docker Compose (for containerized deployment)
+- Maven 3.6+ (for building from source)
+- Java 11+ (for building from source)
 
 ## Usage
 ### Docker containers
 [Postgres](https://www.postgresql.org/) - database for which we want to store User Federation.
 
-[Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/docker/Dockerfile).
+[Keycloak](https://www.keycloak.org/) - KC container with custom certificate, for use over `https`. The container is described in [Dockerfile](/development/docker/Dockerfile).
 
 ### CI/CD and Automation
 
@@ -202,10 +214,10 @@ The database connection and Keycloak settings are now configured using **runtime
    KC_DB_PASSWORD=secure-keycloak-password
 
    # User Storage Database Configuration
-   USER_STORAGE_DB_USER=obp
-   USER_STORAGE_DB_PASSWORD=secure-user-storage-password
-   DB_USER=obp
+   DB_NAME=obp_mapped
+   DB_USER=oidc_user
    DB_PASSWORD=secure-user-storage-password
+   DB_PORT=5432
    ```
 
 3. **Validate your configuration (recommended):**
@@ -239,9 +251,10 @@ The database connection and Keycloak settings are now configured using **runtime
 | `DB_URL` | `jdbc:postgresql://user-storage-postgres:5432/obp_mapped` | User storage database URL |
 | **Port Configuration** | | |
 | `KC_DB_PORT` | `5433` | Keycloak database external port |
-| `USER_STORAGE_DB_PORT` | `5434` | User storage database external port |
-| `DB_USER` | `obp` | User storage database username |
+| `DB_PORT` | `5432` | User storage database external port |
+| `DB_USER` | `oidc_user` | User storage database username |
 | `DB_PASSWORD` | `changeme` | User storage database password |
+| `DB_AUTHUSER_TABLE` | `v_oidc_users` | View/table name for user authentication data |
 | **Configuration** | | |
 | `KC_HOSTNAME_STRICT` | `false` | Hostname strict mode |
 | `HIBERNATE_DDL_AUTO` | `validate` | Schema validation mode for user storage |
@@ -273,7 +286,7 @@ The `development/` directory contains local development scripts:
 
 - **Deployment**: `./development/run-local-postgres-cicd.sh` - Main deployment script (with --themed option)
 - **Management**: `./development/manage-container.sh` - Interactive container management
-- **PostgreSQL**: `./development/pg.sh` - Simple PostgreSQL container setup
+
 
 See [development/README.md](development/README.md) for complete documentation of all development tools.
 
@@ -319,9 +332,6 @@ The project provides two focused deployment approaches:
 ```bash
 # Manage running containers interactively
 ./development/manage-container.sh
-
-# Set up PostgreSQL container (if needed)
-./development/pg.sh
 ```
 
 📖 **Detailed Guides**:
@@ -381,14 +391,7 @@ When you run the deployment scripts, they start the Keycloak container and follo
 ### Using Postgres
 > **Warning: I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
 
-To deploy the container use the script :
-```shell
-$ development/pg.sh
-```
-
-The script deploys the container locally.
-
-It uses port : 5434 (changed from 5432 to avoid conflicts with system PostgreSQL).
+For PostgreSQL setup, please refer to the main deployment scripts or set up your own database instance.
 
 The system now uses two separate databases:
 
@@ -397,66 +400,50 @@ The system now uses two separate databases:
 
 > **Important**: Due to recent fixes, the user storage database now runs on port 5434 instead of 5432 to avoid conflicts with system PostgreSQL installations.
 
-In the **User Storage Database**, the `authuser` table must be created by a database administrator:
+For the **User Storage Database** setup, use the official OBP-API SQL scripts:
 
-> **⚠️ CRITICAL**: The `authuser` table is **READ-ONLY** for the Keycloak User Storage Provider and **MUST** be created by a database administrator with appropriate permissions. Keycloak setup scripts cannot create this table due to read-only access restrictions.
+> **📋 IMPORTANT**: Use the official OBP-API repository scripts as the source of truth. This avoids code duplication and ensures you have the latest, maintained SQL scripts.
 
-> **📋 SETUP REQUIREMENT**: The authuser table must exist before running Keycloak. INSERT, UPDATE, and DELETE operations are not supported through Keycloak. Users must be managed through other means outside of Keycloak.
+**Official Setup Process:**
 
-```sql
--- ===============================================
--- DATABASE ADMINISTRATOR SETUP REQUIRED
--- ===============================================
--- This SQL must be executed by a database administrator
--- with CREATE privileges on the obp_mapped database.
--- The Keycloak application has READ-ONLY access only.
+1. **Clone/Download OBP-API Repository:**
+   - Repository: https://github.com/OpenBankProject/OBP-API
+   - Navigate to: `obp-api/src/main/scripts/sql/OIDC/`
 
-CREATE TABLE public.authuser (
-	id bigserial NOT NULL,
-	firstname varchar(100) NULL,
-	lastname varchar(100) NULL,
-	email varchar(100) NULL,
-	username varchar(100) NULL,
-	password_pw varchar(48) NULL,
-	password_slt varchar(20) NULL,
-	provider varchar(100) NULL,
-	locale varchar(16) NULL,
-	validated bool NULL,
-	user_c int8 NULL,
-	createdat timestamp NULL,
-	updatedat timestamp NULL,
-	timezone varchar(32) NULL,
-	superuser bool NULL,
-	passwordshouldbechanged bool NULL,
-	CONSTRAINT authuser_pk PRIMARY KEY (id)
-);
+2. **Run Official Setup Script:**
+   ```bash
+   cd obp-api/src/main/scripts/sql/OIDC/
+   psql -d your_obp_database
+   \i give_read_access_to_users.sql
+   ```
 
--- Grant READ-ONLY access to Keycloak user
-GRANT SELECT ON public.authuser TO obp;
-GRANT USAGE ON SEQUENCE authuser_id_seq TO obp;
-```
+**What the Official Scripts Do:**
+- ✅ Create `v_oidc_users` view joining `authuser` and `resourceuser` tables
+- ✅ Create `oidc_user` role with read-only permissions
+- ✅ Grant appropriate SELECT permissions on the view
+- ✅ Include security settings and error handling
+- ✅ Only expose validated users for security
 
-**Database Setup Requirements:**
-- 📋 Table must be created by database administrator BEFORE running Keycloak
-- 📋 Keycloak user (obp) needs only SELECT permissions on authuser table
-- 📋 Database administrator must create table structure and indexes
-
-**Keycloak Provider Limitations:**
-- ✅ User authentication and login
-- ✅ User profile viewing
+**Keycloak Provider Features:**
+- ✅ User authentication and login via the `v_oidc_users` view
+- ✅ User profile viewing (read-only access)
 - ✅ Password validation
-- 🔴 User creation through Keycloak (disabled - read-only access)
-- 🔴 User profile updates through Keycloak (disabled - read-only access)
-- 🔴 User deletion through Keycloak (disabled - read-only access)
-- 🔴 Table creation through setup scripts (disabled - insufficient permissions)
+- ✅ Secure federation with existing OBP user data
+- 🔴 User creation/updates/deletion (read-only by design)
 
-Users must be added to the `authuser` table using external database administration tools outside of Keycloak.
+**Why Use Official Scripts:**
+- Always up-to-date with OBP-API changes
+- Maintained by the OBP development team
+- Proper security configurations included
+- Avoids documentation drift and code duplication
+
+For detailed setup instructions, see the [database/README.md](database/README.md) file and the official OBP-API repository.
 
 ### Using Keycloak
 
 KC is deployed in a custom container.
 
-To deploy the KC container, I created a [Dockerfile](/docker/Dockerfile) file in which :
+To deploy the KC container, I created a [Dockerfile](/development/docker/Dockerfile) file in which :
 - I create a certificate for `https` access
 - I add a provider `obp-keycloak-provider`
 
@@ -532,18 +519,6 @@ The following critical issues have been resolved:
 3. **Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
 4. **Updated Environment Variables**: All configuration now properly supports the separated database architecture
 
-
-
-### Port Changes
-- **Keycloak Internal Database**: `localhost:5433` (unchanged)
-- **User Storage Database**: `localhost:5434` (changed from 5432)
-- **Keycloak Application**: `localhost:8000` (HTTP) and `localhost:8443` (HTTPS)
-
-### Troubleshooting
-If you encounter connection issues:
-1. Run the deployment script which validates configuration: `./development/run-local-postgres-cicd.sh`
-2. Check for port conflicts: `ss -tulpn | grep :5432` or `netstat -tulpn | grep :5432`
-3. Review the setup documentation in the `docs/` directory
 
 ## Documentation
 

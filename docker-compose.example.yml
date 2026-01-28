@@ -24,7 +24,7 @@ services:
   keycloak:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: development/docker/Dockerfile
     container_name: obp-keycloak
     depends_on:
       keycloak-postgres:

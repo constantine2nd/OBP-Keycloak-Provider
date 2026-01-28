@@ -16,7 +16,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-      <version.keycloak>26.0.5</version.keycloak>
+      <version.keycloak>26.5.1</version.keycloak>
       <version.compiler.maven.plugin>3.5.1</version.compiler.maven.plugin>
     <version.jakarta.persistence>3.1.0</version.jakarta.persistence>
     <arquillian-graphene.version>2.5.4</arquillian-graphene.version>
@@ -31,6 +31,7 @@
       <artifactId>postgresql</artifactId>
       <version>42.6.0</version>
     </dependency>
+
     <dependency>
       <groupId>org.keycloak</groupId>
       <artifactId>keycloak-core</artifactId>
@@ -139,6 +140,7 @@
                   <include>com.maxmind.db:*</include>
                   <include>com.maxmind.geoip2:*</include>
                   <include>org.mindrot:jbcrypt</include>
+
                 </includes>
               </artifactSet>
             </configuration>

@@ -41,8 +41,8 @@ services:
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak_changeme}
 
       # OBP User Storage database configuration (External PostgreSQL)
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/${USER_STORAGE_DB_NAME:-obp_mapped}
-      DB_USER: oidc_user
+      DB_URL: jdbc:postgresql://host.docker.internal:${DB_PORT:-5432}/${DB_NAME:-obp_mapped}
+      DB_USER: ${DB_USER:-oidc_user}
       DB_PASSWORD: ${DB_PASSWORD:-}
       DB_DRIVER: org.postgresql.Driver
       DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
@@ -118,7 +118,7 @@ networks:
 #
 # 4. Cloud-native style with individual env vars:
 #    KC_DB_PASSWORD=secure_keycloak_pass \
-#    USER_STORAGE_DB_PASSWORD=secure_user_pass \
+#    DB_PASSWORD=secure_user_pass \
 #    KEYCLOAK_ADMIN_PASSWORD=secure_admin_pass \
 #    OBP_AUTHUSER_PROVIDER=production_provider \
 #    docker-compose -f docker-compose.runtime.yml up
@@ -143,8 +143,10 @@ networks:
 #   KC_DB_PORT=5433 (external port for Keycloak's internal database)
 #
 # External User Storage Database:
-#   USER_STORAGE_DB_NAME=obp_mapped (database name on external PostgreSQL)
+#   DB_NAME=obp_mapped (database name on external PostgreSQL)
+#   DB_USER=oidc_user (database user for external PostgreSQL)
 #   DB_PASSWORD= (password for oidc_user on external PostgreSQL)
+#   DB_PORT=5432 (port for external PostgreSQL)
 #   OBP_AUTHUSER_PROVIDER= (provider name - can be empty for development)
 #
 # Keycloak Configuration:

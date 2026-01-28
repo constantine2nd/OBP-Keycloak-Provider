@@ -177,8 +177,8 @@ public class KcUserStorageProvider
     @Override
     public UserModel getUserByUsername(RealmModel realm, String username) {
         log.infof("getUserByUsername() called with: %s", username);
-        log.infof("Username details: length=%d, exact='%s', chars=%s", 
-            username.length(), 
+        log.infof("Username details: length=%d, exact='%s', chars=%s",
+            username.length(),
             username,
             username.chars().mapToObj(c -> String.format("%c(%d)", (char)c, c)).toArray());
         log.infof("NOTE: If Keycloak realm has 'User Profile' > 'Attributes' > username set to lowercase, " +
@@ -735,71 +735,6 @@ public class KcUserStorageProvider
     @Override
     public Stream<UserModel> searchForUserStream(
         RealmModel realm,
-        String search,
-        Integer first,
-        Integer max
-    ) {
-        log.infof(
-            "searchForUserStream() called: search='%s', first=%d, max=%d",
-            search,
-            first,
-            max
-        );
-        List<UserModel> users = new ArrayList<>();
-
-        String sql =
-            "SELECT " +
-            getFieldList() +
-            " FROM " +
-            dbConfig.getAuthUserTable() +
-            " WHERE (LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ?) AND provider = ? ORDER BY username";
-
-        // Add pagination if specified
-        if (max != null && max >= 0) {
-            sql += " LIMIT " + max;
-        }
-        if (first != null && first >= 0) {
-            sql += " OFFSET " + first;
-        }
-
-        try (
-            Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            String searchPattern = "%" + search.toLowerCase() + "%";
-            stmt.setString(1, searchPattern);
-            stmt.setString(2, searchPattern);
-            stmt.setString(3, searchPattern);
-            stmt.setString(4, searchPattern);
-            stmt.setString(5, dbConfig.getAuthUserProvider());
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    KcUserEntity entity = mapResultSetToEntity(rs);
-                    UserAdapter adapter = new UserAdapter(
-                        session,
-                        realm,
-                        model,
-                        entity
-                    );
-                    users.add(adapter);
-                }
-            }
-            log.infof(
-                "Found %d users matching search '%s'",
-                users.size(),
-                search
-            );
-        } catch (SQLException e) {
-            log.error("Error in searchForUserStream", e);
-        }
-
-        return users.stream();
-    }
-
-    @Override
-    public Stream<UserModel> searchForUserStream(
-        RealmModel realm,
         Map<String, String> params,
         Integer first,
         Integer max
@@ -900,8 +835,8 @@ public class KcUserStorageProvider
     }
 
     /**
-     * Get all users for synchronization
-     */
+    * Get all users for synchronization
+    */
     private Stream<UserModel> getAllUsers(
         RealmModel realm,
         Integer first,
@@ -912,28 +847,66 @@ public class KcUserStorageProvider
             first,
             max
         );
+
         List<UserModel> users = new ArrayList<>();
+        boolean isSqlServer = dbConfig.getDbDriver().contains("sqlserver");
 
-        String sql =
-            "SELECT " +
-            getFieldList() +
-            " FROM " +
-            dbConfig.getAuthUserTable() +
-            " WHERE provider = ? ORDER BY username";
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ")
+        .append(getFieldList())
+        .append(" FROM ")
+        .append(dbConfig.getAuthUserTable())
+        .append(" WHERE provider = ? ")
+        .append("ORDER BY username ");
 
-        // Add pagination if specified
-        if (max != null && max >= 0) {
-            sql += " LIMIT " + max;
-        }
-        if (first != null && first >= 0) {
-            sql += " OFFSET " + first;
+        /*
+        * Pagination
+        *
+        * SQL Server requires OFFSET ... FETCH
+        * Other DBs use LIMIT ... OFFSET
+        */
+        if (isSqlServer) {
+            if (first != null && first >= 0) {
+                sql.append(" OFFSET ? ROWS");
+                if (max != null && max >= 0) {
+                    sql.append(" FETCH NEXT ? ROWS ONLY");
+                }
+            }
+        } else {
+            if (max != null && max >= 0) {
+                sql.append(" LIMIT ?");
+            }
+            if (first != null && first >= 0) {
+                sql.append(" OFFSET ?");
+            }
         }
 
         try (
             Connection conn = dbConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)
+            PreparedStatement stmt = conn.prepareStatement(sql.toString())
         ) {
-            stmt.setString(1, dbConfig.getAuthUserProvider());
+            int paramIndex = 1;
+
+            // Provider filter
+            stmt.setString(paramIndex++, dbConfig.getAuthUserProvider());
+
+            // Pagination parameters
+            if (isSqlServer) {
+                if (first != null && first >= 0) {
+                    stmt.setInt(paramIndex++, first);
+                    if (max != null && max >= 0) {
+                        stmt.setInt(paramIndex++, max);
+                    }
+                }
+            } else {
+                if (max != null && max >= 0) {
+                    stmt.setInt(paramIndex++, max);
+                }
+                if (first != null && first >= 0) {
+                    stmt.setInt(paramIndex++, first);
+                }
+            }
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     KcUserEntity entity = mapResultSetToEntity(rs);
@@ -948,9 +921,14 @@ public class KcUserStorageProvider
                     users.add(adapter);
                 }
             }
-            log.infof("Retrieved %d users for synchronization", users.size());
+
+            log.infof(
+                "Retrieved %d users for synchronization",
+                users.size()
+            );
+
         } catch (SQLException e) {
-            log.errorf("Error in getAllUsers: %s", e.getMessage());
+            log.error("Error in getAllUsers", e);
         }
 
         return users.stream();
