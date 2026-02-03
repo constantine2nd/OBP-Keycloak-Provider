@@ -15,8 +15,7 @@
 #
 # Build arguments (defaults chosen to match development state):
 ARG KEYCLOAK_VERSION=26.5.1
-ARG POSTGRES_JDBC_URL=https://jdbc.postgresql.org/download/postgresql-42.7.2.jar
-ARG MSSQL_JDBC_URL=https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar
+
 ARG BUILD_TIMESTAMP
 ARG JAR_CHECKSUM
 
@@ -64,18 +63,6 @@ RUN mvn clean install -DskipTests=true \
     -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
 
 # === Keycloak Builder Stage ===
-# Download JDBC drivers reliably in a small helper stage to avoid using remote ADD
-FROM alpine:3.19 AS curler
-RUN apk add --no-cache curl ca-certificates
-
-# Re-declare the JDBC URL args for use in this stage
-ARG POSTGRES_JDBC_URL
-ARG MSSQL_JDBC_URL
-
-# Fetch the JDBC driver artifacts into /tmp
-RUN curl -fSL "${POSTGRES_JDBC_URL}" -o /tmp/postgresql.jar && \
-    curl -fSL "${MSSQL_JDBC_URL}" -o /tmp/mssql.jar
-
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} as builder
 
 # Bring build args into this stage if needed for cache invalidation metadata
