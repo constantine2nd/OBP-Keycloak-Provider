@@ -62,6 +62,10 @@ RUN mvn clean install -DskipTests=true \
     -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
     -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
 
+# Copy JDBC driver JARs from the Maven local repository so downstream stages can use them
+RUN cp /root/.m2/repository/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar /tmp/postgresql.jar && \
+    cp /root/.m2/repository/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar /tmp/mssql.jar
+
 # === Keycloak Builder Stage ===
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} as builder
 
@@ -86,13 +90,13 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
     -ext "SAN:c=DNS:localhost,IP:127.0.0.1" \
     -keystore conf/server.keystore
 
-# Add JDBC drivers for Postgres and MSSQL to providers dir (copied from the curler stage)
-COPY --from=curler --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/providers/postgresql.jar
-COPY --from=curler --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/providers/mssql.jar
+# Add JDBC drivers for Postgres and MSSQL to providers dir (copied from the maven stage)
+COPY --from=maven --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/providers/postgresql.jar
+COPY --from=maven --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/providers/mssql.jar
 # Also place stable-named copies into the Keycloak lib directory so the JDBC drivers are
 # guaranteed to be on the application classpath (prevents ClassNotFound for driver classes)
-COPY --from=curler --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/lib/postgresql-42.7.2.jar
-COPY --from=curler --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/lib/mssql-jdbc-12.4.2.jre11.jar
+COPY --from=maven --chown=keycloak:keycloak /tmp/postgresql.jar /opt/keycloak/lib/postgresql-42.6.0.jar
+COPY --from=maven --chown=keycloak:keycloak /tmp/mssql.jar /opt/keycloak/lib/mssql-jdbc-12.4.2.jre11.jar
 
 # Copy build metadata and the compiled provider jar from the maven stage
 COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
