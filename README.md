@@ -365,12 +365,7 @@ The project supports **cloud-native deployment patterns**:
    $ docker run --env-file .env obp-keycloak-provider
    ```
 
-3. **Docker Compose** (Runtime Config):
-   ```shell
-   $ docker-compose -f docker-compose.runtime.yml up
-   ```
-
-4. **CI/CD builds** using GitHub Actions workflows:
+3. **CI/CD builds** using GitHub Actions workflows:
    - Single generic build for all environments
    - Container signing and publishing to Docker Hub
    - Multi-architecture support with runtime configuration
@@ -380,13 +375,13 @@ The project supports **cloud-native deployment patterns**:
 When you run the deployment scripts, they start the Keycloak container and follow the logs. When you press `Ctrl+C`, the script exits but **the container continues running in the background**.
 
 **After pressing Ctrl+C:**
-- The container remains accessible at http://localhost:8000 and https://localhost:8443
+- The container remains accessible at http://localhost:7787 and https://localhost:8443
 - Use `./development/manage-container.sh` for an interactive container management menu
 - Or use these direct commands:
-  - View logs: `docker logs -f obp-keycloak`
-  - Stop container: `docker stop obp-keycloak`
-  - Remove container: `docker rm obp-keycloak`
-  - Stop and remove: `docker stop obp-keycloak && docker rm obp-keycloak`
+  - View logs: `docker logs -f obp-keycloak-local`
+  - Stop container: `docker stop obp-keycloak-local`
+  - Remove container: `docker rm obp-keycloak-local`
+  - Stop and remove: `docker stop obp-keycloak-local && docker rm obp-keycloak-local`
 
 ### Using Postgres
 > **Warning: I recommend using your own database**, cause not all systems will have a database at `localhost` available to the `docker` container.
@@ -514,8 +509,7 @@ docker run -e KC_DB_URL="jdbc:postgresql://keycloak-prod-db:5432/keycloak" \
 
 The following critical issues have been resolved:
 
-1. **Fixed JDBC URL Configuration**: Corrected malformed `KC_DB_URL` default value in `docker-compose.runtime.yml`
-2. **Resolved Port Conflicts**: Changed user-storage-postgres to port 5434 to avoid conflicts with system PostgreSQL
+1. **Resolved Port Conflicts**: Changed user-storage-postgres to port 5434 to avoid conflicts with system PostgreSQL
 3. **Fixed SQL Syntax Error**: Removed incomplete SQL statement in database initialization script
 4. **Updated Environment Variables**: All configuration now properly supports the separated database architecture
 
@@ -525,4 +519,3 @@ The following critical issues have been resolved:
 
 - **[Environment Configuration](env.sample)** - Environment variable reference
 - **[CI/CD Deployment](docs/CICD_DEPLOYMENT.md)** - Automated deployment guide for pipelines
-- **[Docker Compose](docker-compose.runtime.yml)** - Runtime configuration example

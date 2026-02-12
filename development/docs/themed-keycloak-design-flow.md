@@ -165,13 +165,13 @@ Key detail: themes are always COPYed into the image, but when `THEMED=false` a f
 ### Step 7: Start New Container
 
 The container is launched with:
-- Port mappings: `${KEYCLOAK_HTTP_PORT:-7787}:8080` and `${KEYCLOAK_HTTPS_PORT:-8443}:8443`
+- Port mappings: `${KEYCLOAK_HTTP_PORT:-7787}:8080`, `${KEYCLOAK_HTTPS_PORT:-8443}:8443`, and `${KEYCLOAK_MGMT_PORT:-9000}:9000`
 - `--add-host=host.docker.internal:host-gateway` (allows container to reach host PostgreSQL)
 - All database, Hibernate, and Keycloak configuration passed as `-e` environment variables
 
 ### Step 8: Health Check + Theme Verification
 
-- Polls `http://<host>:<port>/admin/` every 2 seconds, up to 120 seconds.
+- Polls `https://<host>:<mgmt_port>/health/ready` every 2 seconds, up to 120 seconds.
 - **Themed-specific** post-readiness checks:
   - Tests if theme resources are accessible at `/resources/obp/`
   - Verifies theme files exist inside the container at `/opt/keycloak/themes/obp/theme.properties`
@@ -262,6 +262,7 @@ docker exec obp-keycloak-local \
 | `KEYCLOAK_ADMIN_PASSWORD| No       | `admin`           | Admin console password         |
 | `KEYCLOAK_HTTP_PORT`    | No       | `7787`            | Host HTTP port                 |
 | `KEYCLOAK_HTTPS_PORT`   | No       | `8443`            | Host HTTPS port                |
+| `KEYCLOAK_MGMT_PORT`    | No       | `9000`            | Host management/health port    |
 | `DB_DRIVER`             | No       | `org.postgresql.Driver` | JDBC driver class        |
 | `DB_DIALECT`            | No       | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate dialect |
 | `HIBERNATE_DDL_AUTO`    | No       | `validate`        | Schema management strategy     |

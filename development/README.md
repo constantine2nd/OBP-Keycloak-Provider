@@ -98,21 +98,11 @@ docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f develo
 
 ### Build arguments
 
-The unified Dockerfile accepts several build-time arguments (passed with `--build-arg`) so you can customize the base Keycloak version and which JDBC drivers are bundled. Use these to pin versions and to point the build helper stage at mirrored or internal driver locations.
+The unified Dockerfile accepts several build-time arguments (passed with `--build-arg`). The provider JAR and JDBC driver JARs must be pre-built on the host before running `docker build` (the deployment script handles this automatically).
 
 - `KEYCLOAK_VERSION` (default: `26.5.1`) — the Keycloak base image tag used in the builder and final images. Example:
 ```bash
 --build-arg KEYCLOAK_VERSION=26.5.1
-```
-
-- `POSTGRES_JDBC_URL` (default: `https://jdbc.postgresql.org/download/postgresql-42.7.2.jar`) — URL used by the build helper stage to download the Postgres JDBC driver. Override to use a different driver version or an internal mirror:
-```bash
---build-arg POSTGRES_JDBC_URL=https://jdbc.postgresql.org/download/postgresql-42.7.2.jar
-```
-
-- `MSSQL_JDBC_URL` (default: `https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar`) — URL for the Microsoft SQL Server JDBC driver. Override to a different driver version or mirror if needed:
-```bash
---build-arg MSSQL_JDBC_URL=https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar
 ```
 
 - `THEMED` (default: `false`) — controls whether the Dockerfile retains the `themes/obp` and `themes/obp-dark` directories in the final image. Set to `true` to keep themes in the image (the deployment script passes this when `--themed` is used):
@@ -132,7 +122,7 @@ docker build --no-cache \
   -f development/docker/Dockerfile -t obp-keycloak:themed .
 ```
 
-> Note: In CI you should pin `KEYCLOAK_VERSION` and JDBC URLs to specific versions for reproducible builds. Avoid `latest` in CI.
+> Note: In CI you should pin `KEYCLOAK_VERSION` to a specific version for reproducible builds. Avoid `latest` in CI.
 
 ### 3. Manage Container
 ```bash
@@ -159,6 +149,7 @@ docker build --no-cache \
 - `KEYCLOAK_ADMIN_PASSWORD` - Admin password (default: admin)
 - `KEYCLOAK_HTTP_PORT` - HTTP port (default: 7787)
 - `KEYCLOAK_HTTPS_PORT` - HTTPS port (default: 8443)
+- `KEYCLOAK_MGMT_PORT` - Management/health port (default: 9000)
 
 ---
 
@@ -236,7 +227,7 @@ PGPASSWORD=your_password psql -h host.docker.internal -p 5432 -U oidc_user -d ob
 #### Container Issues
 ```bash
 # Check port conflicts
-netstat -tulpn | grep -E ':(8000|8443)'
+netstat -tulpn | grep -E ':(7787|8443|9000)'
 
 # Review container logs
 docker logs obp-keycloak-local
@@ -268,7 +259,7 @@ cat themes/obp/theme.properties
 After successful deployment:
 
 ### Service URLs
-- **HTTP**: http://localhost:8000
+- **HTTP**: http://localhost:7787
 - **HTTPS**: https://localhost:8443
 - **Admin Console**: https://localhost:8443/admin
 
