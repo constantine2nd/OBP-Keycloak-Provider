@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-CONTAINER_NAME="obp-keycloak"
+CONTAINER_NAME="obp-keycloak-local"
 
 echo -e "${BLUE}OBP Keycloak Provider - Container Management${NC}"
 echo "============================================"
@@ -196,11 +196,11 @@ show_urls() {
     if check_container_status > /dev/null; then
         echo ""
         echo -e "${GREEN}Keycloak Access URLs:${NC}"
-        echo "  HTTP:  http://localhost:8000"
+        echo "  HTTP:  http://localhost:7787"
         echo "  HTTPS: https://localhost:8443"
         echo ""
         echo "Admin Console:"
-        echo "  HTTP:  http://localhost:8000/admin"
+        echo "  HTTP:  http://localhost:7787/admin"
         echo "  HTTPS: https://localhost:8443/admin"
         echo ""
         echo "Default Admin Credentials:"
