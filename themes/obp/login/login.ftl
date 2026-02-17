@@ -70,6 +70,12 @@
                         </div>
                     </div>
 
+                    <#if (properties.obpAuthUserProvider!'')?has_content>
+                        <div class="obp-provider-info">
+                            <span class="obp-provider-label">Provider:</span> ${properties.obpAuthUserProvider}
+                        </div>
+                    </#if>
+
                     <div class="obp-form-buttons">
                         <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
                         <button tabindex="4" class="obp-button obp-button-primary" name="login" id="kc-login" type="submit">
