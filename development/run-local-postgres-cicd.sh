@@ -407,6 +407,7 @@ CONTAINER_ENV_VARS=(
     "-e" "KC_HEALTH_ENABLED=${KC_HEALTH_ENABLED:-true}"
     "-e" "KC_METRICS_ENABLED=${KC_METRICS_ENABLED:-true}"
     "-e" "KC_FEATURES=${KC_FEATURES:-token-exchange}"
+    "-e" "FORGOT_PASSWORD_URL=${FORGOT_PASSWORD_URL:-}"
 )
 
 # Start container

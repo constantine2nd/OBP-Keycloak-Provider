@@ -105,6 +105,10 @@ COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
 # Set proper ownership for theme files
 RUN chown -R keycloak:keycloak /opt/keycloak/themes/
 
+# Copy the custom entrypoint wrapper that injects runtime ENV into theme config
+COPY development/docker/docker-entrypoint.sh /opt/keycloak/docker-entrypoint.sh
+RUN chmod 755 /opt/keycloak/docker-entrypoint.sh && chown keycloak:keycloak /opt/keycloak/docker-entrypoint.sh
+
 # Switch back to keycloak user for security
 USER keycloak
 
@@ -138,8 +142,13 @@ ENV HIBERNATE_DDL_AUTO=validate
 ENV HIBERNATE_SHOW_SQL=true
 ENV HIBERNATE_FORMAT_SQL=true
 
+# Custom "Forgot Password?" link URL (overrides Keycloak's default reset credentials page)
+# Set at runtime to redirect users to an external password reset page.
+# Leave unset to use Keycloak's built-in password reset flow.
+ENV FORGOT_PASSWORD_URL=
+
 # Theme will be automatically available as 'obp' theme in Keycloak admin console
 # No need to set as default - users can select it in Realm Settings > Themes
 
 # Start Keycloak in development mode (enables features like auto-reload, less strict config)
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
+ENTRYPOINT ["/opt/keycloak/docker-entrypoint.sh", "start-dev", "--verbose"]

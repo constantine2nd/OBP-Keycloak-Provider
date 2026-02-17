@@ -86,6 +86,10 @@ RUN chown -R keycloak:keycloak /opt/keycloak/themes/ || true
 # Using a shell conditional ensures the build doesn't fail; presence of themes is expected in this repo.
 RUN if [ "${THEMED}" = "false" ]; then rm -rf /opt/keycloak/themes/* || true; fi
 
+# Copy the custom entrypoint wrapper that injects runtime ENV into theme config
+COPY development/docker/docker-entrypoint.sh /opt/keycloak/docker-entrypoint.sh
+RUN chmod 755 /opt/keycloak/docker-entrypoint.sh && chown keycloak:keycloak /opt/keycloak/docker-entrypoint.sh
+
 # Drop privileges for runtime
 USER keycloak
 
@@ -115,5 +119,11 @@ ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
 
+# Custom "Forgot Password?" link URL (overrides Keycloak's default reset credentials page)
+# Set at runtime to redirect users to an external password reset page.
+# Leave unset to use Keycloak's built-in password reset flow.
+# Example: FORGOT_PASSWORD_URL=https://portal.example.com/reset-password
+ENV FORGOT_PASSWORD_URL=
+
 # Start Keycloak in development mode by default (matches prior development Dockerfiles).
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--verbose"]
+ENTRYPOINT ["/opt/keycloak/docker-entrypoint.sh", "start-dev", "--verbose"]

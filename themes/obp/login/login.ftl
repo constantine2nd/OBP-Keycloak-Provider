@@ -65,7 +65,7 @@
                         </div>
                         <div class="obp-form-links">
                             <#if realm.resetPasswordAllowed>
-                                <a tabindex="5" href="${url.loginResetCredentialsUrl}" class="obp-link">${msg("doForgotPassword")}</a>
+                                <a tabindex="5" href="${(properties.forgotPasswordUrl!'')?has_content?then(properties.forgotPasswordUrl, url.loginResetCredentialsUrl)}" class="obp-link">${msg("doForgotPassword")}</a>
                             </#if>
                         </div>
                     </div>
