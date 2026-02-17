@@ -71,11 +71,11 @@ The script follows an 8-step pipeline:
 ### [7/8] Container Start
 - Creates new container with fresh configuration
 - Uses database URLs from `.env` configuration
-- Maps standard ports (8000 HTTP, 8443 HTTPS)
+- Maps standard ports (7787 HTTP, 8443 HTTPS, 9000 management)
 
 ### [8/8] Health Check
 - Waits up to 2 minutes for service readiness
-- Tests admin console accessibility
+- Uses Keycloak's `/health/ready` endpoint on management port (9000)
 - Provides clear success/failure indication
 
 ## Theme Validation (--themed flag)
@@ -133,8 +133,9 @@ KC_METRICS_ENABLED=true
 KC_FEATURES=token-exchange
 
 # Local Development Ports
-KEYCLOAK_HTTP_PORT=8000
+KEYCLOAK_HTTP_PORT=7787
 KEYCLOAK_HTTPS_PORT=8443
+KEYCLOAK_MGMT_PORT=9000
 ```
 
 ## Security Requirements
@@ -213,7 +214,7 @@ docker system prune -f
 #### Container Start Issues
 ```bash
 # Check port conflicts
-netstat -tulpn | grep -E ':(8000|8443)'
+netstat -tulpn | grep -E ':(7787|8443|9000)'
 
 # Review container logs
 docker logs obp-keycloak-local
@@ -247,7 +248,7 @@ OBP_AUTHUSER_PROVIDER=your_provider_name
 After successful deployment:
 
 ### Service URLs
-- **HTTP**: http://localhost:8000
+- **HTTP**: http://localhost:7787
 - **HTTPS**: https://localhost:8443
 - **Admin Console**: https://localhost:8443/admin
 

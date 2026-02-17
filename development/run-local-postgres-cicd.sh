@@ -223,8 +223,67 @@ echo -e "${GREEN}✓ Environment validated (including mandatory security variabl
 # Step 2: Database connectivity test
 echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"
 
+# Extract host and port from JDBC URLs for connectivity checks
+parse_jdbc_url() {
+    local url="$1"
+    # Extract host:port from jdbc:postgresql://host:port/db or jdbc:sqlserver://host:port;...
+    echo "$url" | sed -n 's|.*://\([^/;]*\).*|\1|p'
+}
 
+test_db_connection() {
+    local label="$1"
+    local jdbc_url="$2"
+    local host_port
+    host_port=$(parse_jdbc_url "$jdbc_url")
+    local host="${host_port%%:*}"
+    local port="${host_port##*:}"
 
+    # Default port if not specified
+    if [ "$host" = "$port" ]; then
+        port=5432
+    fi
+
+    # host.docker.internal is a Docker-only alias; resolve to localhost for host-side checks
+    local test_host="$host"
+    if [ "$host" = "host.docker.internal" ]; then
+        test_host="localhost"
+    fi
+
+    echo -n "  Testing $label ($host:$port)... "
+
+    if command -v pg_isready &> /dev/null; then
+        if pg_isready -h "$test_host" -p "$port" -t 5 > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ reachable${NC}"
+            return 0
+        fi
+    elif command -v nc &> /dev/null; then
+        if nc -z -w 5 "$test_host" "$port" 2>/dev/null; then
+            echo -e "${GREEN}✓ reachable${NC}"
+            return 0
+        fi
+    else
+        # Last resort: bash /dev/tcp
+        if (echo > /dev/tcp/"$test_host"/"$port") 2>/dev/null; then
+            echo -e "${GREEN}✓ reachable${NC}"
+            return 0
+        fi
+    fi
+
+    echo -e "${RED}✗ unreachable${NC}"
+    return 1
+}
+
+db_ok=true
+test_db_connection "Keycloak DB" "$KC_DB_URL" || db_ok=false
+test_db_connection "User Storage DB" "$DB_URL" || db_ok=false
+
+if [ "$db_ok" = false ]; then
+    echo -e "${RED}✗ Database connectivity check failed${NC}"
+    echo "Ensure PostgreSQL is running and the JDBC URLs in .env are correct."
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Database connectivity verified${NC}"
 
 
 # Step 3: Clean build
@@ -234,6 +293,17 @@ mvn clean package -DskipTests -q
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ Maven build failed${NC}"
+    exit 1
+fi
+
+# Copy JDBC driver JARs into target/dependency/ so the Dockerfile can COPY them
+mvn dependency:copy-dependencies \
+    -DoutputDirectory=target/dependency \
+    -DincludeArtifactIds=postgresql,mssql-jdbc \
+    -DskipTests -q
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Failed to copy JDBC driver dependencies${NC}"
     exit 1
 fi
 
@@ -272,7 +342,8 @@ echo "  Dockerfile: $DOCKERFILE_PATH"
 echo "  Image tag: $IMAGE_TAG"
 echo "  Type: $DEPLOYMENT_TYPE"
 
-# Force rebuild with cache invalidation
+# Force rebuild with cache invalidation; capture output for diagnostics
+DOCKER_BUILD_LOG=$(mktemp)
 docker build \
     --no-cache \
     --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
@@ -280,10 +351,16 @@ docker build \
     $THEMED_BUILD_ARG \
     -t "$IMAGE_TAG" \
     -f "$DOCKERFILE_PATH" \
-    . > /dev/null 2>&1
+    . > "$DOCKER_BUILD_LOG" 2>&1
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ Docker image build failed${NC}"
+    echo ""
+    echo -e "${YELLOW}--- Docker build output ---${NC}"
+    cat "$DOCKER_BUILD_LOG"
+    echo -e "${YELLOW}--- End of build output ---${NC}"
+    rm -f "$DOCKER_BUILD_LOG"
+    echo ""
     echo "Check the Dockerfile: $DOCKERFILE_PATH"
     if [ "$DEPLOYMENT_TYPE" = "themed" ]; then
         echo ""
@@ -301,6 +378,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+rm -f "$DOCKER_BUILD_LOG"
 echo -e "${GREEN}✓ Docker image built${NC}"
 
 # Step 7: Start new container
@@ -329,6 +407,7 @@ CONTAINER_ENV_VARS=(
     "-e" "KC_HEALTH_ENABLED=${KC_HEALTH_ENABLED:-true}"
     "-e" "KC_METRICS_ENABLED=${KC_METRICS_ENABLED:-true}"
     "-e" "KC_FEATURES=${KC_FEATURES:-token-exchange}"
+    "-e" "FORGOT_PASSWORD_URL=${FORGOT_PASSWORD_URL:-}"
 )
 
 # Start container
@@ -336,6 +415,7 @@ docker run -d \
     --name "$CONTAINER_NAME" \
     -p "${KEYCLOAK_HTTP_PORT:-7787}:8080" \
     -p "${KEYCLOAK_HTTPS_PORT:-8443}:8443" \
+    -p "${KEYCLOAK_MGMT_PORT:-9000}:9000" \
     --add-host=host.docker.internal:host-gateway \
     "${CONTAINER_ENV_VARS[@]}" \
     "$IMAGE_TAG" > /dev/null 2>&1
@@ -366,7 +446,7 @@ WAIT_COUNT=0
 MAX_WAIT=120
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
-    if curl -s -f -m 5 "http://$KEYCLOAK_HOST:${KEYCLOAK_HTTP_PORT:-7787}/admin/" > /dev/null 2>&1; then
+    if curl -sk -f -m 5 "https://$KEYCLOAK_HOST:${KEYCLOAK_MGMT_PORT:-9000}/health/ready" > /dev/null 2>&1; then
         READY=true
         echo -e "${GREEN}✓ Service is ready${NC}"
 

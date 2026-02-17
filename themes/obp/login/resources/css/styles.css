@@ -608,3 +608,14 @@ body {
 .obp-text-right {
     text-align: right;
 }
+
+.obp-provider-info {
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--obp-surface-100);
+    margin-bottom: 0.5rem;
+}
+
+.obp-provider-label {
+    font-weight: 600;
+}

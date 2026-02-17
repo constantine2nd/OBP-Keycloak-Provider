@@ -65,10 +65,16 @@
                         </div>
                         <div class="obp-form-links">
                             <#if realm.resetPasswordAllowed>
-                                <a tabindex="5" href="${url.loginResetCredentialsUrl}" class="obp-link">${msg("doForgotPassword")}</a>
+                                <a tabindex="5" href="${(properties.forgotPasswordUrl!'')?has_content?then(properties.forgotPasswordUrl, url.loginResetCredentialsUrl)}" class="obp-link">${msg("doForgotPassword")}</a>
                             </#if>
                         </div>
                     </div>
+
+                    <#if (properties.obpAuthUserProvider!'')?has_content>
+                        <div class="obp-provider-info">
+                            <span class="obp-provider-label">Provider:</span> ${properties.obpAuthUserProvider}
+                        </div>
+                    </#if>
 
                     <div class="obp-form-buttons">
                         <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
