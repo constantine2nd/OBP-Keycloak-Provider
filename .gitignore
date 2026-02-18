@@ -80,8 +80,10 @@ Temporary Items
 
 # Maven artifacts (already covered above)
 
-# Environment variables file
+# Environment variable files — ignore all local .env variants
 .env
+.env.*
+!.env.docker.example
 
 # Persistence configuration file (generated from template)
 src/main/resources/META-INF/persistence.xml
