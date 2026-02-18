@@ -9,35 +9,21 @@
   <version>1.0</version>
 
   <name>obp-keycloak-provider</name>
-  <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-      <version.keycloak>26.5.1</version.keycloak>
-      <version.compiler.maven.plugin>3.5.1</version.compiler.maven.plugin>
+    <version.keycloak>26.5.1</version.keycloak>
+    <version.compiler.maven.plugin>3.5.1</version.compiler.maven.plugin>
     <version.jakarta.persistence>3.1.0</version.jakarta.persistence>
-    <arquillian-graphene.version>2.5.4</arquillian-graphene.version>
     <version.surefire.plugin>3.0.0</version.surefire.plugin>
     <maven.compiler.plugin>3.10.1</maven.compiler.plugin>
-    <maven.shade.plugin>3.3.0</maven.shade.plugin>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.6.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.microsoft.sqlserver</groupId>
-      <artifactId>mssql-jdbc</artifactId>
-      <version>12.4.2.jre11</version>
-    </dependency>
-
+    <!-- Keycloak SPI (provided at runtime by Keycloak) -->
     <dependency>
       <groupId>org.keycloak</groupId>
       <artifactId>keycloak-core</artifactId>
@@ -74,44 +60,45 @@
       <version>3.5.0.Final</version>
       <scope>provided</scope>
     </dependency>
-      <dependency>
-          <groupId>jakarta.persistence</groupId>
-          <artifactId>jakarta.persistence-api</artifactId>
-          <version>${version.jakarta.persistence}</version>
-          <scope>provided</scope>
-      </dependency>
-      <!-- https://mvnrepository.com/artifact/org.mindrot/jbcrypt -->
-      <dependency>
-          <groupId>org.mindrot</groupId>
-          <artifactId>jbcrypt</artifactId>
-          <version>0.4</version>
-      </dependency>
+    <dependency>
+      <groupId>jakarta.persistence</groupId>
+      <artifactId>jakarta.persistence-api</artifactId>
+      <version>${version.jakarta.persistence}</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Jackson — provided by Keycloak at runtime, declared here for compilation -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.15.2</version>
+      <scope>provided</scope>
+    </dependency>
 
-      <!-- Test Dependencies -->
-      <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-api</artifactId>
-          <version>5.9.2</version>
-          <scope>test</scope>
-      </dependency>
-      <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-engine</artifactId>
-          <version>5.9.2</version>
-          <scope>test</scope>
-      </dependency>
-      <dependency>
-          <groupId>org.mockito</groupId>
-          <artifactId>mockito-core</artifactId>
-          <version>5.1.1</version>
-          <scope>test</scope>
-      </dependency>
-      <dependency>
-          <groupId>org.mockito</groupId>
-          <artifactId>mockito-junit-jupiter</artifactId>
-          <version>5.1.1</version>
-          <scope>test</scope>
-      </dependency>
+    <!-- Test Dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>5.9.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>5.9.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>5.1.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>5.1.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -130,41 +117,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven.compiler.plugin}</version>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>${maven.shade.plugin}</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <artifactSet>
-                <includes>
-                  <include>com.maxmind.db:*</include>
-                  <include>com.maxmind.geoip2:*</include>
-                  <include>org.mindrot:jbcrypt</include>
-                  <include>com.microsoft.sqlserver:mssql-jdbc</include>
-                  <include>org.postgresql:postgresql</include>
-                </includes>
-              </artifactSet>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                    <exclude>META-INF/*.MF</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+      <!-- maven-shade-plugin removed: all runtime dependencies are now provided
+           by Keycloak. The standard maven-jar-plugin produces the correct JAR. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>

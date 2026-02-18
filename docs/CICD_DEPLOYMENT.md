@@ -6,7 +6,7 @@ This guide covers the CI/CD-style deployment script that provides predictable, a
 
 The deployment script (`development/run-local-postgres-cicd.sh`) is designed for local development environments where you want:
 
-- **Always build**: No conditional logic - always rebuild everything
+- **Always build**: No conditional logic — always rebuild everything
 - **Always replace**: Stop and remove existing containers every time
 - **Cache invalidation**: Docker layers rebuild when JAR file changes
 - **Fast feedback**: Clear success/failure indicators
@@ -26,12 +26,10 @@ The deployment script (`development/run-local-postgres-cicd.sh`) is designed for
 
 ## Prerequisites
 
-1. **PostgreSQL** accessible from Docker containers
-2. **Databases configured**:
-   - Keycloak database (as specified in `KC_DB_URL`)
-   - User storage database (as specified in `DB_URL`)
-   - User `oidc_user` with restricted view-only access to `v_oidc_users`
-3. **Environment file**: `.env` with proper configuration
+1. **OBP API** running and reachable from the host
+2. **OBP admin account** with roles: `CanGetAnyUser`, `CanVerifyUserCredentials`, `CanGetOidcClient`
+3. **Keycloak PostgreSQL database** accessible from Docker containers
+4. **Environment file**: `.env` with proper configuration
 
 ## Script Pipeline
 
@@ -41,25 +39,23 @@ The script follows an 8-step pipeline:
 - Checks Docker installation and daemon
 - Validates Maven installation
 - Loads and validates `.env` configuration
-- Verifies all required environment variables (including DB_AUTHUSER_TABLE)
-- **Security validation**: Ensures `DB_AUTHUSER_TABLE=v_oidc_users`
+- Verifies all required environment variables
 - **Themed deployments**: Validates theme files and structure
 
-### [2/8] Database Connectivity
-- Tests connection to Keycloak database
-- Tests connection to User Storage database
-- Fails fast if databases are unreachable
+### [2/8] OBP API Connectivity
+- Tests HTTP reachability of `OBP_API_URL`
+- Logs a warning (non-fatal) if OBP API is not reachable at deploy time
 
 ### [3/8] Maven Build
 - Runs `mvn clean package -DskipTests`
-- Generates JAR checksum for cache invalidation
+- Generates JAR checksum for Docker cache invalidation
 - Creates build timestamp
 
-### [4/8] Container Cleanup - Stop
+### [4/8] Container Cleanup — Stop
 - Stops existing container if running
 - Non-blocking if container doesn't exist
 
-### [5/8] Container Cleanup - Remove
+### [5/8] Container Cleanup — Remove
 - Removes existing container if exists
 - Ensures clean slate for new deployment
 
@@ -70,7 +66,8 @@ The script follows an 8-step pipeline:
 
 ### [7/8] Container Start
 - Creates new container with fresh configuration
-- Uses database URLs from `.env` configuration
+- Translates `localhost`/`127.0.0.1` in `OBP_API_URL` to `host.docker.internal`
+  so the container can reach OBP running on the host
 - Maps standard ports (7787 HTTP, 8443 HTTPS, 9000 management)
 
 ### [8/8] Health Check
@@ -84,7 +81,6 @@ The script follows an 8-step pipeline:
 - ✅ `themes/obp/theme.properties` with valid content
 - ✅ `themes/obp/login/` directory structure
 - ✅ Required templates: `login.ftl`, `template.ftl`
-- ✅ `.github/Dockerfile_themed` exists
 - ✅ Optional: CSS files, images, message files
 
 ## Environment Configuration
@@ -95,77 +91,37 @@ The script follows an 8-step pipeline:
 KEYCLOAK_ADMIN=admin
 KEYCLOAK_ADMIN_PASSWORD=admin
 
-# Keycloak Database
+# Keycloak Internal Database
 KC_DB_URL=jdbc:postgresql://host.docker.internal:5432/keycloakdb
 KC_DB_USERNAME=keycloak
-KC_DB_PASSWORD=f
+KC_DB_PASSWORD=your_keycloak_db_password
 
-# User Storage Database (secure view-based access)
-DB_URL=jdbc:postgresql://host.docker.internal:5432/obp_mapped
-DB_USER=oidc_user
-DB_PASSWORD=your_secure_password
-DB_DRIVER=org.postgresql.Driver
-DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-DB_AUTHUSER_TABLE=v_oidc_users
+# OBP API — authentication delegates to these endpoints
+OBP_API_URL=http://localhost:8080
+OBP_API_USERNAME=obp_admin_user
+OBP_API_PASSWORD=obp_admin_password
+OBP_API_CONSUMER_KEY=your_consumer_key
 
-# MANDATORY: Provider filtering for user authentication (REQUIRED for security)
-OBP_AUTHUSER_PROVIDER=your_provider_name
-
-# Configuration
-HIBERNATE_DDL_AUTO=validate
-KC_HTTP_ENABLED=true
-KC_HOSTNAME_STRICT=false
+# MANDATORY: only users whose OBP provider field matches this value are authenticated
+OBP_AUTHUSER_PROVIDER=http://127.0.0.1:8080
 ```
 
 ### Optional .env Variables (with defaults)
 ```bash
-# Database Configuration (has defaults if not specified)
-DB_DRIVER=org.postgresql.Driver
-DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-
-# Hibernate Settings
-HIBERNATE_SHOW_SQL=true
-HIBERNATE_FORMAT_SQL=true
-
 # Keycloak Runtime
+KC_HTTP_ENABLED=true
+KC_HOSTNAME_STRICT=false
 KC_HEALTH_ENABLED=true
 KC_METRICS_ENABLED=true
 KC_FEATURES=token-exchange
+
+# Custom forgot-password link (leave empty for Keycloak's built-in flow)
+FORGOT_PASSWORD_URL=
 
 # Local Development Ports
 KEYCLOAK_HTTP_PORT=7787
 KEYCLOAK_HTTPS_PORT=8443
 KEYCLOAK_MGMT_PORT=9000
-```
-
-## Security Requirements
-
-The script enforces secure database access:
-
-### Database User Requirements
-- **User**: `oidc_user` (restricted permissions)
-- **Access**: SELECT-only on `v_oidc_users` view
-- **No access**: Direct `authuser` table access blocked
-
-### Required Database Setup
-```sql
--- Create restricted user
-CREATE USER oidc_user WITH PASSWORD 'your_secure_password';
-
--- Create secure view
-CREATE OR REPLACE VIEW v_oidc_users AS
-SELECT id, username, email, firstname, lastname, provider
-FROM authuser
-WHERE provider = 'your_provider_name';
-
--- Grant minimal permissions
-GRANT SELECT ON v_oidc_users TO oidc_user;
-GRANT USAGE ON SCHEMA public TO oidc_user;
-
--- Ensure no other permissions
-REVOKE ALL ON authuser FROM oidc_user;
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM oidc_user;
-GRANT SELECT ON v_oidc_users TO oidc_user;
 ```
 
 ## Monitoring and Troubleshooting
@@ -190,17 +146,18 @@ docker stop obp-keycloak-local && docker rm obp-keycloak-local
 
 ### Common Issues
 
-#### Database Connection Failures
-```bash
-# Check PostgreSQL status
-sudo systemctl status postgresql
+#### OBP API unreachable from container
+Inside Docker, `127.0.0.1` resolves to the container itself, not the host. The script
+automatically rewrites `localhost` / `127.0.0.1` to `host.docker.internal`. If OBP runs
+on a different host, set `OBP_API_URL` to its actual hostname or IP.
 
-# Test manual connection using URLs from your .env
-# Extract connection details from KC_DB_URL and DB_URL
-# Example for default configuration:
-PGPASSWORD=f psql -h host.docker.internal -p 5432 -U keycloak -d keycloakdb
-PGPASSWORD=your_secure_password psql -h host.docker.internal -p 5432 -U oidc_user -d obp_mapped
-```
+#### Token fetch returns 401
+Check `OBP_API_USERNAME`, `OBP_API_PASSWORD`, and `OBP_API_CONSUMER_KEY`. The consumer
+key must be registered in OBP for Direct Login.
+
+#### User not found at login
+Confirm `OBP_AUTHUSER_PROVIDER` exactly matches the `provider` field stored in OBP for
+that user (e.g. `http://127.0.0.1:8080`).
 
 #### Docker Build Failures
 ```bash
@@ -225,22 +182,8 @@ docker logs obp-keycloak-local
 # Check theme files
 find themes/obp -type f
 
-# Verify theme.properties
-cat themes/obp/theme.properties | grep -E "(parent=|styles=)"
-
 # Test with standard deployment first
 ./development/run-local-postgres-cicd.sh
-```
-
-#### Security Validation Errors
-```bash
-# If DB_AUTHUSER_TABLE validation fails:
-# Ensure in .env file:
-DB_AUTHUSER_TABLE=v_oidc_users
-
-# If OBP_AUTHUSER_PROVIDER validation fails:
-# Ensure in .env file:
-OBP_AUTHUSER_PROVIDER=your_provider_name
 ```
 
 ## Access Information
@@ -270,7 +213,6 @@ After successful deployment:
 3. **Monitor logs**: Check `docker logs obp-keycloak-local` for issues
 4. **Clean environment**: Script ensures clean state on each run
 5. **Theme testing**: Test standard deployment before themed if issues occur
-6. **Database security**: Always use `oidc_user` with view-only permissions
 
 ## Support
 
@@ -278,8 +220,7 @@ For issues with the deployment script:
 
 1. Check the troubleshooting section above
 2. Review container logs: `docker logs obp-keycloak-local`
-3. Verify database connectivity manually
-4. Ensure `.env` file contains all required variables
-5. Check Docker system resources and cleanup if needed
+3. Ensure `.env` file contains all required variables
+4. Check Docker system resources and cleanup if needed
 
 The script is designed to fail fast and provide clear error messages to facilitate quick problem resolution in local development environments.

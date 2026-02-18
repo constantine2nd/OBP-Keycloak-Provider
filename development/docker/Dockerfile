@@ -7,9 +7,9 @@
 #      docker build --build-arg KEYCLOAK_VERSION=26.5.1 --build-arg THEMED=false -t obp-keycloak:standard .
 #
 # Notes:
-#  - The provider JAR and JDBC driver JARs must be pre-built on the host before
-#    running docker build (see run-local-postgres-cicd.sh). This eliminates the
-#    previous duplicate Maven build inside Docker.
+#  - The provider JAR must be pre-built on the host before running docker build
+#    (see run-local-postgres-cicd.sh). No JDBC drivers are needed — authentication
+#    goes through the OBP REST API, not direct database access.
 #  - Keycloak version is parameterized with a build arg.
 #  - THEMED controls whether theme files are retained in the final image. The Docker build
 #    context must contain the `themes/` directories (the repository includes them).
@@ -48,14 +48,6 @@ RUN keytool -genkeypair -storepass password -storetype PKCS12 \
 RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
     echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
 
-# Add JDBC drivers for Postgres and MSSQL to providers dir (pre-built on host via dependency:copy-dependencies)
-COPY --chown=keycloak:keycloak target/dependency/postgresql-42.6.0.jar /opt/keycloak/providers/postgresql.jar
-COPY --chown=keycloak:keycloak target/dependency/mssql-jdbc-12.4.2.jre11.jar /opt/keycloak/providers/mssql.jar
-# Also place stable-named copies into the Keycloak lib directory so the JDBC drivers are
-# guaranteed to be on the application classpath (prevents ClassNotFound for driver classes)
-COPY --chown=keycloak:keycloak target/dependency/postgresql-42.6.0.jar /opt/keycloak/lib/postgresql-42.6.0.jar
-COPY --chown=keycloak:keycloak target/dependency/mssql-jdbc-12.4.2.jre11.jar /opt/keycloak/lib/mssql-jdbc-12.4.2.jre11.jar
-
 # Copy the compiled provider jar from the host build
 COPY --chown=keycloak:keycloak target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
@@ -93,23 +85,17 @@ RUN chmod 755 /opt/keycloak/docker-entrypoint.sh && chown keycloak:keycloak /opt
 # Drop privileges for runtime
 USER keycloak
 
-# Default Keycloak DB and User Storage DB environment variables (can be overridden at runtime)
+# Default Keycloak internal DB configuration (can be overridden at runtime)
 ENV KC_DB=postgres
 ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
 ENV KC_DB_USERNAME=keycloak
 ENV KC_DB_PASSWORD=keycloak_changeme
 
-ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
-ENV DB_USER=oidc_user
-ENV DB_PASSWORD=your_secure_password
-ENV DB_DRIVER=org.postgresql.Driver
-ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-ENV DB_AUTHUSER_TABLE=v_oidc_users
-
-# Default Hibernate behavior
-ENV HIBERNATE_DDL_AUTO=validate
-ENV HIBERNATE_SHOW_SQL=true
-ENV HIBERNATE_FORMAT_SQL=true
+# OBP API configuration — override all of these at runtime
+ENV OBP_API_URL=http://localhost:8080
+ENV OBP_API_USERNAME=
+ENV OBP_API_PASSWORD=
+ENV OBP_API_CONSUMER_KEY=
 
 # Default Keycloak runtime configuration (development-friendly)
 ENV KC_HOSTNAME_STRICT=false

@@ -15,23 +15,21 @@ This document describes the end-to-end process for building and running a locall
 |  .env             |        | +-------------------------+ |        | keycloakdb          |
 |  themes/obp/      | -----> | | Keycloak 26.5.1         | | <----> | (realm data,        |
 |  themes/obp-dark/ |  build | |   + obp-keycloak-       | |  JDBC  |  clients, tokens)   |
-|  src/ + pom.xml   |        | |     provider.jar        | |        |                     |
-|                   |        | |   + obp theme           | |        | obp_mapped          |
-|                   |        | |   + obp-dark theme      | |        | (v_oidc_users view) |
-|                   |        | |   + PostgreSQL driver   | |        +---------------------+
-|                   |        | |   + MSSQL driver        | |
-|                   |        | +-------------------------+ |
-|                   |        |   Ports: 7787 -> 8080       |
-|                   |        |          8443 -> 8443       |
-+-------------------+        +-----------------------------+
+|  src/ + pom.xml   |        | |     provider.jar        | |        +---------------------+
+|                   |        | |   + obp theme           | |
+|                   |        | |   + obp-dark theme      | |        +---------------------+
+|                   |        | +-------------------------+ |        |   OBP API (host)    |
+|                   |        |   Ports: 7787 -> 8080       |  HTTP  |                     |
+|                   |        |          8443 -> 8443       | <----> | /obp/v6.0.0/...     |
++-------------------+        +-----------------------------+        +---------------------+
 ```
 
-**Two databases are used:**
+**Keycloak uses two backends:**
 
-| Database     | Purpose                                    | Accessed by               |
-|--------------|--------------------------------------------|---------------------------|
-| `keycloakdb` | Keycloak internal data (realms, clients)   | Keycloak core             |
-| `obp_mapped` | External user data via `v_oidc_users` view | OBP User Storage provider |
+| Backend      | Purpose                                         | Protocol |
+|--------------|-------------------------------------------------|----------|
+| `keycloakdb` | Keycloak internal data (realms, clients, tokens) | JDBC     |
+| OBP API      | User lookup and credential verification          | HTTP     |
 
 ---
 
@@ -79,9 +77,8 @@ The deployment script executes an 8-step pipeline:
 - Checks that `docker`, `mvn` are installed and Docker daemon is running.
 - Sources `.env` from the project root.
 - Validates the following **required** environment variables:
-  - `KC_DB_URL`, `KC_DB_USERNAME`, `KC_DB_PASSWORD` (Keycloak DB)
-  - `DB_URL`, `DB_USER`, `DB_PASSWORD` (User Storage DB)
-  - `DB_AUTHUSER_TABLE` (must be `v_oidc_users`)
+  - `KC_DB_URL`, `KC_DB_USERNAME`, `KC_DB_PASSWORD` (Keycloak internal DB)
+  - `OBP_API_URL`, `OBP_API_USERNAME`, `OBP_API_PASSWORD`, `OBP_API_CONSUMER_KEY` (OBP API)
   - `OBP_AUTHUSER_PROVIDER` (mandatory provider filter)
 - **Themed-specific**: runs `validate_theme_files()` which verifies:
   - `themes/obp/` directory exists
@@ -89,10 +86,10 @@ The deployment script executes an 8-step pipeline:
   - `themes/obp/login/` exists with `login.ftl` and `template.ftl`
   - Optionally checks for CSS, images, and i18n message files
 
-### Step 2: Test Database Connectivity
+### Step 2: Test OBP API Connectivity
 
-- Placeholder for database connectivity verification.
-- Ensures the host PostgreSQL is reachable before investing time in building.
+- Tests HTTP reachability of `OBP_API_URL`.
+- Non-fatal warning if OBP is not reachable at deploy time (provider will retry at runtime).
 
 ### Step 3: Build Maven Project
 
@@ -125,28 +122,16 @@ docker build --no-cache \
 #### Dockerfile Multi-Stage Build
 
 ```
-  Stage 1: maven (maven:3-eclipse-temurin-17)
-  +--------------------------------------------------+
-  |  COPY . /app                                     |
-  |  mvn clean install -DskipTests=true              |
-  |  -> /app/target/obp-keycloak-provider.jar        |
-  |  -> /tmp/postgresql.jar  (from Maven cache)      |
-  |  -> /tmp/mssql.jar       (from Maven cache)      |
-  +--------------------------------------------------+
-                        |
-                        v
-  Stage 2: builder (quay.io/keycloak/keycloak:26.5.1)
+  Stage 1: builder (quay.io/keycloak/keycloak:26.5.1)
   +--------------------------------------------------+
   |  Generate self-signed SSL keystore               |
-  |  COPY JDBC drivers -> /opt/keycloak/providers/   |
-  |                    -> /opt/keycloak/lib/         |
   |  COPY obp-keycloak-provider.jar -> providers/    |
   |  /opt/keycloak/bin/kc.sh build                   |
   |  (pre-compiles extensions + optimizes)           |
   +--------------------------------------------------+
                         |
                         v
-  Stage 3: final (quay.io/keycloak/keycloak:26.5.1)
+  Stage 2: final (quay.io/keycloak/keycloak:26.5.1)
   +--------------------------------------------------+
   |  COPY --from=builder /opt/keycloak/              |
   |  COPY themes/obp/      -> themes/obp/            |
@@ -162,12 +147,15 @@ docker build --no-cache \
 
 Key detail: themes are always COPYed into the image, but when `THEMED=false` a final `RUN` layer removes them. When `THEMED=true`, both `obp` and `obp-dark` themes are preserved.
 
+No JDBC drivers are included — user authentication goes through the OBP REST API, not direct database access.
+
 ### Step 7: Start New Container
 
 The container is launched with:
 - Port mappings: `${KEYCLOAK_HTTP_PORT:-7787}:8080`, `${KEYCLOAK_HTTPS_PORT:-8443}:8443`, and `${KEYCLOAK_MGMT_PORT:-9000}:9000`
-- `--add-host=host.docker.internal:host-gateway` (allows container to reach host PostgreSQL)
-- All database, Hibernate, and Keycloak configuration passed as `-e` environment variables
+- `--add-host=host.docker.internal:host-gateway` (allows container to reach host services)
+- `localhost`/`127.0.0.1` in `OBP_API_URL` is rewritten to `host.docker.internal` so the container can reach OBP running on the host
+- All OBP API and Keycloak configuration passed as `-e` environment variables
 
 ### Step 8: Health Check + Theme Verification
 
@@ -248,26 +236,22 @@ docker exec obp-keycloak-local \
 
 ## Environment Variable Reference
 
-| Variable                | Required | Default           | Purpose                        |
-|-------------------------|----------|-------------------|--------------------------------|
-| `KC_DB_URL`             | Yes      | -                 | Keycloak DB JDBC URL           |
-| `KC_DB_USERNAME`        | Yes      | -                 | Keycloak DB user               |
-| `KC_DB_PASSWORD`        | Yes      | -                 | Keycloak DB password           |
-| `DB_URL`                | Yes      | -                 | User Storage DB JDBC URL       |
-| `DB_USER`               | Yes      | -                 | User Storage DB user           |
-| `DB_PASSWORD`           | Yes      | -                 | User Storage DB password       |
-| `DB_AUTHUSER_TABLE`     | Yes      | `v_oidc_users`    | Secure view name               |
-| `OBP_AUTHUSER_PROVIDER` | Yes      | -                 | Provider filter for auth       |
-| `KEYCLOAK_ADMIN`        | No       | `admin`           | Admin console username         |
-| `KEYCLOAK_ADMIN_PASSWORD| No       | `admin`           | Admin console password         |
-| `KEYCLOAK_HTTP_PORT`    | No       | `7787`            | Host HTTP port                 |
-| `KEYCLOAK_HTTPS_PORT`   | No       | `8443`            | Host HTTPS port                |
-| `KEYCLOAK_MGMT_PORT`    | No       | `9000`            | Host management/health port    |
-| `DB_DRIVER`             | No       | `org.postgresql.Driver` | JDBC driver class        |
-| `DB_DIALECT`            | No       | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate dialect |
-| `HIBERNATE_DDL_AUTO`    | No       | `validate`        | Schema management strategy     |
-| `HIBERNATE_SHOW_SQL`    | No       | `true`            | Log SQL queries                |
-| `HIBERNATE_FORMAT_SQL`  | No       | `true`            | Format logged SQL              |
+| Variable                 | Required | Default              | Purpose                                      |
+|--------------------------|----------|----------------------|----------------------------------------------|
+| `KC_DB_URL`              | Yes      | -                    | Keycloak internal DB JDBC URL                |
+| `KC_DB_USERNAME`         | Yes      | -                    | Keycloak DB user                             |
+| `KC_DB_PASSWORD`         | Yes      | -                    | Keycloak DB password                         |
+| `OBP_API_URL`            | Yes      | -                    | Base URL of OBP API instance                 |
+| `OBP_API_USERNAME`       | Yes      | -                    | OBP admin user (requires CanGetAnyUser etc.) |
+| `OBP_API_PASSWORD`       | Yes      | -                    | OBP admin password                           |
+| `OBP_API_CONSUMER_KEY`   | Yes      | -                    | Consumer key for OBP Direct Login            |
+| `OBP_AUTHUSER_PROVIDER`  | Yes      | -                    | Provider filter — mandatory for security     |
+| `KEYCLOAK_ADMIN`         | No       | `admin`              | Admin console username                       |
+| `KEYCLOAK_ADMIN_PASSWORD`| No       | `admin`              | Admin console password                       |
+| `KEYCLOAK_HTTP_PORT`     | No       | `7787`               | Host HTTP port                               |
+| `KEYCLOAK_HTTPS_PORT`    | No       | `8443`               | Host HTTPS port                              |
+| `KEYCLOAK_MGMT_PORT`     | No       | `9000`               | Host management/health port                  |
+| `FORGOT_PASSWORD_URL`    | No       | `` (built-in flow)   | Custom forgot-password redirect URL          |
 
 ---
 
@@ -292,7 +276,6 @@ docker exec obp-keycloak-local \
      |                      |-- docker run ---------->|-- start-dev ------------>|                      |
      |                      |                         |                          |--- connect --------->|
      |                      |                         |                          |<-- keycloakdb ready--|
-     |                      |                         |                          |<-- obp_mapped ready--|
      |                      |                         |                          |                      |
      |                      |-- health check -------->|                          |                      |
      |                      |   GET /admin/           |<-- 200 OK -------------- |                      |
@@ -316,4 +299,4 @@ docker exec obp-keycloak-local \
 | Docker build fails on COPY themes | `themes/` not in build context  | Run from project root, not `development/`      |
 | Theme not visible in Admin Console| `THEMED=false` or themes removed| Rebuild with `--themed` flag                   |
 | Theme resources 404               | Theme not activated in realm    | Set login theme to `obp` in Realm Settings     |
-| Container can't reach PostgreSQL  | Network/host resolution issue   | Verify `host.docker.internal` resolves correctly|
+| Container can't reach OBP API     | Network/host resolution issue   | Verify `host.docker.internal` resolves correctly|
