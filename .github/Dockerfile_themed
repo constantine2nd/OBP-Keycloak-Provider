@@ -25,8 +25,33 @@ WORKDIR /app
 COPY . .
 RUN mvn clean package -DskipTests -q
 
-# === Stage 2: Prebuild Keycloak with the provider ===
-FROM quay.io/keycloak/keycloak:latest AS builder
+# Cache invalidation layer - forces rebuild when JAR changes
+RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
+    echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
+
+# Build with Maven resource filtering using build arguments
+RUN mvn clean install -DskipTests=true \
+    -DDB_URL="${DB_URL}" \
+    -DDB_USER="${DB_USER}" \
+    -DDB_PASSWORD="${DB_PASSWORD}" \
+    -DDB_DRIVER="${DB_DRIVER}" \
+    -DDB_DIALECT="${DB_DIALECT}" \
+    -DKC_DB_URL="${KC_DB_URL}" \
+    -DKC_DB_USERNAME="${KC_DB_USERNAME}" \
+    -DKC_DB_PASSWORD="${KC_DB_PASSWORD}" \
+    -DHIBERNATE_DDL_AUTO="${HIBERNATE_DDL_AUTO}" \
+    -DHIBERNATE_SHOW_SQL="${HIBERNATE_SHOW_SQL}" \
+    -DHIBERNATE_FORMAT_SQL="${HIBERNATE_FORMAT_SQL}"
+
+# Use official Keycloak image as a base for building
+FROM quay.io/keycloak/keycloak:26.5.1 as builder
+
+# Build arguments for cache invalidation
+ARG BUILD_TIMESTAMP
+ARG JAR_CHECKSUM
+RUN mvn clean install -DskipTests=true
+
+FROM quay.io/keycloak/keycloak:26.5.1 AS builder
 
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
@@ -48,8 +73,10 @@ COPY --chown=keycloak:keycloak --from=maven /app/target/obp-keycloak-provider.ja
 # Prebuild Keycloak (compile extensions, optimise)
 RUN /opt/keycloak/bin/kc.sh build
 
-# === Stage 3: Final runtime image ===
-FROM quay.io/keycloak/keycloak:latest
+
+# === Final Runtime Image ===
+# Use the same Keycloak base image for the final runtime image
+FROM quay.io/keycloak/keycloak:26.5.1
 
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
