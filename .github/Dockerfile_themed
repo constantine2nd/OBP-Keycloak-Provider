@@ -1,29 +1,29 @@
-# === Build Stage ===
-# Use Maven to build the project
+# CI/CD Production Dockerfile — themed build
+#
+# Builds the provider JAR inside Docker (no pre-built artifacts needed on the host),
+# then packages it with Keycloak and OBP custom themes.
+#
+# Usage (GitHub Actions):
+#   docker build . --file .github/Dockerfile_themed --tag <image>
+#
+# All OBP API and Keycloak database configuration is supplied at container
+# runtime via environment variables — nothing sensitive is baked into the image.
+#
+# Required runtime variables:
+#   OBP_API_URL            — base URL of the OBP API instance
+#   OBP_API_USERNAME       — OBP admin user (needs CanGetAnyUser, CanVerifyUserCredentials)
+#   OBP_API_PASSWORD       — OBP admin password
+#   OBP_API_CONSUMER_KEY   — consumer key registered in OBP for Direct Login
+#   OBP_AUTHUSER_PROVIDER  — provider filter; only users with this provider are authenticated
+#   KC_DB_URL              — Keycloak's internal PostgreSQL JDBC URL
+#   KC_DB_USERNAME         — Keycloak database user
+#   KC_DB_PASSWORD         — Keycloak database password
+
+# === Stage 1: Build the provider JAR with Maven ===
 FROM maven:3-eclipse-temurin-17 AS maven
-
-# Build arguments for cache invalidation
-ARG BUILD_TIMESTAMP
-ARG JAR_CHECKSUM
-
-# Define build arguments for User Storage database environment variables
-ARG DB_URL=jdbc:postgresql://localhost:5432/obp_mapped
-ARG DB_USER=oidc_user
-ARG DB_PASSWORD=your_secure_password
-ARG DB_DRIVER=org.postgresql.Driver
-ARG DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-
-# Define build arguments for Keycloak database environment variables
-ARG KC_DB_URL=jdbc:postgresql://localhost:5433/keycloak
-ARG KC_DB_USERNAME=keycloak
-ARG KC_DB_PASSWORD=keycloak_changeme
-ARG HIBERNATE_DDL_AUTO=validate
-ARG HIBERNATE_SHOW_SQL=true
-ARG HIBERNATE_FORMAT_SQL=true
-
-FROM maven:3-eclipse-temurin-17 AS maven
-COPY . /app
 WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests -q
 
 # Cache invalidation layer - forces rebuild when JAR changes
 RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
@@ -53,35 +53,24 @@ RUN mvn clean install -DskipTests=true
 
 FROM quay.io/keycloak/keycloak:26.5.1 AS builder
 
-# Enable Keycloak health and metrics endpoints
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
 ENV KC_DB=postgres
 
-# Set working directory inside the container
 WORKDIR /opt/keycloak
-
-# Switch to root user to perform privileged operations (e.g., keystore generation)
 USER root
 
-# Generate a self-signed SSL certificate for development/testing purposes
+# Generate a self-signed SSL certificate for HTTPS
 RUN keytool -genkeypair -storepass password -storetype PKCS12 \
     -keyalg RSA -keysize 2048 -dname "CN=server" -alias server \
     -ext "SAN:c=DNS:localhost,IP:127.0.0.1" \
     -keystore conf/server.keystore
 
-# Add the PostgreSQL JDBC driver to the providers directory for database connectivity
-ADD --chown=keycloak:keycloak https://jdbc.postgresql.org/download/postgresql-42.7.8.jar /opt/keycloak/providers/
+# Copy the provider JAR built in the maven stage
+COPY --chown=keycloak:keycloak --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
 
-# Copy build info and cache invalidation layer
-COPY --from=maven /tmp/build-info.txt /tmp/build-info.txt
-
-# Add your custom User Storage Provider (or other extensions) JAR
-# This layer will be invalidated when the JAR changes due to the cache invalidation above
-COPY --from=maven /app/target/obp-keycloak-provider.jar /opt/keycloak/providers/
-
-# Prebuild the Keycloak server (e.g., compile extensions, optimize image)
+# Prebuild Keycloak (compile extensions, optimise)
 RUN /opt/keycloak/bin/kc.sh build
 
 
@@ -89,66 +78,43 @@ RUN /opt/keycloak/bin/kc.sh build
 # Use the same Keycloak base image for the final runtime image
 FROM quay.io/keycloak/keycloak:26.5.1
 
-# Copy the entire prebuilt Keycloak directory (including config, keystore) from the builder stage
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
-# Copy build info for debugging
-COPY --from=builder /tmp/build-info.txt /opt/keycloak/
-
-# Switch to root user to create theme directories and copy theme files
 USER root
 
-# Copy the entire theme directory structure
+# Copy OBP themes
 COPY themes/obp/ /opt/keycloak/themes/obp/
 COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
-
-# Set proper ownership for theme files
 RUN chown -R keycloak:keycloak /opt/keycloak/themes/
 
 # Copy the custom entrypoint wrapper that injects runtime ENV into theme config
 COPY development/docker/docker-entrypoint.sh /opt/keycloak/docker-entrypoint.sh
 RUN chmod 755 /opt/keycloak/docker-entrypoint.sh && chown keycloak:keycloak /opt/keycloak/docker-entrypoint.sh
 
-# Switch back to keycloak user for security
 USER keycloak
 
-# Set default environment variables for Keycloak's internal database
+# Keycloak internal database — override all at runtime
 ENV KC_DB=postgres
 ENV KC_DB_URL=jdbc:postgresql://keycloak-postgres:5432/keycloak
 ENV KC_DB_USERNAME=keycloak
 ENV KC_DB_PASSWORD=keycloak_changeme
 
-# Set default environment variables for User Storage database configuration
-ENV DB_URL=jdbc:postgresql://user-storage-postgres:5432/obp_mapped
-ENV DB_USER=oidc_user
-ENV DB_PASSWORD=your_secure_password
-ENV DB_DRIVER=org.postgresql.Driver
-ENV DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-ENV DB_AUTHUSER_TABLE=v_oidc_users
+# OBP API configuration — override all at runtime
+ENV OBP_API_URL=http://localhost:8080
+ENV OBP_API_USERNAME=
+ENV OBP_API_PASSWORD=
+ENV OBP_API_CONSUMER_KEY=
+ENV OBP_AUTHUSER_PROVIDER=
 
-# Default Hibernate configuration for User Storage
-ENV HIBERNATE_DDL_AUTO=validate
-ENV HIBERNATE_SHOW_SQL=true
-ENV HIBERNATE_FORMAT_SQL=true
-
-# Default Keycloak runtime configuration
+# Keycloak runtime defaults
 ENV KC_HOSTNAME_STRICT=false
 ENV KC_HOSTNAME_STRICT_HTTPS=false
 ENV KC_HTTP_ENABLED=true
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
-ENV HIBERNATE_DDL_AUTO=validate
-ENV HIBERNATE_SHOW_SQL=true
-ENV HIBERNATE_FORMAT_SQL=true
 
-# Custom "Forgot Password?" link URL (overrides Keycloak's default reset credentials page)
-# Set at runtime to redirect users to an external password reset page.
-# Leave unset to use Keycloak's built-in password reset flow.
+# Custom "Forgot Password?" link — leave empty to use Keycloak's built-in flow
 ENV FORGOT_PASSWORD_URL=
 
-# Theme will be automatically available as 'obp' theme in Keycloak admin console
-# No need to set as default - users can select it in Realm Settings > Themes
-
-# Start Keycloak in development mode (enables features like auto-reload, less strict config)
 ENTRYPOINT ["/opt/keycloak/docker-entrypoint.sh", "start-dev", "--verbose"]

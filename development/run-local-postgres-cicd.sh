@@ -4,9 +4,8 @@
 # This script always builds, always replaces containers - designed for automated environments
 #
 # Requirements:
-# - PostgreSQL running (configurable host/port via environment variables)
-# - Keycloak database (configurable name via KC_DB_NAME)
-# - User storage database (configurable name via DB_NAME)
+# - PostgreSQL running for Keycloak's internal database (KC_DB_URL)
+# - OBP API instance reachable at OBP_API_URL
 #
 # Usage: ./development/run-local-postgres-cicd.sh [--themed]
 
@@ -83,26 +82,21 @@ fi
 
 source .env
 
-# Set default values for database connection parameters
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
-KC_DB_NAME="${KC_DB_NAME:-keycloakdb}"
-DB_NAME="${DB_NAME:-obp_mapped}"
-
 # Set default values for Keycloak service connection
 KEYCLOAK_HOST="${KEYCLOAK_HOST:-localhost}"
 
 # Validate required vars
-required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "DB_URL" "DB_USER" "DB_PASSWORD" "DB_AUTHUSER_TABLE" "OBP_AUTHUSER_PROVIDER")
+required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "OBP_API_URL" "OBP_API_USERNAME" "OBP_API_PASSWORD" "OBP_API_CONSUMER_KEY" "OBP_AUTHUSER_PROVIDER")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo -e "${RED}✗ Missing environment variable: $var${NC}"
         if [ "$var" = "OBP_AUTHUSER_PROVIDER" ]; then
             echo -e "${RED}CRITICAL: OBP_AUTHUSER_PROVIDER is MANDATORY for security${NC}"
             echo "Add to .env file: OBP_AUTHUSER_PROVIDER=your_provider_name"
-        elif [ "$var" = "DB_AUTHUSER_TABLE" ]; then
-            echo -e "${RED}CRITICAL: DB_AUTHUSER_TABLE is MANDATORY for security${NC}"
-            echo "Add to .env file: DB_AUTHUSER_TABLE=v_oidc_users"
+        elif [ "$var" = "OBP_API_URL" ]; then
+            echo "Add to .env file: OBP_API_URL=http://localhost:8080"
+        elif [ "$var" = "OBP_API_USERNAME" ] || [ "$var" = "OBP_API_PASSWORD" ] || [ "$var" = "OBP_API_CONSUMER_KEY" ]; then
+            echo "Add to .env file: $var=your_value"
         fi
         exit 1
     fi
@@ -220,13 +214,12 @@ fi
 
 echo -e "${GREEN}✓ Environment validated (including mandatory security variables)${NC}"
 
-# Step 2: Database connectivity test
-echo -e "${CYAN}[2/8] Testing Database Connectivity${NC}"
+# Step 2: Connectivity tests
+echo -e "${CYAN}[2/8] Testing Connectivity${NC}"
 
-# Extract host and port from JDBC URLs for connectivity checks
+# Extract host and port from a JDBC URL
 parse_jdbc_url() {
     local url="$1"
-    # Extract host:port from jdbc:postgresql://host:port/db or jdbc:sqlserver://host:port;...
     echo "$url" | sed -n 's|.*://\([^/;]*\).*|\1|p'
 }
 
@@ -262,7 +255,6 @@ test_db_connection() {
             return 0
         fi
     else
-        # Last resort: bash /dev/tcp
         if (echo > /dev/tcp/"$test_host"/"$port") 2>/dev/null; then
             echo -e "${GREEN}✓ reachable${NC}"
             return 0
@@ -273,17 +265,31 @@ test_db_connection() {
     return 1
 }
 
-db_ok=true
-test_db_connection "Keycloak DB" "$KC_DB_URL" || db_ok=false
-test_db_connection "User Storage DB" "$DB_URL" || db_ok=false
+test_obp_api() {
+    local url="$1"
+    echo -n "  Testing OBP API ($url)... "
+    if command -v curl &> /dev/null; then
+        if curl -s -o /dev/null -m 10 "$url"; then
+            echo -e "${GREEN}✓ reachable${NC}"
+            return 0
+        fi
+    fi
+    echo -e "${RED}✗ unreachable${NC}"
+    return 1
+}
 
-if [ "$db_ok" = false ]; then
-    echo -e "${RED}✗ Database connectivity check failed${NC}"
-    echo "Ensure PostgreSQL is running and the JDBC URLs in .env are correct."
+test_db_connection "Keycloak DB" "$KC_DB_URL" || {
+    echo -e "${RED}✗ Keycloak DB is unreachable — cannot continue${NC}"
+    echo "Ensure PostgreSQL is running and KC_DB_URL in .env is correct."
     exit 1
-fi
+}
 
-echo -e "${GREEN}✓ Database connectivity verified${NC}"
+test_obp_api "$OBP_API_URL" || {
+    echo -e "${YELLOW}⚠ OBP API unreachable at $OBP_API_URL — continuing anyway${NC}"
+    echo "  Keycloak will start but logins will fail until OBP API is reachable."
+}
+
+echo -e "${GREEN}✓ Connectivity check done${NC}"
 
 
 # Step 3: Clean build
@@ -293,17 +299,6 @@ mvn clean package -DskipTests -q
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ Maven build failed${NC}"
-    exit 1
-fi
-
-# Copy JDBC driver JARs into target/dependency/ so the Dockerfile can COPY them
-mvn dependency:copy-dependencies \
-    -DoutputDirectory=target/dependency \
-    -DincludeArtifactIds=postgresql,mssql-jdbc \
-    -DskipTests -q
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Failed to copy JDBC driver dependencies${NC}"
     exit 1
 fi
 
@@ -384,6 +379,17 @@ echo -e "${GREEN}✓ Docker image built${NC}"
 # Step 7: Start new container
 echo -e "${CYAN}[7/8] Starting New Container${NC}"
 
+# Translate localhost/127.0.0.1 in OBP_API_URL to host.docker.internal so the
+# provider inside the container can reach OBP running on the host.
+# (Inside Docker, 127.0.0.1 resolves to the container itself, not the host.)
+CONTAINER_OBP_API_URL="${OBP_API_URL//127.0.0.1/host.docker.internal}"
+CONTAINER_OBP_API_URL="${CONTAINER_OBP_API_URL//localhost/host.docker.internal}"
+if [ "$CONTAINER_OBP_API_URL" != "$OBP_API_URL" ]; then
+    echo -e "${BLUE}  OBP_API_URL rewritten for container networking:${NC}"
+    echo "    host: $OBP_API_URL"
+    echo "    container: $CONTAINER_OBP_API_URL"
+fi
+
 # Container environment variables
 CONTAINER_ENV_VARS=(
     "-e" "KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}"
@@ -392,16 +398,11 @@ CONTAINER_ENV_VARS=(
     "-e" "KC_DB_URL=$KC_DB_URL"
     "-e" "KC_DB_USERNAME=$KC_DB_USERNAME"
     "-e" "KC_DB_PASSWORD=$KC_DB_PASSWORD"
-    "-e" "DB_URL=$DB_URL"
-    "-e" "DB_USER=$DB_USER"
-    "-e" "DB_PASSWORD=$DB_PASSWORD"
-    "-e" "DB_DRIVER=${DB_DRIVER:-org.postgresql.Driver}"
-    "-e" "DB_DIALECT=${DB_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}"
-    "-e" "DB_AUTHUSER_TABLE=${DB_AUTHUSER_TABLE:-v_oidc_users}"
+    "-e" "OBP_API_URL=$CONTAINER_OBP_API_URL"
+    "-e" "OBP_API_USERNAME=$OBP_API_USERNAME"
+    "-e" "OBP_API_PASSWORD=$OBP_API_PASSWORD"
+    "-e" "OBP_API_CONSUMER_KEY=$OBP_API_CONSUMER_KEY"
     "-e" "OBP_AUTHUSER_PROVIDER=$OBP_AUTHUSER_PROVIDER"
-    "-e" "HIBERNATE_DDL_AUTO=${HIBERNATE_DDL_AUTO:-validate}"
-    "-e" "HIBERNATE_SHOW_SQL=${HIBERNATE_SHOW_SQL:-true}"
-    "-e" "HIBERNATE_FORMAT_SQL=${HIBERNATE_FORMAT_SQL:-true}"
     "-e" "KC_HOSTNAME_STRICT=${KC_HOSTNAME_STRICT:-false}"
     "-e" "KC_HTTP_ENABLED=${KC_HTTP_ENABLED:-true}"
     "-e" "KC_HEALTH_ENABLED=${KC_HEALTH_ENABLED:-true}"
@@ -509,6 +510,7 @@ echo "  JAR Checksum: $JAR_CHECKSUM"
 echo "  Container: $CONTAINER_NAME"
 echo "  Image: $IMAGE_TAG"
 echo "  Type: $DEPLOYMENT_TYPE"
+echo "  OBP API: $OBP_API_URL"
 echo "  Provider: $OBP_AUTHUSER_PROVIDER"
 echo ""
 

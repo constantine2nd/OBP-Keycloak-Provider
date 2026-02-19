@@ -1,14 +1,6 @@
 # OBP-Keycloak-Provider: Development Tools
 
-This directory contains development tools and scripts for **building, running, and managing** the `obp-keycloak-provider` in local development environments. All scripts support separated database architecture and include recent critical fixes.
-
-## 🔧 Recent Updates
-
-**Critical fixes included:**
-- ✅ Fixed JDBC URL configuration in docker-compose files
-- ✅ Resolved port conflicts (user storage moved to port 5434)
-- ✅ Fixed SQL syntax errors in database initialization
-- ✅ Updated all scripts to support separated database architecture
+This directory contains development tools and scripts for **building, running, and managing** the `obp-keycloak-provider` in local development environments.
 
 ## Available Scripts
 
@@ -35,7 +27,7 @@ docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f develo
 
 **What it does:**
 - ✅ Validates environment configuration
-- ✅ Tests database connectivity
+- ✅ Tests OBP API connectivity
 - ✅ Builds Maven project
 - ✅ Creates Docker image with cache invalidation
 - ✅ Deploys container with proper configuration
@@ -44,7 +36,7 @@ docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f develo
 
 **8-Step Pipeline:**
 1. Environment validation
-2. Database connectivity test
+2. OBP API connectivity test
 3. Maven build
 4. Container cleanup (stop)
 5. Container cleanup (remove)
@@ -98,7 +90,7 @@ docker build --no-cache --build-arg THEMED=true -t obp-keycloak:themed -f develo
 
 ### Build arguments
 
-The unified Dockerfile accepts several build-time arguments (passed with `--build-arg`). The provider JAR and JDBC driver JARs must be pre-built on the host before running `docker build` (the deployment script handles this automatically).
+The unified Dockerfile accepts several build-time arguments (passed with `--build-arg`). The provider JAR must be pre-built on the host before running `docker build` (the deployment script handles this automatically).
 
 - `KEYCLOAK_VERSION` (default: `26.5.1`) — the Keycloak base image tag used in the builder and final images. Example:
 ```bash
@@ -135,14 +127,14 @@ docker build --no-cache \
 ## Environment Requirements
 
 ### Required Environment Variables
-- `KC_DB_URL` - Keycloak database URL
+- `KC_DB_URL` - Keycloak internal database JDBC URL
 - `KC_DB_USERNAME` - Keycloak database user
 - `KC_DB_PASSWORD` - Keycloak database password
-- `DB_URL` - User storage database URL
-- `DB_USER` - User storage database user (should be `oidc_user`)
-- `DB_PASSWORD` - User storage database password
-- `DB_AUTHUSER_TABLE` - Must be `v_oidc_users` for security
-- `OBP_AUTHUSER_PROVIDER` - Provider name (mandatory)
+- `OBP_API_URL` - Base URL of the OBP API instance (e.g. `http://localhost:8080`)
+- `OBP_API_USERNAME` - OBP admin user (needs `CanGetAnyUser`, `CanVerifyUserCredentials`)
+- `OBP_API_PASSWORD` - OBP admin password
+- `OBP_API_CONSUMER_KEY` - Consumer key registered in OBP for Direct Login
+- `OBP_AUTHUSER_PROVIDER` - Provider filter — mandatory for security
 
 ### Optional Variables
 - `KEYCLOAK_ADMIN` - Admin username (default: admin)
@@ -150,6 +142,7 @@ docker build --no-cache \
 - `KEYCLOAK_HTTP_PORT` - HTTP port (default: 7787)
 - `KEYCLOAK_HTTPS_PORT` - HTTPS port (default: 8443)
 - `KEYCLOAK_MGMT_PORT` - Management/health port (default: 9000)
+- `FORGOT_PASSWORD_URL` - Custom forgot-password link (default: Keycloak built-in flow)
 
 ---
 
@@ -215,14 +208,10 @@ docker ps --filter name=obp-keycloak-local
 
 ### Common Issues
 
-#### Database Connection Failures
-```bash
-# Check PostgreSQL status
-sudo systemctl status postgresql
-
-# Test manual connection
-PGPASSWORD=your_password psql -h host.docker.internal -p 5432 -U oidc_user -d obp_mapped
-```
+#### OBP API unreachable from container
+Inside Docker, `127.0.0.1` resolves to the container itself. The deployment script
+rewrites `localhost`/`127.0.0.1` to `host.docker.internal` automatically. If OBP runs
+on a remote host, set `OBP_API_URL` to its actual hostname or IP.
 
 #### Container Issues
 ```bash
@@ -248,8 +237,7 @@ cat themes/obp/theme.properties
 ./development/run-local-postgres-cicd.sh
 ```
 
-### Security Validation Errors
-- **DB_AUTHUSER_TABLE must be 'v_oidc_users'**: Update `.env` file
+### Validation Errors
 - **OBP_AUTHUSER_PROVIDER is mandatory**: Set provider name in `.env` file
 
 ---
@@ -275,8 +263,7 @@ After successful deployment:
 2. **Validate configuration**: The deployment script validates all settings
 3. **Monitor logs**: Use `./development/manage-container.sh` for log monitoring
 4. **Clean deployments**: Scripts ensure clean state on each run
-5. **Database security**: Always use `oidc_user` with view-only permissions
-6. **Theme testing**: Test standard deployment before themed if issues occur
+5. **Theme testing**: Test standard deployment before themed if issues occur
 
 ---
 
