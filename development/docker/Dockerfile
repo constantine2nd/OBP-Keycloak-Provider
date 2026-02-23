@@ -58,7 +58,7 @@ FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 COPY --from=builder /tmp/build-info.txt /opt/keycloak/
 
-# Copy OBP themes — always included so providerVersion and obpAuthUserProvider
+# Copy OBP themes — always included so projectVersion and obpAuthUserProvider
 # are available. The realm must be configured in the Admin Console to activate
 # the 'obp' login theme.
 USER root

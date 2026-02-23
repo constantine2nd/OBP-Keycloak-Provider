@@ -84,7 +84,7 @@
                         </div>
                     </#if>
                     <div class="obp-copyright">
-                        © 2011-2025 TESOBE. All rights reserved. <span class="obp-version">v${properties.providerVersion!""}</span>
+                        © 2011-2025 TESOBE. All rights reserved. <span class="obp-version">v${properties.projectVersion!""}</span>
                     </div>
                 </div>
             </#if>
