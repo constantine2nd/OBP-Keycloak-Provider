@@ -1,18 +1,15 @@
-# Unified development Dockerfile for themed and standard builds
+# Development Dockerfile for OBP Keycloak Provider
 #
 # Usage:
-#  - Build a themed image:
-#      docker build --build-arg KEYCLOAK_VERSION=26.5.1 --build-arg THEMED=true -t obp-keycloak:themed .
-#  - Build a standard image (themes will be removed at the end):
-#      docker build --build-arg KEYCLOAK_VERSION=26.5.1 --build-arg THEMED=false -t obp-keycloak:standard .
+#   docker build --build-arg KEYCLOAK_VERSION=26.5.1 -t obp-keycloak:latest .
 #
 # Notes:
 #  - The provider JAR must be pre-built on the host before running docker build
 #    (see run-local-postgres-cicd.sh). No JDBC drivers are needed — authentication
 #    goes through the OBP REST API, not direct database access.
 #  - Keycloak version is parameterized with a build arg.
-#  - THEMED controls whether theme files are retained in the final image. The Docker build
-#    context must contain the `themes/` directories (the repository includes them).
+#  - OBP themes are always included. Activate the 'obp' login theme via the
+#    Admin Console: Realm Settings > Themes > Login Theme.
 #
 # Build arguments (defaults chosen to match development state):
 ARG KEYCLOAK_VERSION=26.5.1
@@ -61,22 +58,18 @@ FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 COPY --from=builder /tmp/build-info.txt /opt/keycloak/
 
-# Copy theme files (repository contains themes/obp and themes/obp-dark)
-# The THEMED build arg controls whether themes are kept in the final image. Default is false.
+# Copy OBP themes — always included so providerVersion and obpAuthUserProvider
+# are available. The realm must be configured in the Admin Console to activate
+# the 'obp' login theme.
 USER root
-ARG THEMED=false
-
-# Copy themes if present in build context; repository provides these directories.
-# If you want a build without themes, set --build-arg THEMED=false (themes will be removed later).
 COPY themes/obp/ /opt/keycloak/themes/obp/
 COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
+# Overwrite theme.properties with Maven-filtered copies that have the real
+# version stamped in (pom.xml <version> → @project.version@ substitution).
+COPY target/themes-filtered/ /opt/keycloak/themes/
 
 # Ensure correct owner for theme files
 RUN chown -R keycloak:keycloak /opt/keycloak/themes/ || true
-
-# If THEMED is false, remove theme files to produce a smaller standard image.
-# Using a shell conditional ensures the build doesn't fail; presence of themes is expected in this repo.
-RUN if [ "${THEMED}" = "false" ]; then rm -rf /opt/keycloak/themes/* || true; fi
 
 # Copy the custom entrypoint wrapper that injects runtime ENV into theme config
 COPY development/docker/docker-entrypoint.sh /opt/keycloak/docker-entrypoint.sh
