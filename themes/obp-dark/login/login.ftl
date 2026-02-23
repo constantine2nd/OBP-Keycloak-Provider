@@ -71,17 +71,22 @@
 
                       </div>
 
-                      <#if (properties.obpAuthUserProvider!'')?has_content>
-                          <div class="obp-provider-info" style="text-align:center;font-size:0.85em;margin-bottom:8px;">
-                              <span>Provider:</span> ${properties.obpAuthUserProvider}
-                          </div>
-                      </#if>
-
                       <div id="kc-form-buttons" class="${properties.kcFormGroupClass!}">
                           <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
                           <input tabindex="7" class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}" name="login" id="kc-login" type="submit" value="${msg("doLogIn")}"/>
                       </div>
                 </form>
+
+                <div class="obp-dark-footer">
+                    <#if (properties.obpAuthUserProvider!'')?has_content>
+                        <div class="obp-provider-info">
+                            <span>Provider:</span> ${properties.obpAuthUserProvider}
+                        </div>
+                    </#if>
+                    <div class="obp-copyright">
+                        © 2011-2025 TESOBE. All rights reserved. <span class="obp-version">v${properties.projectVersion!""}</span>
+                    </div>
+                </div>
             </#if>
             </div>
         </div>

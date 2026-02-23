@@ -69,6 +69,9 @@ USER root
 # Copy OBP themes
 COPY themes/obp/ /opt/keycloak/themes/obp/
 COPY themes/obp-dark/ /opt/keycloak/themes/obp-dark/
+# Overwrite theme.properties with Maven-filtered copies that have the real
+# version stamped in (pom.xml <version> → @project.version@ substitution).
+COPY --from=maven /app/target/themes-filtered/ /opt/keycloak/themes/
 RUN chown -R keycloak:keycloak /opt/keycloak/themes/
 
 # Copy the custom entrypoint wrapper that injects runtime ENV into theme config

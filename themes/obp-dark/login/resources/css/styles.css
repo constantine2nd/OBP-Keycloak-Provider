@@ -69,3 +69,26 @@ body {
 .pf-c-button:hover {
   background-color: #b5b5b5 ;
 }
+
+.obp-dark-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #222;
+  text-align: center;
+}
+
+.obp-provider-info {
+  color: #777;
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.obp-copyright {
+  color: #555;
+  font-size: 0.75rem;
+}
+
+.obp-version {
+  opacity: 0.7;
+  font-size: 0.7rem;
+}

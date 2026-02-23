@@ -128,7 +128,7 @@
 
             <!-- Footer -->
             <footer class="obp-login-footer">
-                <p class="obp-copyright">© 2011-2025 TESOBE. All rights reserved.</p>
+                <p class="obp-copyright">© 2011-2025 TESOBE. All rights reserved. <span class="obp-version">v${properties.projectVersion!""}</span></p>
             </footer>
         </div>
     </div>
