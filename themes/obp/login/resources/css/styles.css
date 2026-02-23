@@ -502,6 +502,11 @@ body {
     margin: 0;
 }
 
+.obp-version {
+    opacity: 0.6;
+    font-size: 0.7rem;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 767px) {
     .obp-login-card {
