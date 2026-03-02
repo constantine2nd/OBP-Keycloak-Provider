@@ -1,0 +1,53 @@
+name: Build and publish container main - themed
+
+on: [push]
+
+env:
+  DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
+  DOCKER_HUB_REPOSITORY: obp-keycloak
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >>$GITHUB_OUTPUT
+        id: extract_branch
+
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo Building container image for main branch
+            docker build . --file .github/Dockerfile --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:${GITHUB_REF##*/}  --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:main --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:latest
+            echo Building container image for main branch done
+          else
+            echo Building container image for branch ${{ github.ref }}
+            docker build . --file .github/Dockerfile --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:${GITHUB_REF##*/}  --tag docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:${{ steps.extract_branch.outputs.branch }}
+            echo Building container image for branch ${{ github.ref }} done
+          fi
+      - name: Push container image
+        if: github.secrets.DOCKER_HUB_USERNAME != ''
+        run: |
+          echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin docker.io
+          docker push docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }} --all-tags
+          echo pushing container image done
+      - uses: sigstore/cosign-installer@main
+
+      - name: Write signing key to disk (only needed for `cosign sign --key`)
+        if: github.secrets.DOCKER_HUB_USERNAME != ''
+        run: echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+
+      - name: Sign container image
+        if: github.secrets.DOCKER_HUB_USERNAME != ''
+        run: |
+          cosign sign -y --key cosign.key \
+            docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:main
+          cosign sign -y --key cosign.key \
+            docker.io/${{ env.DOCKER_HUB_ORGANIZATION }}/${{ env.DOCKER_HUB_REPOSITORY }}:${GITHUB_REF##*/}
+        env:
+          COSIGN_PASSWORD: "${{secrets.COSIGN_PASSWORD}}"
+
+
+
