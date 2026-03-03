@@ -75,7 +75,7 @@ source .env
 KEYCLOAK_HOST="${KEYCLOAK_HOST:-localhost}"
 
 # Validate required vars
-required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "OBP_API_URL" "OBP_API_USERNAME" "OBP_API_PASSWORD" "OBP_API_CONSUMER_KEY" "OBP_AUTHUSER_PROVIDER")
+required_vars=("KC_DB_URL" "KC_DB_USERNAME" "KC_DB_PASSWORD" "OBP_API_URL" "OBP_API_USERNAME" "OBP_API_PASSWORD" "OBP_API_CONSUMER_KEY" "OBP_AUTHUSER_PROVIDER" "KEYCLOAK_VERSION")
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
         echo -e "${RED}✗ Missing environment variable: $var${NC}"
@@ -213,11 +213,13 @@ echo -e "${CYAN}[6/8] Building Docker Image${NC}"
 echo "Building with:"
 echo "  Dockerfile: $DOCKERFILE_PATH"
 echo "  Image tag: $IMAGE_TAG"
+echo "  Keycloak version: $KEYCLOAK_VERSION"
 
 # Force rebuild with cache invalidation; capture output for diagnostics
 DOCKER_BUILD_LOG=$(mktemp)
 docker build \
     --no-cache \
+    --build-arg KEYCLOAK_VERSION="$KEYCLOAK_VERSION" \
     --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
     --build-arg JAR_CHECKSUM="$JAR_CHECKSUM" \
     -t "$IMAGE_TAG" \
