@@ -1,6 +1,6 @@
 name: Build and publish container main - themed
 
-on: [push]
+on: [push, workflow_dispatch]
 
 env:
   DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
