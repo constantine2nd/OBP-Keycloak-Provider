@@ -400,7 +400,10 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
 
     @Override
     public Stream<String> getRequiredActionsStream() {
-        return super.getRequiredActionsStream();
+        // Database is source of truth — never surface stored required actions such as
+        // UPDATE_PROFILE from federated storage, as users cannot update their profile
+        // through Keycloak and the form would appear on every login with no way to dismiss it.
+        return Stream.empty();
     }
 
     @Override
