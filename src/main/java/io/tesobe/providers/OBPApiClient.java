@@ -26,8 +26,10 @@ import org.jboss.logging.Logger;
  *   POST /obp/v6.0.0/my/logins/direct
  *       — obtain admin token; response: {"token": "..."}
  *
- *   GET  /obp/v6.0.0/users/provider/{PROVIDER}/username/{USERNAME}
+ *   GET  /obp/v5.1.0/users/provider/{PROVIDER}/username/{USERNAME}
  *       — lookup user by provider + username (PROVIDER must be percent-encoded)
+ *         v5.1.0 used: this endpoint URL-decodes PROVIDER before the DB lookup;
+ *         the v6.0.0 route does not re-implement it.
  *         response: {"user_id","email","provider_id","provider","username","entitlements",...}
  *
  *   GET  /obp/v6.0.0/users/{USER_ID}
@@ -37,7 +39,7 @@ import org.jboss.logging.Logger;
  *       — list users (for Keycloak sync)
  *
  *   POST /obp/v6.0.0/users/verify-credentials
- *       — verify user password; body: {"username","password"}
+ *       — verify user password; body: {"username","password","provider"}
  *
  *   GET  /obp/v6.0.0/oidc/clients/{CLIENT_ID}
  *       — verify OIDC client
@@ -62,9 +64,17 @@ public class OBPApiClient {
 
     public OBPApiClient(OBPApiConfig config) {
         this.config = config;
+        // Force HTTP/1.1: OBP's Http4s server fails POST requests with bodies when Java's
+        // HttpClient attempts an h2c (HTTP/2 cleartext) upgrade. The POST never reaches
+        // OBP's application layer and Http4s returns HTTP 500 in ~3ms. GET requests with
+        // empty bodies succeed because h2c upgrade works for them. HTTP/1.1 is reliably
+        // supported by OBP and avoids this issue entirely.
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
+            .version(HttpClient.Version.HTTP_1_1)
             .build();
+        log.infof("OBPApiClient configured — OBP_API_URL: %s, OBP_AUTHUSER_PROVIDER: %s",
+            config.getApiUrl(), config.getAuthUserProvider());
     }
 
     /**
@@ -89,17 +99,21 @@ public class OBPApiClient {
 
     /**
      * Looks up a user by provider + username.
-     * GET /obp/v6.0.0/users/provider/{PROVIDER}/username/{USERNAME}
+     * GET /obp/v5.1.0/users/provider/{PROVIDER}/username/{USERNAME}
+     *
+     * Intentionally uses v5.1.0: this endpoint was implemented in APIMethods510.scala with
+     * URLDecoder.decode(provider, UTF-8) before the DB lookup, making percent-encoded provider
+     * URLs work correctly. The v6.0.0 route does not re-implement this endpoint.
      *
      * The provider (e.g. "http://127.0.0.1:8080") is percent-encoded so that colons
-     * and slashes are treated as data rather than URL structure. OBP's routing layer
-     * decodes it before matching.
+     * and slashes are treated as data rather than URL structure. OBP's v5.1.0 routing layer
+     * decodes it before matching against the DB value.
      *
      * Requires CanGetAnyUser role on the admin account.
      */
     public KcUserEntity getUserByUsername(String username) {
         log.infof("getUserByUsername() via OBP API: %s", username);
-        String path = "/obp/v6.0.0/users/provider/" + encode(config.getAuthUserProvider())
+        String path = "/obp/v5.1.0/users/provider/" + encode(config.getAuthUserProvider())
             + "/username/" + username;
         log.infof("getUserByUsername() resolved path: %s", path);
         return getUserFromPath(path);
@@ -161,7 +175,16 @@ public class OBPApiClient {
      * Verifies a user's credentials via POST /obp/v6.0.0/users/verify-credentials.
      * Returns the user entity if credentials are valid AND provider matches, null otherwise.
      * Requires CanVerifyUserCredentials role on the admin account.
+     *
+     * OBP intermittently returns HTTP 500 with an empty body in ~3ms due to an internal
+     * state issue on the OBP side (entitlement cache, request-scoped state, etc.).
+     * A 500 is retried up to MAX_VERIFY_RETRIES times with a short delay, because the
+     * same credentials succeed once OBP recovers (~700ms later based on observed logs).
+     * Non-500 failures (401, 403, 404, wrong credentials) are never retried.
      */
+    private static final int MAX_VERIFY_RETRIES = 10;
+    private static final long VERIFY_RETRY_DELAY_MS = 300;
+
     public KcUserEntity verifyUserCredentials(String username, String password) {
         log.infof("verifyUserCredentials() via OBP API for user: %s", username);
         try {
@@ -171,13 +194,25 @@ public class OBPApiClient {
             body.put("provider", config.getAuthUserProvider());
             String bodyStr = mapper.writeValueAsString(body);
 
-            HttpResponse<String> resp = callWithRetry(
-                "POST", "/obp/v6.0.0/users/verify-credentials", bodyStr);
+            HttpResponse<String> resp = null;
+            for (int attempt = 1; attempt <= MAX_VERIFY_RETRIES; attempt++) {
+                resp = callWithRetry("POST", "/obp/v6.0.0/users/verify-credentials", bodyStr);
 
-            if (resp == null) {
-                log.error("verifyUserCredentials() got null response");
-                return null;
+                if (resp == null) {
+                    log.error("verifyUserCredentials() got null response");
+                    return null;
+                }
+                if (resp.statusCode() != 500) {
+                    break;
+                }
+                if (attempt < MAX_VERIFY_RETRIES) {
+                    log.warnf("verifyUserCredentials() OBP returned HTTP 500 for user '%s' " +
+                        "(attempt %d/%d) — OBP internal error, retrying in %dms",
+                        username, attempt, MAX_VERIFY_RETRIES, VERIFY_RETRY_DELAY_MS);
+                    Thread.sleep(VERIFY_RETRY_DELAY_MS);
+                }
             }
+
             if (resp.statusCode() != 200 && resp.statusCode() != 201) {
                 log.warnf("Credential verification failed for user '%s': HTTP %d — %s",
                     username, resp.statusCode(), resp.body());
@@ -340,15 +375,20 @@ public class OBPApiClient {
     }
 
     private String fetchNewToken() {
+        String tokenUrl = config.getApiUrl() + "/obp/v6.0.0/my/logins/direct";
         try {
+            log.infof("Requesting admin Direct Login token from: %s (username: %s)",
+                tokenUrl, config.getApiUsername());
+            // OBP Direct Login uses the Authorization header with the DirectLogin scheme.
+            // See: https://github.com/OpenBankProject/OBP-API/wiki/Direct-Login
             String directLoginHeader = String.format(
                 "DirectLogin username=\"%s\",password=\"%s\",consumer_key=\"%s\"",
                 config.getApiUsername(), config.getApiPassword(), config.getApiConsumerKey()
             );
             HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(config.getApiUrl() + "/obp/v6.0.0/my/logins/direct"))
+                .uri(URI.create(tokenUrl))
                 .header("Content-Type", "application/json")
-                .header("DirectLogin", directLoginHeader)
+                .header("Authorization", directLoginHeader)
                 .POST(HttpRequest.BodyPublishers.ofString("{}"))
                 .timeout(Duration.ofSeconds(30))
                 .build();
@@ -361,14 +401,29 @@ public class OBPApiClient {
                     log.info("Admin Direct Login token obtained successfully");
                     return token;
                 }
+                log.errorf("OBP returned %d but response contained no token field. Body: %s",
+                    resp.statusCode(), resp.body());
+            } else {
+                String body = resp.body();
+                String headers = resp.headers().map().toString();
+                log.errorf("Failed to obtain admin token — HTTP %d from %s%n" +
+                    "  username:     %s%n" +
+                    "  consumer_key: %s...%n" +
+                    "  response body:    %s%n" +
+                    "  response headers: %s",
+                    resp.statusCode(), tokenUrl,
+                    config.getApiUsername(),
+                    config.getApiConsumerKey().length() > 8
+                        ? config.getApiConsumerKey().substring(0, 8) : "(short)",
+                    body.isEmpty() ? "(empty — check OBP logs for the 500 cause)" : body,
+                    headers);
             }
-            log.errorf("Failed to obtain admin token: HTTP %d — %s",
-                resp.statusCode(), resp.body());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("fetchNewToken() interrupted");
+            log.warnf("fetchNewToken() interrupted while connecting to %s", tokenUrl);
         } catch (Exception e) {
-            log.error("Error obtaining admin Direct Login token", e);
+            log.errorf("Cannot reach OBP API at %s — check OBP_API_URL in your environment. " +
+                "Cause: %s", tokenUrl, e.toString());
         }
         return null;
     }
