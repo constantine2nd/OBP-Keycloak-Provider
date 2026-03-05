@@ -430,8 +430,9 @@ public class OBPApiClient {
      *   provider   — authentication provider URL (e.g. "http://127.0.0.1:8080")
      *   provider_id — internal provider-side user identifier (not used by Keycloak)
      *   username   — login username
-     *   first_name — optional first name
-     *   last_name  — optional last name
+     *   first_name / firstname — optional first name (v6 UserWithNamesJsonV600 uses first_name;
+     *                            other endpoints may return firstname without underscore)
+     *   last_name  / lastname  — optional last name (same dual-format note as above)
      */
     private KcUserEntity parseUser(JsonNode json) {
         if (json == null || json.isMissingNode() || json.isNull()) return null;
@@ -444,8 +445,15 @@ public class OBPApiClient {
         entity.setUsername(json.path("username").asText(null));
         entity.setEmail(json.path("email").asText(null));
         entity.setProvider(json.path("provider").asText(null));
-        entity.setFirstName(json.path("first_name").asText(null));
-        entity.setLastName(json.path("last_name").asText(null));
+        // first_name / last_name: v6 UserWithNamesJsonV600 uses underscored names;
+        // other v6 endpoints (e.g. /users/user-id/) use the legacy camelCase-source
+        // field names without underscore. Try the underscored form first.
+        entity.setFirstName(json.has("first_name")
+            ? json.path("first_name").asText(null)
+            : json.path("firstname").asText(null));
+        entity.setLastName(json.has("last_name")
+            ? json.path("last_name").asText(null)
+            : json.path("lastname").asText(null));
         entity.setValidated(true);
         entity.setSuperuser(false);
         entity.setPasswordShouldBeChanged(false);
