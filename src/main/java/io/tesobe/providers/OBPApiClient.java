@@ -26,11 +26,9 @@ import org.jboss.logging.Logger;
  *   POST /obp/v6.0.0/my/logins/direct
  *       — obtain admin token; response: {"token": "..."}
  *
- *   GET  /obp/v5.1.0/users/provider/{PROVIDER}/username/{USERNAME}
+ *   GET  /obp/v6.0.0/users/provider/{PROVIDER}/username/{USERNAME}
  *       — lookup user by provider + username (PROVIDER must be percent-encoded)
- *         v5.1.0 used: this endpoint URL-decodes PROVIDER before the DB lookup;
- *         the v6.0.0 route does not re-implement it.
- *         response: {"user_id","email","provider_id","provider","username","entitlements",...}
+ *         response: {"user_id","email","provider_id","provider","username","first_name","last_name","entitlements",...}
  *
  *   GET  /obp/v6.0.0/users/{USER_ID}
  *       — lookup user by UUID
@@ -99,21 +97,16 @@ public class OBPApiClient {
 
     /**
      * Looks up a user by provider + username.
-     * GET /obp/v5.1.0/users/provider/{PROVIDER}/username/{USERNAME}
-     *
-     * Intentionally uses v5.1.0: this endpoint was implemented in APIMethods510.scala with
-     * URLDecoder.decode(provider, UTF-8) before the DB lookup, making percent-encoded provider
-     * URLs work correctly. The v6.0.0 route does not re-implement this endpoint.
+     * GET /obp/v6.0.0/users/provider/{PROVIDER}/username/{USERNAME}
      *
      * The provider (e.g. "http://127.0.0.1:8080") is percent-encoded so that colons
-     * and slashes are treated as data rather than URL structure. OBP's v5.1.0 routing layer
-     * decodes it before matching against the DB value.
+     * and slashes are treated as data rather than URL structure.
      *
      * Requires CanGetAnyUser role on the admin account.
      */
     public KcUserEntity getUserByUsername(String username) {
         log.infof("getUserByUsername() via OBP API: %s", username);
-        String path = "/obp/v5.1.0/users/provider/" + encode(config.getAuthUserProvider())
+        String path = "/obp/v6.0.0/users/provider/" + encode(config.getAuthUserProvider())
             + "/username/" + username;
         log.infof("getUserByUsername() resolved path: %s", path);
         return getUserFromPath(path);
@@ -437,8 +430,8 @@ public class OBPApiClient {
      *   provider   — authentication provider URL (e.g. "http://127.0.0.1:8080")
      *   provider_id — internal provider-side user identifier (not used by Keycloak)
      *   username   — login username
-     *   firstname  — optional first name
-     *   lastname   — optional last name
+     *   first_name — optional first name
+     *   last_name  — optional last name
      */
     private KcUserEntity parseUser(JsonNode json) {
         if (json == null || json.isMissingNode() || json.isNull()) return null;
@@ -451,8 +444,8 @@ public class OBPApiClient {
         entity.setUsername(json.path("username").asText(null));
         entity.setEmail(json.path("email").asText(null));
         entity.setProvider(json.path("provider").asText(null));
-        entity.setFirstName(json.path("firstname").asText(null));
-        entity.setLastName(json.path("lastname").asText(null));
+        entity.setFirstName(json.path("first_name").asText(null));
+        entity.setLastName(json.path("last_name").asText(null));
         entity.setValidated(true);
         entity.setSuperuser(false);
         entity.setPasswordShouldBeChanged(false);
