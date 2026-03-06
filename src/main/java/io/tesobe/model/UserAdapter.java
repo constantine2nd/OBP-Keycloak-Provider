@@ -78,7 +78,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getUsername() {
         String value = entity.getUsername();
         log.debugf(
-            "getUsername() for user %s returning DATABASE value: '%s'",
+            "getUsername() for user %s returning API value: '%s'",
             value,
             value
         );
@@ -89,7 +89,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getEmail() {
         String value = entity.getEmail();
         log.debugf(
-            "getEmail() for user %s returning DATABASE value: '%s'",
+            "getEmail() for user %s returning API value: '%s'",
             getUsername(),
             value
         );
@@ -100,7 +100,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getFirstName() {
         String value = entity.getFirstName();
         log.debugf(
-            "getFirstName() for user %s returning DATABASE value: '%s'",
+            "getFirstName() for user %s returning API value: '%s'",
             getUsername(),
             value
         );
@@ -111,7 +111,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
     public String getLastName() {
         String value = entity.getLastName();
         log.debugf(
-            "getLastName() for user %s returning DATABASE value: '%s'",
+            "getLastName() for user %s returning API value: '%s'",
             getUsername(),
             value
         );
@@ -208,7 +208,7 @@ public class UserAdapter extends AbstractUserAdapterFederatedStorage {
                 value = null;
         }
         log.debugf(
-            "getFirstAttribute(%s) for user %s returning DATABASE value: '%s'",
+            "getFirstAttribute(%s) for user %s returning API value: '%s'",
             name,
             getUsername(),
             value
