@@ -28,7 +28,8 @@ import org.jboss.logging.Logger;
  *
  *   GET  /obp/v6.0.0/users/provider/{PROVIDER}/username/{USERNAME}
  *       — lookup user by provider + username (PROVIDER must be percent-encoded)
- *         response: {"user_id","email","provider_id","provider","username","first_name","last_name","entitlements",...}
+ *         response: UserWithNamesJsonV510 {"user_id","email","provider_id","provider","username","first_name","last_name","entitlements",...}
+ *         (defined in v5.1.0; v6.0.0 inherits it)
  *
  *   GET  /obp/v6.0.0/users/{USER_ID}
  *       — lookup user by UUID
@@ -445,9 +446,10 @@ public class OBPApiClient {
         entity.setUsername(json.path("username").asText(null));
         entity.setEmail(json.path("email").asText(null));
         entity.setProvider(json.path("provider").asText(null));
-        // first_name / last_name: v6 UserWithNamesJsonV600 uses underscored names;
-        // other v6 endpoints (e.g. /users/user-id/) use the legacy camelCase-source
-        // field names without underscore. Try the underscored form first.
+        // first_name / last_name: UserWithNamesJsonV510 (v5.1.0) uses underscored names;
+        // v6.0.0 inherits this endpoint, so /obp/v6.0.0/users/provider/.../username/... also
+        // returns first_name/last_name. Other endpoints (e.g. /users/user-id/) may use the
+        // legacy field names without underscore. Try the underscored form first.
         entity.setFirstName(json.has("first_name")
             ? json.path("first_name").asText(null)
             : json.path("firstname").asText(null));
