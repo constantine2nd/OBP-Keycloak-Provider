@@ -6,6 +6,7 @@ on:
 
 env:
   DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
+  KEYCLOAK_VERSION: ${{ vars.KEYCLOAK_VERSION }}
 
 jobs:
   docker:
@@ -28,7 +29,7 @@ jobs:
           echo "Checking if base image has been updated..."
 
           # Pull both images
-          docker pull quay.io/keycloak/keycloak:latest
+          docker pull quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
           docker pull ${{ env.DOCKER_HUB_ORGANIZATION }}/obp-keycloak:latest
 
           # Get the base image layers
