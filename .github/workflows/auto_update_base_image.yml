@@ -6,7 +6,7 @@ on:
 
 env:
   DOCKER_HUB_ORGANIZATION: ${{ vars.DOCKER_HUB_ORGANIZATION }}
-  KEYCLOAK_VERSION: ${{ vars.KEYCLOAK_VERSION }}
+  KEYCLOAK_VERSION: 26.5.3
 
 jobs:
   docker:
