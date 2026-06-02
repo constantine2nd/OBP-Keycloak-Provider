@@ -285,6 +285,15 @@ fi
 rm -f "$DOCKER_BUILD_LOG"
 echo -e "${GREEN}✓ Docker image built${NC}"
 
+# Reclaim build leftovers: every --no-cache rebuild orphans the previous image
+# (and intermediate stages) into dangling images. Prune only images carrying this
+# project's label so other projects' images and build cache are never touched.
+PRUNE_LABEL="com.openbankproject.image=obp-keycloak-provider"
+RECLAIMED=$(docker image prune -f --filter "label=$PRUNE_LABEL" 2>/dev/null | grep -i 'reclaimed' || true)
+if [ -n "$RECLAIMED" ]; then
+    echo -e "${BLUE}  Reclaimed build leftovers (${PRUNE_LABEL}): ${RECLAIMED##*Total reclaimed space: }${NC}"
+fi
+
 # Step 7: Start new container
 echo -e "${CYAN}[7/8] Starting New Container${NC}"
 
