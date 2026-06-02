@@ -81,6 +81,7 @@ Click the [User federation](https://localhost:8443/admin/master/console/#/master
 
 ## Documentation
 
+- [docs/ONBOARDING.md](docs/ONBOARDING.md) — local development onboarding (fresh-start guide)
 - [env.sample](env.sample) — full environment variable reference
 - [docs/CICD_DEPLOYMENT.md](docs/CICD_DEPLOYMENT.md) — CI/CD deployment guide
 - [development/README.md](development/README.md) — development scripts documentation
