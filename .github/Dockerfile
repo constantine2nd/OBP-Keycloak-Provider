@@ -22,7 +22,7 @@
 # Keycloak version — passed at build time from the workflow env.KEYCLOAK_VERSION.
 # Never hardcode it here — change KEYCLOAK_VERSION in the workflow and it propagates
 # to both the Maven build (via -Dversion.keycloak) and the Keycloak base images.
-ARG KEYCLOAK_VERSION
+ARG KEYCLOAK_VERSION=26.5.3
 
 # === Stage 1: Build the provider JAR with Maven ===
 FROM maven:3-eclipse-temurin-17 AS maven
@@ -42,6 +42,7 @@ RUN echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build-info.txt && \
     echo "JAR checksum: ${JAR_CHECKSUM}" >> /tmp/build-info.txt
 
 # === Stage 2: Build Keycloak with the provider JAR ===
+ARG KEYCLOAK_VERSION
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} AS builder
 
 ENV KC_HEALTH_ENABLED=true
@@ -67,6 +68,7 @@ RUN /opt/keycloak/bin/kc.sh build
 
 # === Final Runtime Image ===
 # Use the same Keycloak base image for the final runtime image
+ARG KEYCLOAK_VERSION
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
@@ -96,10 +98,10 @@ ENV KC_DB_PASSWORD=keycloak_changeme
 
 # OBP API configuration — override all at runtime
 ENV OBP_API_URL=http://localhost:8080
-ENV OBP_API_USERNAME=
-ENV OBP_API_PASSWORD=
-ENV OBP_API_CONSUMER_KEY=
-ENV OBP_AUTHUSER_PROVIDER=
+ENV OBP_API_USERNAME=username
+ENV OBP_API_PASSWORD=apipassword
+ENV OBP_API_CONSUMER_KEY=consumerkey
+ENV OBP_AUTHUSER_PROVIDER=authuser_provider
 
 # Keycloak runtime defaults
 ENV KC_HOSTNAME_STRICT=false
@@ -110,6 +112,6 @@ ENV KC_METRICS_ENABLED=true
 ENV KC_FEATURES=token-exchange
 
 # Custom "Forgot Password?" link — leave empty to use Keycloak's built-in flow
-ENV FORGOT_PASSWORD_URL=
+ENV FORGOT_PASSWORD_URL=forgot-url
 
 ENTRYPOINT ["/opt/keycloak/docker-entrypoint.sh", "start-dev", "--verbose"]
