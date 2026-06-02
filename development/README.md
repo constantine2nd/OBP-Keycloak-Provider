@@ -180,6 +180,10 @@ docker rm obp-keycloak-local
 docker ps --filter name=obp-keycloak-local
 ```
 
+> **Tuning log level/format, rotation, and identifying the running build:**
+> see [Logging & observability](../docs/ONBOARDING.md#6-logging--observability)
+> (`KC_LOG_LEVEL`, `KC_LOG_CONSOLE_OUTPUT`, `DOCKER_LOG_MAX_*`, startup build banner).
+
 ---
 
 ## Themed Deployments
