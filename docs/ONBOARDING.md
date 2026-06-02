@@ -137,6 +137,41 @@ A full reset = remove the container **and** drop/recreate `keycloakdb`.
 
 ---
 
+## 6. Logging & observability
+
+The deploy script wires a few logging/maintenance knobs (all set in `.env`, no
+rebuild needed unless noted):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `KC_LOG_LEVEL` | `INFO` | Root log level. Supports category overrides, e.g. `INFO,io.tesobe:DEBUG` to debug only the OBP provider, or `io.tesobe:ERROR` to mute its noise. |
+| `KC_LOG_CONSOLE_OUTPUT` | `default` | `default` = human text; `json` = structured logs for aggregators (Loki / ELK / CloudWatch). |
+| `DOCKER_LOG_MAX_SIZE` | `10m` | Max size of each container log file before rotation. |
+| `DOCKER_LOG_MAX_FILE` | `5` | Number of rotated log files kept (caps disk usage). |
+
+Common tasks:
+
+- **Identify the running build.** Every container prints a banner at startup —
+  the JAR checksum + build timestamp baked into the image:
+  ```bash
+  docker logs obp-keycloak-local | grep -A2 'OBP Keycloak Provider build'
+  ```
+- **Debug just the OBP provider** without flooding everything else:
+  ```
+  KC_LOG_LEVEL=INFO,io.tesobe:DEBUG      # in .env, then redeploy
+  ```
+- **Ship to a log aggregator:** `KC_LOG_CONSOLE_OUTPUT=json`.
+- **Health & metrics** (already enabled): `https://localhost:9000/health/ready`
+  and `https://localhost:9000/metrics` (Prometheus format — point a scraper at it).
+
+> ⚠️ **Known log-noise caveat:** the provider currently emits routine activity
+> (e.g. `isValid() … password validation SUCCESSFUL`, `FEDERATED STORAGE DETECTED`)
+> at **WARN**, and logs user names/emails at INFO/WARN. Until that's fixed in the
+> provider code, you can quiet it operationally with `KC_LOG_LEVEL=…,io.tesobe:ERROR`.
+> Don't treat WARN volume as a health signal yet.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
