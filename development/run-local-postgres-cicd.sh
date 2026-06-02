@@ -331,13 +331,24 @@ CONTAINER_ENV_VARS=(
     "-e" "KC_METRICS_ENABLED=${KC_METRICS_ENABLED:-true}"
     "-e" "KC_FEATURES=${KC_FEATURES:-token-exchange}"
     "-e" "FORGOT_PASSWORD_URL=${FORGOT_PASSWORD_URL:-}"
+    # Logging — tune verbosity without rebuilding, and pick console format.
+    #   KC_LOG_LEVEL          root log level (e.g. INFO, DEBUG, WARN); category
+    #                         overrides allowed, e.g. "INFO,io.tesobe:DEBUG"
+    #   KC_LOG_CONSOLE_OUTPUT 'default' (human text) or 'json' (for log aggregators)
+    "-e" "KC_LOG_LEVEL=${KC_LOG_LEVEL:-INFO}"
+    "-e" "KC_LOG_CONSOLE_OUTPUT=${KC_LOG_CONSOLE_OUTPUT:-default}"
 )
 
 # Start container with host networking — no port mapping needed, Keycloak binds
 # directly to host ports (HTTP: ${KEYCLOAK_HTTP_PORT:-7787}, HTTPS: 8443, mgmt: 9000)
+#
+# Cap the json-file log so it can't grow unbounded and fill the disk on a
+# long-lived host (override via DOCKER_LOG_MAX_SIZE / DOCKER_LOG_MAX_FILE).
 docker run -d \
     --name "$CONTAINER_NAME" \
     --network host \
+    --log-opt max-size="${DOCKER_LOG_MAX_SIZE:-10m}" \
+    --log-opt max-file="${DOCKER_LOG_MAX_FILE:-5}" \
     "${CONTAINER_ENV_VARS[@]}" \
     "$IMAGE_TAG" > /dev/null 2>&1
 
