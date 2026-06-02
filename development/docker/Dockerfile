@@ -1,7 +1,7 @@
 # Development Dockerfile for OBP Keycloak Provider
 #
 # Usage:
-#   docker build --build-arg KEYCLOAK_VERSION=26.5.1 -t obp-keycloak:latest .
+#   docker build --build-arg KEYCLOAK_VERSION=26.5.3 -t obp-keycloak:latest .
 #
 # Notes:
 #  - The provider JAR must be pre-built on the host before running docker build

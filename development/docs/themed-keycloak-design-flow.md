@@ -13,7 +13,7 @@ This document describes the end-to-end process for building and running a locall
 |   Host Machine    |        |   Docker Container          |        |   PostgreSQL (host) |
 |                   |        |   (obp-keycloak-local)      |        |                     |
 |  .env             |        | +-------------------------+ |        | keycloakdb          |
-|  themes/obp/      | -----> | | Keycloak 26.5.1         | | <----> | (realm data,        |
+|  themes/obp/      | -----> | | Keycloak 26.5.3         | | <----> | (realm data,        |
 |  themes/obp-dark/ |  build | |   + obp-keycloak-       | |  JDBC  |  clients, tokens)   |
 |  src/ + pom.xml   |        | |     provider.jar        | |        +---------------------+
 |                   |        | |   + obp theme           | |
@@ -122,7 +122,7 @@ docker build --no-cache \
 #### Dockerfile Multi-Stage Build
 
 ```
-  Stage 1: builder (quay.io/keycloak/keycloak:26.5.1)
+  Stage 1: builder (quay.io/keycloak/keycloak:26.5.3)
   +--------------------------------------------------+
   |  Generate self-signed SSL keystore               |
   |  COPY obp-keycloak-provider.jar -> providers/    |
@@ -131,7 +131,7 @@ docker build --no-cache \
   +--------------------------------------------------+
                         |
                         v
-  Stage 2: final (quay.io/keycloak/keycloak:26.5.1)
+  Stage 2: final (quay.io/keycloak/keycloak:26.5.3)
   +--------------------------------------------------+
   |  COPY --from=builder /opt/keycloak/              |
   |  COPY themes/obp/      -> themes/obp/            |

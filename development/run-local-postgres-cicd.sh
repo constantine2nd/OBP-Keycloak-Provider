@@ -174,7 +174,53 @@ echo -e "${GREEN}✓ Connectivity check done${NC}"
 # Step 3: Clean build
 echo -e "${CYAN}[3/8] Building Maven Project${NC}"
 
-mvn clean package -DskipTests -q
+# The provider targets Java 17 (see pom.xml maven.compiler.source/target). If the
+# shell default is an older JDK, the build fails with "invalid target release: 17".
+# Auto-select a Java 17 JDK unless the active java is already >= 17.
+ensure_java17() {
+    local current_major=""
+    if command -v java &> /dev/null; then
+        # "openjdk version "17.0.1"" → 17, or "11.0.30" → 11
+        current_major=$(java -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1)
+    fi
+
+    if [ -n "$current_major" ] && [ "$current_major" -ge 17 ] 2>/dev/null; then
+        return 0
+    fi
+
+    # Look for a Java 17+ JDK in common locations
+    local candidate
+    for candidate in \
+        "$JAVA_HOME" \
+        /usr/lib/jvm/java-17-openjdk-amd64 \
+        /usr/lib/jvm/java-1.17.0-openjdk-amd64 \
+        /usr/lib/jvm/java-21-openjdk-amd64 \
+        /usr/lib/jvm/temurin-17-jdk-amd64 \
+        /usr/lib/jvm/java-17-openjdk; do
+        if [ -n "$candidate" ] && [ -x "$candidate/bin/java" ]; then
+            local cand_major
+            cand_major=$("$candidate/bin/java" -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1)
+            if [ -n "$cand_major" ] && [ "$cand_major" -ge 17 ] 2>/dev/null; then
+                export JAVA_HOME="$candidate"
+                export PATH="$candidate/bin:$PATH"
+                echo -e "${BLUE}  Using Java $cand_major for the build: $candidate${NC}"
+                return 0
+            fi
+        fi
+    done
+
+    echo -e "${RED}✗ Java 17+ is required to build the provider, but none was found${NC}"
+    echo "  Active java: ${current_major:-unknown}. Install a JDK 17 (e.g. apt install openjdk-17-jdk)"
+    echo "  or set JAVA_HOME to a Java 17+ installation before running this script."
+    exit 1
+}
+
+ensure_java17
+
+# Compile the provider against the same Keycloak version the image runs
+# (KEYCLOAK_VERSION from .env), overriding the pom.xml default so the SPI
+# matches the runtime exactly.
+mvn clean package -DskipTests -q -Dversion.keycloak="$KEYCLOAK_VERSION"
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ Maven build failed${NC}"
