@@ -185,7 +185,7 @@ docker ps --filter name=obp-keycloak-local
 ## Themed Deployments
 
 ### Prerequisites
-- `themes/obp/theme.properties` - Theme configuration
+- `themes/obp/login/theme.properties` - Theme configuration (Keycloak reads the per-type file)
 - `themes/obp/login/login.ftl` - Login template
 - `themes/obp/login/template.ftl` - Base template
 - Optional: CSS, images, message files in `themes/obp/login/resources/`
@@ -231,7 +231,7 @@ docker system prune -f
 find themes/obp -type f
 
 # Verify theme configuration
-cat themes/obp/theme.properties
+cat themes/obp/login/theme.properties
 
 # Try standard deployment first
 ./development/run-local-postgres-cicd.sh

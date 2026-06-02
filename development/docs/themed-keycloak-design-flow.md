@@ -82,7 +82,7 @@ The deployment script executes an 8-step pipeline:
   - `OBP_AUTHUSER_PROVIDER` (mandatory provider filter)
 - **Themed-specific**: runs `validate_theme_files()` which verifies:
   - `themes/obp/` directory exists
-  - `themes/obp/theme.properties` contains `parent=base` and `styles=`
+  - `themes/obp/login/theme.properties` contains `parent=base` and `styles=`
   - `themes/obp/login/` exists with `login.ftl` and `template.ftl`
   - Optionally checks for CSS, images, and i18n message files
 
@@ -162,7 +162,7 @@ The container is launched with:
 - Polls `https://<host>:<mgmt_port>/health/ready` every 2 seconds, up to 120 seconds.
 - **Themed-specific** post-readiness checks:
   - Tests if theme resources are accessible at `/resources/obp/`
-  - Verifies theme files exist inside the container at `/opt/keycloak/themes/obp/theme.properties`
+  - Verifies theme files exist inside the container at `/opt/keycloak/themes/obp/login/theme.properties`
 
 ---
 

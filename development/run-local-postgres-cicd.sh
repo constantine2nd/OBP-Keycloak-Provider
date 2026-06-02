@@ -352,7 +352,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ] && [ "$READY" = false ]; do
         echo -e "${GREEN}✓ Service is ready${NC}"
 
         echo -n "Verifying theme installation... "
-        if docker exec "$CONTAINER_NAME" ls /opt/keycloak/themes/obp/theme.properties > /dev/null 2>&1; then
+        if docker exec "$CONTAINER_NAME" ls /opt/keycloak/themes/obp/login/theme.properties > /dev/null 2>&1; then
             echo -e "${GREEN}✓ Theme files installed${NC}"
         else
             echo -e "${RED}✗ Theme files missing in container${NC}"
