@@ -92,3 +92,50 @@ body {
   opacity: 0.7;
   font-size: 0.7rem;
 }
+
+/* ---------------------------------------------------------------------------
+ * Language selector dropdown
+ *
+ * This theme sets `styles=css/styles.css`, which REPLACES the parent keycloak
+ * theme's `styles=css/login.css` rather than appending to it. That parent
+ * stylesheet is what normally keeps the locale menu collapsed
+ * (#kc-locale ul { display: none }) and opens it only on hover. Without it the
+ * language <ul> renders expanded and overlaps the login form, so credentials
+ * cannot be entered. Re-add the collapse behaviour here, styled for dark mode.
+ * ------------------------------------------------------------------------- */
+#kc-locale {
+  position: relative;
+  z-index: 50;
+}
+
+#kc-locale ul {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 120px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background-color: #0a0917;
+  border: 1px solid #222;
+  z-index: 100;
+}
+
+#kc-locale-dropdown:hover ul,
+#kc-locale-dropdown:focus-within ul {
+  display: block;
+}
+
+#kc-locale-dropdown a {
+  display: block;
+  padding: 6px 12px;
+  color: #aaa;
+  text-align: right;
+  text-decoration: none;
+}
+
+#kc-locale-dropdown a:hover {
+  background-color: #1a1830;
+  color: #fff;
+}
