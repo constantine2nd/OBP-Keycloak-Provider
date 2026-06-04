@@ -23,7 +23,6 @@ public class KcUserStorageProvider
     implements
         UserStorageProvider,
         UserLookupProvider,
-        UserRegistrationProvider,
         UserQueryProvider,
         CredentialInputUpdater,
         CredentialInputValidator,
@@ -114,26 +113,6 @@ public class KcUserStorageProvider
         log.debugf("getUserByEmail() called for '%s' — email-based lookup is not supported " +
             "in OBP API mode. Returning null.", email);
         return null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Registration (disabled — OBP API is read-only from Keycloak's perspective)
-    // -------------------------------------------------------------------------
-
-    @Override
-    public UserModel addUser(RealmModel realm, String username) {
-        log.errorf("addUser() called for username '%s' — user creation is not supported. " +
-            "Users must be created in OBP directly.", username);
-        throw new UnsupportedOperationException(
-            "User creation is not supported. Users must be created through OBP.");
-    }
-
-    @Override
-    public boolean removeUser(RealmModel realm, UserModel user) {
-        log.warnf("removeUser() called for '%s' — user deletion is not supported.",
-            user.getUsername());
-        throw new UnsupportedOperationException(
-            "User deletion is not supported. Users must be removed through OBP.");
     }
 
     // -------------------------------------------------------------------------
